@@ -1,0 +1,22 @@
+{
+  "name": "windags-skills",
+  "owner": {
+    "name": "Curiositech",
+    "email": "info@curiositech.ai"
+  },
+  "metadata": {
+    "description": "190+ agent skills for Claude Code, Codex, Gemini CLI, Cursor, and more. Built by WinDAGs.",
+    "version": "1.0.0",
+    "homepage": "https://windags.ai"
+  },
+  "plugins": [
+    {
+      "name": "windags-skills",
+      "source": ".",
+      "description": "190+ agent skills for engineering, design, research, and productivity",
+      "version": "1.0.0",
+      "license": "Apache-2.0",
+      "keywords": ["skills", "agent-skills", "claude-code", "engineering", "design", "windags"]
+    }
+  ]
+}
