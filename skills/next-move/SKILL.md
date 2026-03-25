@@ -267,19 +267,76 @@ I see changes across frontend, backend, and database but can't find a coherent t
 - [ ] Cost estimate includes both time and monetary projections
 - [ ] Output format matches expected PredictedDAG structure for downstream consumption
 
+## Step 7: Execute on Accept
+
+When the user accepts the prediction (via AskUserQuestion or conversationally), **immediately begin executing Wave 0.** Do not wait for further confirmation.
+
+### Execution Rules
+
+1. **Wave 0 agents launch immediately.** For each COMMITTED node in Wave 0, spawn an Agent with:
+   - The node's `role_description` as the task
+   - The matched skill loaded (if available — read from `skills/<skill_id>/SKILL.md`)
+   - The project context passed as background
+   - The working directory set to the project root
+
+2. **Parallel nodes in the same wave launch in a single message.** Use multiple Agent tool calls in one response so Claude Code runs them concurrently.
+
+3. **Wait for Wave N to complete before launching Wave N+1.** When all Wave 0 agents return, review their outputs, then spawn Wave 1 agents. Pass upstream outputs to downstream agents as context.
+
+4. **TENTATIVE nodes execute unless Wave 0 results suggest skipping.** Check if earlier wave outputs change the picture. If they do, tell the user: "Based on Wave 0 results, I'm skipping [node] because [reason]. Proceeding with [remaining nodes]."
+
+5. **EXPLORATORY nodes get user confirmation before executing.** Present what was learned so far: "Waves 0-1 are done. The exploratory node [name] would [description]. Run it? Or are we good?"
+
+6. **Store the triple after execution completes.** Write the full (context, prediction, feedback) triple to `.windags/triples/` via Bash:
+   ```bash
+   cat > .windags/triples/$(date -u +%Y-%m-%dT%H%M%S)-<slug>.json << 'EOF'
+   { "id": "...", "context": ..., "predicted_dag": ..., "feedback": { "accepted": true, "modifications": [] }, "timestamp": "..." }
+   EOF
+   ```
+
+### Example: Executing a 3-Wave DAG
+
+After user accepts:
+
+```
+# Wave 0 (parallel) — spawn both in a SINGLE message:
+Agent(prompt="<skill: code-review-checklist>\n\nAudit src/auth/session.ts for token refresh edge cases...")
+Agent(prompt="<skill: test-automation-expert>\n\nReview test coverage for src/auth/refresh-handler.ts...")
+
+# Wait for both to return...
+
+# Wave 1 — uses Wave 0 outputs:
+Agent(prompt="<skill: refactoring-surgeon>\n\nBased on the audit findings:\n<wave-0-output>\n\nFix the identified edge cases...")
+
+# Wave 2 (parallel, TENTATIVE) — confirm first:
+# "Wave 1 fixed 3 edge cases. The TENTATIVE error-handling node would add retry guards. Run it?"
+# If yes:
+Agent(prompt="<skill: error-handling-patterns>\n\nAdd retry guards for the token refresh flow...")
+```
+
+### If User Says "Modify"
+
+Ask what to change. Common modifications:
+- Swap a skill: "Use security-auditor instead of code-review-checklist for the audit"
+- Skip a node: "Don't bother with the exploratory research node"
+- Reorder: "Do the tests before the refactor"
+- Add a node: "Also run a performance check after the fix"
+
+Apply the modification, re-present the plan briefly, then execute.
+
+### If User Says "Reject"
+
+Ask what they actually want. Their response becomes a user hint — re-run the pipeline from Step 1 with their input as the highest-priority signal.
+
+---
+
 ## NOT-FOR Boundaries
 
 **This skill should NOT be used for:**
 
-- **Executing the predicted DAG** → Use `windags-architect` to run multi-agent DAGs
-- **Creating new skills** → Use `skill-creator` or `skill-architect` for skill development  
+- **Creating new skills** → Use `skill-creator` or `skill-architect` for skill development
 - **Debugging specific technical issues** → Use `fullstack-debugger` for error diagnosis
 - **Understanding project architecture** → Use `codebase-cartographer` for structural analysis
 - **Making constitutional AI decisions** → Use `windags-avatar` for ethical/constitutional questions
 - **Long-term project planning** → This is for "next 30-45 minutes", use roadmap tools for longer horizons
-- **Modifying existing DAG executions** → This predicts new DAGs, doesn't edit running ones
-
-**Delegation patterns:**
-- If user asks to "run this plan" → Hand off to `windags-architect`  
-- If user asks "why did X fail" → Hand off to `fullstack-debugger`
 - If user asks "what skills should I create" → Hand off to `skill-architect`
