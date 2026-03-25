@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Evaluating_the_Benefits_of_a_Rapport_Bas.pdf",
+    "path": "../batch_ndm_remaining/Evaluating_the_Benefits_of_a_Rapport_Bas.pdf",
+    "chars": 82077,
+    "tokens_approx": 20519
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T14:50:39.357143Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 25867,
+        "output": 25010
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T14:50:39.366788Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 2332,
+        "output": 3278
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 606.9852609634399,
+  "generated_at": "2026-02-24T14:50:39.374534Z"
+}

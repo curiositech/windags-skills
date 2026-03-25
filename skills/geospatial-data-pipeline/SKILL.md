@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: geospatial-data-pipeline
 description: Process, analyze, and visualize geospatial data at scale. Handles drone imagery, GPS tracks, GeoJSON optimization, coordinate transformations, and tile generation. Use for mapping apps, drone data processing, location-based services. Activate on "geospatial", "GIS", "PostGIS", "GeoJSON", "map tiles", "coordinate systems". NOT for simple address validation, basic distance calculations, or static map embeds.
 allowed-tools: Read,Write,Edit,Bash(npm:*,gdal*,postgres*)
+category: Data & Analytics
+tags:
+  - geospatial
+  - gis
+  - mapping
+  - data-pipeline
+  - spatial-data
 ---
 
 # Geospatial Data Pipeline

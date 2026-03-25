@@ -1,414 +1,196 @@
 ---
+license: Apache-2.0
 name: mobile-ux-optimizer
 description: Mobile-first UX optimization for touch interfaces, responsive layouts, and performance. Use for viewport handling, touch targets, gestures, mobile navigation. Activate on mobile, touch, responsive, dvh, viewport, safe area, hamburger menu. NOT for native app development (use React Native skills), desktop-only features, or general CSS (use Tailwind docs).
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob
-category: Design & Creative
+category: Mobile Development
 tags:
   - mobile
   - ux
-  - touch
-  - responsive
-  - viewport
-  - safe-area
-  - navigation
+  - optimization
+  - usability
+  - interaction
 ---
 
 # Mobile-First UX Optimization
 
 Build touch-optimized, performant mobile experiences with proper viewport handling and responsive patterns.
 
-## When to Use
+## Decision Points
 
-✅ **USE this skill for:**
-- Viewport issues (`100vh` problems, safe areas, notches)
-- Touch target sizing and spacing
-- Mobile navigation patterns (bottom nav, drawers, hamburger menus)
-- Swipe gestures and pull-to-refresh
-- Responsive breakpoint strategies
-- Mobile performance optimization
-
-❌ **DO NOT use for:**
-- Native app development → use `react-native` or `swift-executor` skills
-- Desktop-only features → no skill needed, standard patterns apply
-- General CSS/Tailwind questions → use Tailwind docs or `web-design-expert`
-- PWA installation/service workers → use `pwa-expert` skill
-
-## Core Principles
-
-### Mobile-First Means Build Up, Not Down
-
-```css
-/* ❌ ANTI-PATTERN: Desktop-first (scale down) */
-.card { width: 400px; }
-@media (max-width: 768px) { .card { width: 100%; } }
-
-/* ✅ CORRECT: Mobile-first (scale up) */
-.card { width: 100%; }
-@media (min-width: 768px) { .card { width: 400px; } }
+### Navigation Pattern Selection
+```
+IF screen width < 768px AND menu items > 4
+  → Use bottom navigation (finger-reachable zone)
+ELSE IF screen width < 768px AND menu items ≤ 4
+  → Use fixed bottom tabs
+ELSE IF complex gesture required (swipes, long-press)
+  → Use slide-out drawer with hamburger trigger
+ELSE
+  → Use horizontal top navigation
 ```
 
-### The 44px Rule
+### Breakpoint Logic
+```
+IF content type = text-heavy (articles, forms)
+  → Mobile-first: 320px base, lg:768px split
+ELSE IF content type = media-heavy (galleries, videos)
+  → Mobile-first: 375px base, md:640px grid
+ELSE IF dashboard/data-dense
+  → Start tablet: 768px base, xl:1280px full layout
+```
 
-Apple's Human Interface Guidelines specify **44×44 points** as minimum touch target. Google Material suggests **48×48dp**.
+### Viewport Height Strategy
+```
+IF fullscreen experience (modals, hero sections)
+  → Use 100dvh with 100vh fallback
+ELSE IF fixed bottom nav present
+  → Use calc(100dvh - 64px) or h-screen-safe utility
+ELSE IF content scrolls
+  → Use min-h-screen (normal document flow)
+```
 
+### Touch Target Sizing
+```
+IF interactive element (buttons, links, inputs)
+  → Minimum 44x44px touch area
+ELSE IF dense UI required (data tables, toolbars)
+  → 40x40px with 4px spacing minimum
+ELSE IF accessibility priority
+  → 48x48px (WCAG AAA compliance)
+```
+
+## Failure Modes
+
+### Gesture Not Registering
+**Symptoms:** Swipes/taps don't trigger, users tap multiple times
+**Diagnosis:** Touch area too small or event handlers missing
+**Fix:** 
 ```tsx
-// Touch-friendly button
-<button className="min-h-[44px] min-w-[44px] px-4 py-3">
-  Tap me
-</button>
-
-// Touch-friendly link with adequate padding
-<a href="/page" className="inline-block py-3 px-4">
-  Link text
-</a>
+// Add minimum touch area and prevent double-tap zoom
+<button className="min-h-[44px] min-w-[44px] touch-manipulation">
 ```
 
-## Viewport Handling
-
-### The `dvh` Solution
-
-Mobile browsers have dynamic toolbars. `100vh` includes the URL bar, causing content to be cut off.
-
+### Layout Jumps on Scroll
+**Symptoms:** Content shifts when mobile browser chrome shows/hides
+**Diagnosis:** Using 100vh instead of dynamic viewport units
+**Fix:**
 ```css
-/* ❌ ANTI-PATTERN: Content hidden behind browser UI */
-.full-screen { height: 100vh; }
-
-/* ✅ CORRECT: Responds to browser chrome */
+/* Replace 100vh with dynamic height */
 .full-screen { height: 100dvh; }
-
-/* Fallback for older browsers */
-.full-screen {
-  height: 100vh;
-  height: 100dvh;
-}
 ```
 
-### Safe Area Insets (Notches & Home Indicators)
-
-```css
-/* Handle iPhone notch and home indicator */
-.bottom-nav {
-  padding-bottom: env(safe-area-inset-bottom, 0);
-}
-
-.header {
-  padding-top: env(safe-area-inset-top, 0);
-}
-
-/* Full safe area padding */
-.safe-container {
-  padding: env(safe-area-inset-top)
-           env(safe-area-inset-right)
-           env(safe-area-inset-bottom)
-           env(safe-area-inset-left);
-}
-```
-
-**Required meta tag:**
+### Notch/Safe Area Overlap
+**Symptoms:** Content hidden behind iPhone notch or home indicator
+**Diagnosis:** Missing safe area insets or viewport-fit=cover
+**Fix:**
 ```html
+<!-- Add viewport-fit=cover -->
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 ```
-
-### Tailwind Safe Area Classes
-
-```tsx
-// Custom Tailwind utilities (add to globals.css)
-@layer utilities {
-  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
-  .pt-safe { padding-top: env(safe-area-inset-top); }
-  .h-screen-safe { height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
-}
-
-// Usage
-<nav className="fixed bottom-0 pb-safe bg-leather-900">
-  <BottomNav />
-</nav>
-```
-
-## Mobile Navigation Patterns
-
-### Bottom Navigation (Recommended for Mobile)
-
-```tsx
-// components/BottomNav.tsx
-'use client';
-
-import { usePathname } from 'next/navigation';
-import Link from 'next/link';
-
-const navItems = [
-  { href: '/', icon: HomeIcon, label: 'Home' },
-  { href: '/meetings', icon: CalendarIcon, label: 'Meetings' },
-  { href: '/tools', icon: ToolsIcon, label: 'Tools' },
-  { href: '/my', icon: UserIcon, label: 'My Recovery' },
-];
-
-export function BottomNav() {
-  const pathname = usePathname();
-
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-leather-900 border-t border-leather-700 pb-safe">
-      <div className="flex justify-around">
-        {navItems.map(({ href, icon: Icon, label }) => {
-          const isActive = pathname === href || pathname.startsWith(`${href}/`);
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`
-                flex flex-col items-center py-2 px-3 min-h-[56px] min-w-[64px]
-                ${isActive ? 'text-ember-400' : 'text-leather-400'}
-              `}
-            >
-              <Icon className="w-6 h-6" />
-              <span className="text-xs mt-1">{label}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
-  );
-}
-```
-
-### Slide-Out Drawer (Side Menu)
-
-```tsx
-'use client';
-
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-
-interface DrawerProps {
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}
-
-export function Drawer({ isOpen, onClose, children }: DrawerProps) {
-  // Prevent body scroll when open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  // Close on escape
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
-
-  if (!isOpen) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      {/* Drawer */}
-      <div
-        className="absolute left-0 top-0 h-full w-[280px] max-w-[80vw]
-                   bg-leather-900 shadow-xl transform transition-transform
-                   animate-slide-in-left"
-        role="dialog"
-        aria-modal="true"
-      >
-        <div className="h-full overflow-y-auto pt-safe pb-safe">
-          {children}
-        </div>
-      </div>
-    </div>,
-    document.body
-  );
-}
-```
-
-## Touch Gestures
-
-> **Full implementations in `references/gestures.md`**
-
-| Hook | Purpose |
-|------|---------|
-| `useSwipe()` | Directional swipe detection with configurable threshold |
-| `usePullToRefresh()` | Pull-to-refresh with visual feedback and resistance |
-
-**Quick usage:**
-
-```tsx
-// Swipe to dismiss
-const { handleTouchStart, handleTouchEnd } = useSwipe({
-  onSwipeLeft: () => dismiss(),
-  threshold: 50,
-});
-
-// Pull to refresh
-const { containerRef, pullDistance, isRefreshing, handlers } = 
-  usePullToRefresh(async () => await refetchData());
-```
-
-## Mobile Performance
-
-### Image Optimization
-
-```tsx
-import Image from 'next/image';
-
-// Responsive images with proper sizing
-<Image
-  src="/hero.jpg"
-  alt="Hero"
-  fill
-  sizes="(max-width: 768px) 100vw, 50vw"
-  priority // For above-the-fold images
-  className="object-cover"
-/>
-
-// Lazy load below-fold images
-<Image
-  src="/feature.jpg"
-  alt="Feature"
-  width={400}
-  height={300}
-  loading="lazy"
-/>
-```
-
-### Reduce Bundle Size
-
-```tsx
-// Dynamic imports for heavy components
-const HeavyChart = dynamic(() => import('@/components/Chart'), {
-  loading: () => <ChartSkeleton />,
-  ssr: false, // Skip server render for client-only
-});
-
-// Lazy load below-fold sections
-const Comments = dynamic(() => import('@/components/Comments'));
-```
-
-### Skeleton Screens (Not Spinners)
-
-```tsx
-// Skeleton that matches final content layout
-function MeetingCardSkeleton() {
-  return (
-    <div className="p-4 bg-leather-800 rounded-lg animate-pulse">
-      <div className="h-4 bg-leather-700 rounded w-3/4 mb-2" />
-      <div className="h-3 bg-leather-700 rounded w-1/2 mb-4" />
-      <div className="flex gap-2">
-        <div className="h-6 w-16 bg-leather-700 rounded" />
-        <div className="h-6 w-16 bg-leather-700 rounded" />
-      </div>
-    </div>
-  );
-}
-
-// Usage
-{isLoading ? (
-  <div className="space-y-4">
-    {[...Array(5)].map((_, i) => <MeetingCardSkeleton key={i} />)}
-  </div>
-) : (
-  meetings.map(m => <MeetingCard key={m.id} meeting={m} />)
-)}
-```
-
-## Responsive Patterns
-
-### Tailwind Breakpoint Strategy
-
-```
-sm: 640px   - Large phones (landscape)
-md: 768px   - Tablets
-lg: 1024px  - Small laptops
-xl: 1280px  - Desktops
-2xl: 1536px - Large screens
-```
-
-```tsx
-// Mobile: stack, Tablet+: side-by-side
-<div className="flex flex-col md:flex-row gap-4">
-  <aside className="w-full md:w-64">Sidebar</aside>
-  <main className="flex-1">Content</main>
-</div>
-
-// Mobile: bottom nav, Desktop: sidebar
-<nav className="md:hidden fixed bottom-0 left-0 right-0">
-  <BottomNav />
-</nav>
-<aside className="hidden md:block w-64">
-  <SidebarNav />
-</aside>
-```
-
-### Container Queries (CSS-only Responsive Components)
-
 ```css
-/* Component responds to its container, not viewport */
-@container (min-width: 400px) {
-  .card { flex-direction: row; }
-}
+.header { padding-top: env(safe-area-inset-top, 0); }
 ```
 
+### Scroll Lock Anti-Pattern
+**Symptoms:** Page becomes unscrollable when modal/drawer opens
+**Diagnosis:** Applying overflow:hidden to body without restoration
+**Fix:**
 ```tsx
-<div className="@container">
-  <div className="flex flex-col @md:flex-row">
-    {/* Responds to parent container width */}
+useEffect(() => {
+  if (isOpen) document.body.style.overflow = 'hidden';
+  return () => { document.body.style.overflow = ''; };
+}, [isOpen]);
+```
+
+### Tiny Text Syndrome
+**Symptoms:** Text unreadable on mobile, users pinch to zoom
+**Diagnosis:** Fixed pixel sizes instead of relative units
+**Fix:**
+```css
+/* Replace px with rem for scalable text */
+font-size: 1rem; /* 16px base, scales with user preference */
+```
+
+## Worked Example
+
+**Scenario:** Converting a desktop-first meeting list to mobile-optimized experience
+
+### Step 1: Audit Current State
+```tsx
+// ❌ BEFORE: Desktop-first pain points
+<div className="w-full max-w-4xl mx-auto px-4">
+  <nav className="flex space-x-8 mb-8">
+    <a href="/meetings">All Meetings</a>
+    <a href="/my-meetings">My Meetings</a>
+    <a href="/favorites">Favorites</a>
+    <a href="/search">Search</a>
+  </nav>
+  <div className="grid grid-cols-3 gap-6">
+    {meetings.map(m => <MeetingCard key={m.id} meeting={m} />)}
   </div>
 </div>
 ```
 
-## Testing on Real Devices
+**Expert catches:** Touch targets in nav are too small, 3-column grid will be cramped on mobile, no safe area handling.
 
-### Chrome DevTools Mobile Emulation
-1. Open DevTools (F12)
-2. Toggle device toolbar (Ctrl+Shift+M)
-3. Select device or set custom dimensions
-4. **Throttle network/CPU** for realistic performance
+**Novice misses:** Would just add responsive classes without considering touch zones or navigation patterns.
 
-### Must-Test Scenarios
-- [ ] Content doesn't get cut off by notch/home indicator
-- [ ] Touch targets are at least 44×44px
-- [ ] Scrolling is smooth (no jank)
-- [ ] Bottom nav doesn't block content
-- [ ] Forms work with virtual keyboard visible
-- [ ] Landscape orientation works
-- [ ] Pull-to-refresh doesn't fight with scroll
+### Step 2: Apply Mobile-First Decision Tree
+Following navigation pattern logic: 4 menu items on mobile → Use bottom navigation
 
-### BrowserStack/Real Device Testing
-```bash
-# Expose local dev server to internet
-npx localtunnel --port 3000
-# or
-ngrok http 3000
+### Step 3: Implement Mobile-Optimized Version
+```tsx
+// ✅ AFTER: Mobile-optimized
+<div className="pb-safe"> {/* Safe area handling */}
+  <div className="px-4 pb-16"> {/* Bottom nav clearance */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {meetings.map(m => <MeetingCard key={m.id} meeting={m} />)}
+    </div>
+  </div>
+  
+  {/* Mobile: bottom nav, Desktop: hidden */}
+  <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t pb-safe">
+    <div className="flex justify-around">
+      {navItems.map(({ href, icon: Icon, label }) => (
+        <Link key={href} href={href} 
+              className="flex flex-col items-center py-2 px-3 min-h-[56px] min-w-[64px]">
+          <Icon className="w-6 h-6" />
+          <span className="text-xs mt-1">{label}</span>
+        </Link>
+      ))}
+    </div>
+  </nav>
+</div>
 ```
 
-## Quick Reference
+### Step 4: Validate Touch Targets
+Using browser DevTools, verify each nav item is 56px+ tall with adequate finger spacing.
 
-| Issue | Solution |
-|-------|----------|
-| Content cut off at bottom | Use `100dvh` instead of `100vh` |
-| Notch overlaps content | Add `pt-safe` / `pb-safe` |
-| Touch targets too small | Min 44×44px |
-| Scroll locked | Check `overflow: hidden` on body |
-| Keyboard covers input | Use `visualViewport` API |
-| Janky scrolling | Use `will-change: transform` |
-| Double-tap zoom | Add `touch-action: manipulation` |
+## Quality Gates
 
-## References
+- [ ] Viewport meta tag includes `viewport-fit=cover` for safe area support
+- [ ] All interactive elements meet 44x44px minimum touch target size
+- [ ] Layout tested with `100dvh` - no content cut off by browser chrome
+- [ ] Safe area audit complete: `pt-safe`/`pb-safe` applied to fixed elements
+- [ ] Bottom navigation (if used) has `pb-safe` and doesn't block content
+- [ ] Touch targets have 8px+ spacing between adjacent elements
+- [ ] Responsive grid collapses appropriately: 1 col mobile, 2+ tablet/desktop
+- [ ] All images use `sizes` attribute for proper mobile loading
+- [ ] No horizontal scrolling at 320px viewport width
+- [ ] Form inputs remain visible when virtual keyboard appears
 
-See `/references/` for detailed guides:
-- `keyboard-handling.md` - Virtual keyboard and form UX
-- `animations.md` - Touch-friendly animations
-- `accessibility.md` - Mobile a11y requirements
+## NOT-FOR Boundaries
+
+**DO NOT use this skill for:**
+- Native iOS/Android development → Use `react-native` or `swift-executor` instead
+- PWA installation flows → Use `pwa-expert` skill for service workers and manifest
+- Desktop-only applications → Standard responsive design patterns sufficient
+- Complex animations → Use `framer-motion` or `animation-expert` skills
+- General CSS debugging → Use `tailwind-expert` or standard CSS documentation
+
+**Delegate to other skills when:**
+- User reports native app crashes → `mobile-debugging` skill
+- Need push notifications → `pwa-expert` skill
+- Performance issues beyond mobile-specific → `performance-optimization` skill
+- Accessibility beyond touch targets → `a11y-expert` skill

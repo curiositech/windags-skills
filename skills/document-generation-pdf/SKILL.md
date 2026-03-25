@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: document-generation-pdf
 description: Generate, fill, and assemble PDF documents at scale. Handles legal forms, contracts, invoices, certificates. Supports form filling (pdf-lib), template rendering (Puppeteer, LaTeX), digital signatures (DocuSign), and document assembly. Use for legal tech, HR automation, invoice generation. Activate on "PDF generation", "form filling", "document automation", "digital signatures". NOT for simple PDF viewing, basic file conversion, or OCR text extraction.
 allowed-tools: Read,Write,Edit,Bash(npm:*,latex*)
+category: Productivity & Meta
+tags:
+  - pdf-generation
+  - documents
+  - templates
+  - reporting
+  - automation
 ---
 
 # Document Generation & PDF Automation

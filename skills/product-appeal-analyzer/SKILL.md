@@ -1,15 +1,15 @@
 ---
+license: Apache-2.0
 name: product-appeal-analyzer
 description: Evaluate product desirability, market positioning, and emotional resonance—the complement to friction analysis. Assess whether users will WANT a product (not just use it), identity fit, trust signals, and value proposition clarity. Activate on "will they like it", "market positioning", "appeal analysis", "product desirability", "value proposition", "why would someone choose this", "landing page review", "conversion optimization", "messaging strategy". NOT for UX friction analysis (use ux-friction-analyzer), visual design implementation (use web-design-expert), or A/B test setup (use frontend-developer).
 allowed-tools: Read,Write,Edit,WebFetch
-category: Research & Analysis
+category: Content & Marketing
 tags:
-  - product-strategy
-  - marketing
-  - positioning
-  - value-proposition
-  - conversion
+  - product-analysis
+  - appeal
+  - market-fit
   - user-research
+  - positioning
 pairs-with:
   - skill: ux-friction-analyzer
     reason: Appeal asks "do they want it?" Friction asks "can they use it?" Use both.

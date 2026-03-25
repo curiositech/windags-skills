@@ -1,506 +1,291 @@
 ---
+license: Apache-2.0
 name: data-viz-2025
 description: State-of-the-art data visualization for React/Next.js/TypeScript with Tailwind CSS. Creates compelling, tested, and accessible visualizations following Tufte principles and NYT Graphics standards. Activate on "data viz", "chart", "graph", "visualization", "dashboard", "plot", "Recharts", "Nivo", "D3". NOT for static images, print graphics, or basic HTML tables.
 allowed-tools: Read,Write,Edit,Bash
+category: Data & Analytics
+tags:
+  - data-visualization
+  - '2025'
+  - charts
+  - d3
+  - interactive
 ---
 
 # Data Visualization 2025: The Art & Science of Visual Communication
 
-Create visualizations that Seaborn users, Tufte readers, and everyone else will love. Marry NYT Graphics rigor with MoMA aesthetics, Nike energy, and On Kawara precision.
+Create visualizations that marry NYT Graphics rigor with modern web performance and accessibility standards.
 
-## When to Use This Skill
+## DECISION POINTS
 
-✅ **Use for:**
-- Building interactive charts, dashboards, and data stories
-- Complex visualizations (chord diagrams, Sankey flows, network graphs)
-- Real-time data displays with animations
-- Mobile-responsive data components
-- Accessible, tested visualizations for production
-
-❌ **NOT for:**
-- Static PNG/SVG exports without interaction (use design tools)
-- Basic HTML tables (use semantic markup)
-- Print-only graphics (different constraints)
-- Simple icon displays (use icon libraries)
-
-## Core Philosophy: The Three Pillars
-
-### 1. **Clarity** (Tufte's Data-Ink Ratio)
-Every visual element must earn its place. Remove chart junk, maximize signal-to-noise.
-
-### 2. **Beauty** (Aesthetic Standards)
-Visualizations are art. Use spring physics, thoughtful color, and premium design systems.
-
-### 3. **Truth** (Graphical Integrity)
-Data representation must be honest. Test rigorously, document assumptions, preserve context.
-
-## Quick Decision Tree
+### Primary Library Selection Tree
 
 ```
-What are you building?
-├─ Exploratory analysis / many iterations
-│  └─ → Observable Plot (grammar-of-graphics)
+What type of chart are you building?
+├─ Exploratory analysis / rapid prototyping
+│  ├─ Data size < 5K points → Observable Plot
+│  └─ Data size > 5K points → D3.js with sampling
 │
-├─ Standard business charts (bars, lines, pies)
-│  ├─ Simple React integration needed
-│  │  └─ → Recharts (easiest, most popular)
-│  └─ Premium aesthetics + theming
-│     └─ → Nivo (beautiful out of the box)
+├─ Standard business charts (bars, lines, areas)
+│  ├─ Need it fast & simple → Recharts
+│  ├─ Premium aesthetics required → Nivo
+│  └─ Custom interactions needed → Visx
 │
-├─ Custom, one-of-a-kind visualizations
-│  ├─ Need low-level control
-│  │  └─ → Visx (React + D3 primitives)
-│  └─ Full D3 power
-│     └─ → D3.js directly (steeper learning curve)
+├─ Complex/novel visualizations
+│  ├─ React component structure preferred → Visx
+│  └─ Maximum control needed → D3.js
 │
-└─ Dashboard with Tailwind design system
-   ├─ → Tremor (purpose-built for dashboards)
-   └─ → shadcn-ui Charts (Recharts + shadcn styling)
+└─ Dashboard with many charts
+   ├─ Tailwind design system → Tremor
+   └─ Consistent theming → Nivo
 ```
 
-## The Data Viz Stack (2025)
+### Performance Optimization Branch
 
-### Recommended Packages
-
-```json
-{
-  "dependencies": {
-    "@observablehq/plot": "^0.6.0",        // Exploratory, grammar-of-graphics
-    "recharts": "^2.12.0",                  // React charts, simple & popular
-    "@nivo/core": "^0.87.0",                // Beautiful, themeable charts
-    "@visx/visx": "^3.10.0",                // Low-level D3 + React primitives
-    "d3": "^7.9.0",                         // Direct D3 for custom work
-    "@tremor/react": "^3.15.0",             // Tailwind dashboard components
-    "framer-motion": "^11.0.0"              // Smooth animations
-  },
-  "devDependencies": {
-    "@percy/cli": "^1.29.0",                // Visual regression testing
-    "@testing-library/react": "^14.2.0",    // Component testing
-    "@storybook/react": "^7.6.0"            // Component playground
-  }
-}
+```
+How many data points?
+├─ < 1K points
+│  ├─ Need crisp scaling → SVG rendering
+│  └─ Need interactivity → SVG with event handlers
+│
+├─ 1K - 10K points
+│  ├─ Simple shapes → SVG (acceptable)
+│  ├─ Complex animations → Canvas
+│  └─ Mobile performance critical → Canvas
+│
+└─ > 10K points
+   ├─ Static display → Canvas with aggregation
+   ├─ Interactive exploration → WebGL (via deck.gl)
+   └─ Real-time updates → Canvas with data sampling
 ```
 
-### When to Use Each Library
+### Accessibility Decision Matrix
 
-**Observable Plot** - You want ggplot2/Vega-Lite in JavaScript
-- Grammar-of-graphics approach (marks, scales, transforms)
-- Perfect for rapid prototyping
-- Great for notebooks and exploratory analysis
+```
+Is this for production use?
+├─ Yes → Must implement ALL accessibility features
+│  ├─ Keyboard navigation for all interactive elements
+│  ├─ Screen reader support with data tables
+│  ├─ Color-blind safe palettes (test with simulators)
+│  └─ Respect prefers-reduced-motion
+│
+└─ Internal tool/prototype → Implement core features
+   ├─ Alt text for chart images
+   ├─ Sufficient color contrast (4.5:1 minimum)
+   └─ Keyboard access for primary interactions
+```
 
-**Recharts** - You want it to "just work" in React
-- Component-based (everything is a `<Component />`)
-- Excellent documentation and community
-- TypeScript support built-in
-- Smallest learning curve
+### Mobile Responsiveness Strategy
 
-**Nivo** - You want visually stunning results
-- 20+ chart types with beautiful defaults
-- Canvas, SVG, and HTML rendering
-- Server-side rendering support (unique feature)
-- Extensive customization via props
+```
+What's the screen breakpoint?
+├─ Mobile (< 640px)
+│  ├─ Many data points → Aggregate to top 5-7 items
+│  ├─ Time series → Show last 30 days, add "View All" button
+│  ├─ Multi-series → Use small multiples instead of overlays
+│  └─ Complex legends → Replace with direct labels
+│
+├─ Tablet (640px - 1024px)
+│  ├─ Reduce axis labels by 50%
+│  ├─ Simplify gridlines (remove minor ticks)
+│  └─ Increase touch targets to 44px minimum
+│
+└─ Desktop (> 1024px)
+   └─ Show full detail, all interactions enabled
+```
 
-**Visx** - You want maximum control with React patterns
-- Low-level primitives (scales, axes, shapes)
-- Compose your own chart types
-- Airbnb's D3 + React toolkit
-- Best for novel visualizations
+## FAILURE MODES
 
-**D3.js** - You want unlimited power (and responsibility)
-- Full control over every pixel
-- Steepest learning curve
-- Best for advanced, custom work
-- Use with `useEffect` and `useRef` in React
+### 1. "Rainbow Vomit" (Visual Overload)
+**Symptom:** Chart has 8+ colors, tiny legend, impossible to distinguish series
+**Diagnosis:** Trying to show too many categories simultaneously
+**Fix:** 
+- Limit to 5 categories maximum
+- Use "Other" bucket for remaining items
+- Consider small multiples instead of single overloaded chart
+- Apply semantic color coding (red=bad, green=good)
 
-## The Tufte Checklist
+### 2. "Misleading Scale" (Graphical Dishonesty)
+**Symptom:** Bar chart with Y-axis starting at 95 instead of 0, making 2% difference look like 200%
+**Diagnosis:** Truncated axes exaggerating small differences
+**Fix:**
+- Bar charts MUST start Y-axis at 0
+- Line charts can use truncated scales (with clear annotation)
+- Add reference lines to show context
+- Use percentage change annotations when showing growth
 
-Before shipping any visualization, verify:
+### 3. "Mobile Pancake" (Responsiveness Failure)
+**Symptom:** Desktop chart squished to mobile width, text unreadable, interactions broken
+**Diagnosis:** No responsive design strategy, one-size-fits-all approach
+**Fix:**
+- Implement breakpoint-specific layouts
+- Aggregate data for mobile (top 5 instead of 20 items)
+- Replace hover with touch-friendly interactions
+- Consider chart type changes (horizontal bars instead of vertical)
 
-- [ ] **Data-ink ratio maximized** - Remove gridlines, decorations, 3D effects, shadows
-- [ ] **Graphical integrity** - Visual representation proportional to data values
-- [ ] **Clear labeling** - Direct labels on data (not legends requiring color matching)
-- [ ] **No chart junk** - No unnecessary ornamentation or Moiré vibration
-- [ ] **Layered information** - Use small multiples instead of overloaded single charts
-- [ ] **Show data variation, not design variation** - Consistent visual encoding
+### 4. "Loading Desert" (Poor Loading States)
+**Symptom:** White screen for 3+ seconds, then chart appears suddenly
+**Diagnosis:** No skeleton loading, blocking data fetch
+**Fix:**
+- Show skeleton that matches final chart structure
+- Implement progressive loading (axes first, then data)
+- Add loading animations with spring physics
+- Cache data when possible to reduce perceived load time
 
-Read `references/tufte-principles.md` for deep dive.
+### 5. "Accessibility Afterthought" (Exclusion by Design)
+**Symptom:** Screen reader announces "image" with no context, keyboard navigation broken
+**Diagnosis:** Visual-only design, no programmatic access to data
+**Fix:**
+- Add comprehensive alt text describing trends and insights
+- Provide data table alternative with show/hide toggle
+- Implement keyboard navigation for interactive elements
+- Test with actual screen reader (NVDA, JAWS, VoiceOver)
 
-## The NYT Graphics Workflow
+## WORKED EXAMPLES
 
-The New York Times graphics team process:
+### Example 1: Multi-Series Mobile Chart
 
-1. **Make 500 charts** → Pick the one that displays information best
-2. **Simplify within reason** → Remove noise and clutter
-3. **Annotate with insight** → Words should highlight patterns, not just describe data
-4. **Test with real users** → Watch people interact, identify confusion
-5. **Responsive by default** → Mobile-first, progressive enhancement
+**Scenario:** Executive dashboard showing revenue by 8 product lines over 12 months, needs to work on mobile.
 
-Read `references/nyt-workflow.md` for case studies.
+**Decision Process:**
+1. **Data Analysis:** 8 series × 12 months = 96 data points, acceptable for SVG
+2. **Mobile Strategy:** 8 series too many for mobile width
+3. **Library Choice:** Recharts for quick implementation, good mobile support
 
-## Animation & Micro-interactions
-
-Data viz isn't static. Movement communicates:
-
-### When to Animate
-- **State transitions** - Data updates, filter changes
-- **Draw attention** - Highlight insights, guide the eye
-- **Show relationships** - Morphing between views reveals structure
-- **Delight** - Thoughtful motion = premium feel
-
-### Animation Principles
+**Desktop Implementation:**
 ```typescript
-// Use spring physics, not linear easing
-const springConfig = {
-  type: "spring",
-  stiffness: 300,
-  damping: 30
-};
-
-// Stagger for multiple elements
-const staggerChildren = {
-  delayChildren: 0.1,
-  staggerChildren: 0.05
-};
-
-// Respect prefers-reduced-motion
-const shouldAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+<LineChart data={monthlyData} width="100%" height={400}>
+  <XAxis dataKey="month" />
+  <YAxis />
+  <Tooltip />
+  <Legend />
+  {products.map((product, index) => (
+    <Line 
+      key={product} 
+      dataKey={product} 
+      stroke={colors[index]}
+      strokeWidth={2}
+    />
+  ))}
+</LineChart>
 ```
 
-Read `references/animation-patterns.md` for complete patterns library.
-
-## Color: Beyond the Rainbow
-
-### Semantic Color Systems
+**Mobile Adaptation:**
 ```typescript
-// Qualitative (categorical data)
-const categorical = [
-  "#d97706", "#7c3aed", "#059669", "#dc2626", "#2563eb"
-];
+const isMobile = useMediaQuery('(max-width: 640px)');
+const topProducts = isMobile 
+  ? products.slice(0, 3) // Show only top 3
+  : products;
 
-// Sequential (ordered data, low to high)
-const sequential = [
-  "#fef3c7", "#fcd34d", "#f59e0b", "#d97706", "#92400e"
-];
-
-// Diverging (data with meaningful center)
-const diverging = [
-  "#dc2626", "#f87171", "#fef2f2", "#c7d2fe", "#6366f1"
-];
+<ResponsiveContainer height={isMobile ? 250 : 400}>
+  <LineChart data={monthlyData}>
+    <XAxis 
+      dataKey="month" 
+      interval={isMobile ? 2 : 0} // Every 3rd month on mobile
+      tick={{ fontSize: isMobile ? 10 : 12 }}
+    />
+    <YAxis tick={isMobile ? false : true} />
+    <Tooltip />
+    {!isMobile && <Legend />}
+    {topProducts.map((product, index) => (
+      <Line 
+        key={product} 
+        dataKey={product} 
+        stroke={colors[index]}
+        strokeWidth={isMobile ? 3 : 2} // Thicker lines for mobile
+      />
+    ))}
+  </LineChart>
+</ResponsiveContainer>
 ```
 
-### Accessibility Requirements
-- **Contrast ratio ≥4.5:1** for text on backgrounds
-- **Don't rely on color alone** - Use shapes, patterns, labels
-- **Colorblind-safe palettes** - Test with simulators
-- **Consider dark mode** - Colors must work in both themes
+**Key Decisions Made:**
+- Reduced series from 8 to 3 on mobile
+- Increased line thickness for better touch interaction
+- Removed Y-axis labels to save space
+- Showed every 3rd month label instead of all 12
 
-## Testing Data Visualizations
+### Example 2: Performance-Critical Sankey Diagram
 
-### Visual Regression Testing
-```bash
-# Percy - Automated visual testing
-npx percy snapshot ./storybook-static
+**Scenario:** User journey flow with 50K user sessions, 12 touchpoints, needs real-time updates.
 
-# Chromatic - For Storybook
-npx chromatic --project-token=<token>
-```
+**Decision Process:**
+1. **Data Size:** 50K sessions × 12 steps = 600K transitions, too much for SVG
+2. **Performance Requirement:** Real-time updates every 30 seconds
+3. **Library Choice:** D3.js with Canvas rendering for performance
 
-### Data Accuracy Testing
+**Implementation Strategy:**
 ```typescript
-// Verify rendered elements match data
-test('bar chart renders correct number of bars', () => {
-  const data = [{ x: 'A', y: 10 }, { x: 'B', y: 20 }];
-  render(<BarChart data={data} />);
+// Data aggregation first - group similar paths
+const aggregatedFlows = useMemo(() => {
+  return rawUserJourney
+    .reduce((acc, session) => {
+      const pathKey = session.path.join('→');
+      acc[pathKey] = (acc[pathKey] || 0) + session.count;
+      return acc;
+    }, {})
+    // Keep only paths with 100+ users
+    .filter(([path, count]) => count >= 100);
+}, [rawUserJourney]);
 
-  const bars = screen.getAllByTestId('bar');
-  expect(bars).toHaveLength(2);
-});
-
-// Verify scale accuracy
-test('bar heights proportional to values', () => {
-  const data = [{ x: 'A', y: 10 }, { x: 'B', y: 20 }];
-  render(<BarChart data={data} />);
-
-  const bars = screen.getAllByTestId('bar');
-  const heights = bars.map(b => parseInt(b.style.height));
-  expect(heights[1]).toBe(heights[0] * 2); // B is 2x A
-});
+// Canvas rendering for performance
+useEffect(() => {
+  const canvas = canvasRef.current;
+  const ctx = canvas.getContext('2d');
+  
+  // Clear and render
+  ctx.clearRect(0, 0, width, height);
+  
+  // Use Web Workers for heavy calculations
+  const worker = new Worker('/sankeyWorker.js');
+  worker.postMessage({ flows: aggregatedFlows, dimensions: { width, height } });
+  
+  worker.onmessage = (e) => {
+    const { nodes, links } = e.data;
+    drawSankey(ctx, nodes, links);
+  };
+}, [aggregatedFlows]);
 ```
 
-Read `references/testing-strategies.md` for comprehensive test suites.
+**Performance Optimizations Applied:**
+- Aggregated 600K data points to ~200 significant flows
+- Used Canvas instead of SVG for smooth 60fps updates
+- Moved calculations to Web Worker to prevent UI blocking
+- Implemented data streaming instead of full refreshes
 
-## Responsive Design Patterns
+## QUALITY GATES
 
-### Mobile-First Approach
-```typescript
-// Desktop: Show everything
-// Tablet: Simplify axes, reduce labels
-// Mobile: Minimal chart, key insights only
+Before shipping any data visualization, verify ALL conditions:
 
-const ChartResponsive = ({ data }: Props) => {
-  const isMobile = useMediaQuery('(max-width: 640px)');
+- [ ] **Data Accuracy**: Chart values match source data (spot-check 5 random points)
+- [ ] **Visual Hierarchy**: Most important insight is visually prominent (passes 5-second test)
+- [ ] **Mobile Responsive**: Chart readable and interactive on 320px width screen
+- [ ] **Accessibility Compliant**: Screen reader announces chart purpose and key trends
+- [ ] **Performance Acceptable**: Chart renders in <2 seconds on 3G connection
+- [ ] **Error Handling**: Graceful degradation when data is missing/malformed
+- [ ] **Loading States**: Skeleton or progress indicator shown during data fetch
+- [ ] **Color Contrast**: All text meets WCAG AA standards (4.5:1 ratio minimum)
+- [ ] **Keyboard Navigation**: All interactive elements accessible via Tab key
+- [ ] **Cross-Browser Tested**: Works correctly in Chrome, Firefox, Safari, Edge
 
-  return (
-    <ResponsiveContainer width="100%" height={isMobile ? 200 : 400}>
-      <LineChart data={data}>
-        {!isMobile && <CartesianGrid strokeDasharray="3 3" />}
-        <XAxis
-          dataKey="date"
-          tick={isMobile ? { fontSize: 10 } : undefined}
-          interval={isMobile ? 'preserveStartEnd' : 'auto'}
-        />
-        <YAxis tick={isMobile ? false : undefined} />
-        <Tooltip />
-        <Line type="monotone" dataKey="value" stroke="#d97706" />
-      </LineChart>
-    </ResponsiveContainer>
-  );
-};
-```
+## NOT-FOR BOUNDARIES
 
-### Touch-Friendly Interactions
-- **Minimum touch target: 44×44px** - Tooltips, buttons, interactive elements
-- **Swipe gestures** - Navigate time series, change views
-- **Pinch-to-zoom** - For dense charts (use carefully)
-- **Long-press context menus** - Advanced actions
+**This skill should NOT be used for:**
 
-## Data Storytelling
+- **Static image exports** → Use design tools (Figma, Illustrator) or server-side rendering libraries
+- **Print-optimized graphics** → Use different color palettes and typography for print medium
+- **Basic HTML data tables** → Use semantic `<table>` markup with CSS styling
+- **Simple icon displays** → Use icon libraries (Heroicons, Feather) instead
+- **Real-time streaming visualization** → For >100 updates/second, use specialized libraries (deck.gl, Three.js)
 
-Every visualization tells a story. Follow the narrative arc:
+**When to delegate to other skills:**
+- **Backend data processing** → Use [data-pipeline-2025] for ETL and aggregation
+- **UI component design** → Use [ui-design-2025] for non-data interface elements  
+- **Performance optimization** → Use [react-performance-2025] for general React optimization
+- **Testing strategy** → Use [testing-2025] for comprehensive test planning
 
-1. **Hook** - What's the surprising insight?
-2. **Context** - Why should we care?
-3. **Evidence** - Show the data clearly
-4. **Conclusion** - What should we do?
-
-### Narrative Techniques
-- **Scrollytelling** - Charts animate as user scrolls
-- **Progressive disclosure** - Start simple, reveal complexity
-- **Annotations** - Point out the insight, don't make users hunt
-- **Comparison** - Show before/after, us vs. them, expected vs. actual
-
-Read `references/data-storytelling.md` for narrative frameworks.
-
-## Common Anti-Patterns
-
-### ❌ The "Rainbow Vomit" Pie Chart
-**Problem:** 12 colors, tiny slices, legend on the side
-**Solution:** Max 5 categories, direct labels, consider bar chart instead
-
-### ❌ The "Misleading Axis" Bar Chart
-**Problem:** Y-axis doesn't start at zero, exaggerates differences
-**Solution:** Always start at zero for bar charts (lines can vary)
-
-### ❌ The "Dual-Axis Confusion" Line Chart
-**Problem:** Two Y-axes with different scales mislead viewers
-**Solution:** Use separate charts or normalize to same scale
-
-### ❌ The "3D Perspective" Lie
-**Problem:** 3D effects distort data perception
-**Solution:** Stick to 2D, use color/size for third dimension
-
-### ❌ The "Spinner of Death" Loading State
-**Problem:** Empty screen with spinner for 2+ seconds
-**Solution:** Skeleton loading that shows chart structure immediately
-
-Read `references/antipatterns.md` for exhaustive catalog.
-
-## Implementation Workflow
-
-### 1. Explore Your Data
-```bash
-# Use Observable Plot for rapid iteration
-npm install @observablehq/plot
-
-# Create throwaway prototypes, iterate fast
-# When you find the right chart, implement in production library
-```
-
-### 2. Build Production Component
-```typescript
-// Use Recharts for standard charts
-// Use Nivo for beautiful, themeable charts
-// Use Visx/D3 for custom visualizations
-
-// Always wrap in error boundaries
-// Always show skeleton loading state
-// Always handle empty/loading/error states
-```
-
-### 3. Test Thoroughly
-```bash
-# Visual regression testing
-npx percy snapshot
-
-# Component testing
-npm test -- --coverage
-
-# Accessibility testing
-npx axe-core src/components/charts
-```
-
-### 4. Document & Deploy
-```typescript
-// Storybook for component playground
-// Props documentation with TypeScript
-// Usage examples for each chart type
-```
-
-## AI-Enhanced Visualizations
-
-### When to Use Claude/Haiku
-- **Dynamic annotations** - Generate insights from data
-- **Color palette suggestions** - AI-powered color harmony
-- **Chart type recommendations** - "What's the best way to show this?"
-- **Accessibility descriptions** - Auto-generate alt text
-
-### Example: AI Annotation
-```typescript
-const generateInsight = async (data: DataPoint[]) => {
-  const response = await fetch('/api/claude', {
-    method: 'POST',
-    body: JSON.stringify({
-      model: 'claude-haiku',
-      prompt: `Analyze this data and provide ONE key insight (max 15 words): ${JSON.stringify(data)}`
-    })
-  });
-
-  return response.text(); // "Sales peaked in Q3, driven by mobile conversions"
-};
-```
-
-## Inspiration Galleries
-
-**Study these regularly:**
-- [ObservableHQ Featured Notebooks](https://observablehq.com/@observablehq/explore-featured-collections)
-- [Information is Beautiful Awards](https://www.informationisbeautifulawards.com/)
-- [NYT Graphics on Twitter](https://twitter.com/nytgraphics)
-- [FlowingData](https://flowingdata.com/)
-- [Datawrapper River](https://river.datawrapper.de/)
-- [The Pudding](https://pudding.cool/)
-
-## Performance Optimization
-
-### Bundle Size Management
-```typescript
-// ❌ DON'T import entire library
-import { LineChart } from 'recharts';
-
-// ✅ DO tree-shake where possible
-import LineChart from 'recharts/lib/chart/LineChart';
-
-// Use dynamic imports for heavy charts
-const HeavyChart = dynamic(() => import('./HeavyChart'), {
-  loading: () => <ChartSkeleton />,
-  ssr: false // Disable SSR for client-only charts
-});
-```
-
-### Canvas vs SVG
-- **SVG** - Better for < 1000 data points, accessibility, crisp at any scale
-- **Canvas** - Better for > 1000 data points, animations, performance
-- **WebGL** - Best for > 10,000 data points, 3D, gaming-level performance
-
-### Virtualization
-For large datasets, render only visible portion:
-```typescript
-// Use react-window or react-virtualized for long lists
-// Aggregate/sample data for chart display
-// Store full dataset separately for export
-```
-
-## Accessibility Standards (WCAG AA)
-
-### Requirements
-- **Keyboard navigation** - All interactive elements accessible via Tab
-- **Screen reader support** - Provide data tables as alternative
-- **Focus indicators** - Visible focus states for interactive elements
-- **Color contrast** - ≥4.5:1 for small text, ≥3:1 for large text
-- **Reduced motion** - Respect `prefers-reduced-motion: reduce`
-
-### Implementation
-```typescript
-<figure role="img" aria-labelledby="chart-title chart-desc">
-  <h2 id="chart-title">Sales Over Time</h2>
-  <p id="chart-desc">
-    Line chart showing sales increased 45% from Q1 to Q4,
-    peaking in November at $2.3M.
-  </p>
-
-  <LineChart data={data} />
-
-  {/* Provide data table alternative */}
-  <details>
-    <summary>View data table</summary>
-    <table>...</table>
-  </details>
-</figure>
-```
-
-## Reference Materials
-
-This skill includes comprehensive reference documentation:
-
-- **`references/tufte-principles.md`** - Edward Tufte's data visualization principles with examples
-- **`references/library-comparison.md`** - Deep dive on Observable Plot, Recharts, Nivo, Visx, D3
-- **`references/testing-strategies.md`** - Visual regression, component testing, accessibility testing
-- **`references/animation-patterns.md`** - Motion design patterns for charts
-- **`references/data-storytelling.md`** - Narrative techniques and scrollytelling patterns
-- **`references/antipatterns.md`** - Common mistakes and how to avoid them
-- **`references/nyt-workflow.md`** - New York Times graphics team best practices
-
-## Utility Scripts
-
-- **`scripts/data-transform.ts`** - Common data transformations (rollup, pivot, normalize)
-- **`scripts/chart-test-helpers.ts`** - Testing utilities for verifying chart accuracy
-- **`scripts/color-palette-generator.ts`** - Generate accessible color palettes
-- **`scripts/performance-benchmark.ts`** - Benchmark chart rendering performance
-
-## Quick Start: Building Your First Chart
-
-```typescript
-// 1. Install dependencies
-// npm install recharts framer-motion
-
-// 2. Create a simple line chart
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { motion } from 'framer-motion';
-
-const data = [
-  { month: 'Jan', value: 400 },
-  { month: 'Feb', value: 300 },
-  { month: 'Mar', value: 600 },
-];
-
-export const SalesChart = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5 }}
-  >
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data}>
-        <XAxis dataKey="month" />
-        <YAxis />
-        <Tooltip />
-        <Line
-          type="monotone"
-          dataKey="value"
-          stroke="#d97706"
-          strokeWidth={2}
-          dot={{ fill: '#d97706', r: 4 }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
-  </motion.div>
-);
-
-// 3. Test it
-// 4. Ship it with confidence
-```
-
----
-
-**Remember:** The best visualization is the one that makes the insight obvious. When in doubt, simplify. When confused, prototype 10 options. When shipping, test ruthlessly.
-
-This skill guides: Chart selection | Library integration | Testing strategies | Animation patterns | Accessibility compliance | Performance optimization
+**Library-specific boundaries:**
+- **Observable Plot**: Not for production apps (research/notebooks only)
+- **Recharts**: Not for custom/novel chart types (limited flexibility)
+- **Nivo**: Not for >10K data points (performance limitations)
+- **D3.js**: Not for simple charts (unnecessary complexity)

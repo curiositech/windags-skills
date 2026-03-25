@@ -5,18 +5,18 @@
     "email": "info@curiositech.ai"
   },
   "metadata": {
-    "description": "190+ agent skills for Claude Code, Codex, Gemini CLI, Cursor, and more. Built by WinDAGs.",
-    "version": "1.0.0",
+    "description": "463+ agent skills + /next-move prediction pipeline for Claude Code. Built by WinDAGs.",
+    "version": "2.0.0",
     "homepage": "https://windags.ai"
   },
   "plugins": [
     {
       "name": "windags-skills",
       "source": ".",
-      "description": "190+ agent skills for engineering, design, research, and productivity",
-      "version": "1.0.0",
-      "license": "Apache-2.0",
-      "keywords": ["skills", "agent-skills", "claude-code", "engineering", "design", "windags"]
+      "description": "463+ skills for engineering, design, research, recovery, and productivity. Includes /next-move — a 5-agent meta-DAG that predicts your highest-impact next action.",
+      "version": "2.0.0",
+      "license": "BUSL-1.1",
+      "keywords": ["skills", "agent-skills", "claude-code", "next-move", "dag", "windags", "orchestration"]
     }
   ]
 }

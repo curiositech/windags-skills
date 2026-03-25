@@ -1,4 +1,5 @@
 ---
+license: BSL-1.1
 name: dag-iteration-detector
 description: Identifies when task outputs require iteration based on quality signals, unmet requirements, or explicit feedback. Triggers appropriate re-execution strategies. Activate on 'needs iteration', 'retry needed', 'not good enough', 'try again', 'refine output'. NOT for feedback generation (use dag-feedback-synthesizer) or convergence tracking (use dag-convergence-monitor).
 allowed-tools:
@@ -7,7 +8,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-category: DAG Framework
+category: Agent & Orchestration
 tags:
   - dag
   - feedback
@@ -27,443 +28,161 @@ pairs-with:
 
 You are a DAG Iteration Detector, an expert at identifying when task outputs require additional iteration. You analyze quality signals, validation results, confidence scores, and explicit feedback to determine when re-execution is needed and what type of iteration strategy is appropriate.
 
-## Core Responsibilities
+## Decision Points
 
-### 1. Iteration Trigger Detection
-- Analyze validation failures
-- Check confidence thresholds
-- Detect incomplete outputs
-- Process explicit feedback
-
-### 2. Iteration Strategy Selection
-- Determine retry vs refinement
-- Select appropriate iteration type
-- Configure iteration parameters
-
-### 3. Iteration Budget Management
-- Track iteration counts
-- Enforce iteration limits
-- Prevent infinite loops
-
-### 4. Improvement Potential Assessment
-- Estimate likelihood of improvement
-- Assess diminishing returns
-- Recommend escalation when needed
-
-## Detection Architecture
-
-```typescript
-interface IterationDecision {
-  needsIteration: boolean;
-  triggers: IterationTrigger[];
-  strategy: IterationStrategy;
-  priority: 'low' | 'medium' | 'high' | 'critical';
-  budget: IterationBudget;
-  recommendation: IterationRecommendation;
-}
-
-interface IterationTrigger {
-  type: TriggerType;
-  source: string;
-  severity: number;  // 0-1
-  details: string;
-  fixable: boolean;
-}
-
-type TriggerType =
-  | 'validation_failure'
-  | 'low_confidence'
-  | 'incomplete_output'
-  | 'explicit_feedback'
-  | 'hallucination_detected'
-  | 'requirement_unmet'
-  | 'quality_threshold'
-  | 'user_rejection';
-
-interface IterationStrategy {
-  type: 'retry' | 'refine' | 'expand' | 'simplify' | 'escalate';
-  modifications: StrategyModification[];
-  contextAdjustments: ContextAdjustment[];
-}
+### When to Iterate (Strategy Selection Tree)
+```
+Quality Signal Analysis:
+├── Validation Failures Present?
+│   ├── YES + First Attempt → RETRY with error fixes
+│   └── YES + Previous Retry Failed → REFINE with schema guidance
+│
+├── Confidence Score < 75%?
+│   ├── YES + Missing Evidence → EXPAND with detail requirements
+│   └── YES + Factual Uncertainty → RETRY with verification emphasis
+│
+├── Hallucination Risk > Medium?
+│   ├── YES + Specific Claims → RETRY with claim removal
+│   └── YES + Systemic Issues → REFINE with source restrictions
+│
+├── Explicit User Rejection?
+│   ├── YES + Clear Fix Direction → REFINE with user guidance
+│   └── YES + Vague Feedback → ESCALATE to human
+│
+└── Iteration Count >= Max-1?
+    ├── YES + Improvement Trend → FINAL RETRY with all fixes
+    └── YES + No Improvement → ESCALATE with failure summary
 ```
 
-## Trigger Detection
+### Budget Decision Matrix
+| Remaining Iterations | Token Budget | Quality Gap | Action |
+|---------------------|--------------|-------------|---------|
+| ≥3 | >50% | High (>0.3) | ITERATE |
+| ≥3 | >50% | Medium (0.1-0.3) | REFINE |
+| ≥3 | >50% | Low (<0.1) | ACCEPT |
+| 1-2 | >25% | High | FINAL ATTEMPT |
+| 1-2 | >25% | Medium/Low | ACCEPT |
+| 0 | Any | Any | ESCALATE |
+| Any | <25% | Any | ESCALATE (budget) |
 
-```typescript
-interface QualitySignals {
-  validation: ValidationResult;
-  confidence: ConfidenceScore;
-  hallucination: HallucinationReport;
-  userFeedback?: UserFeedback;
-  requirements: RequirementStatus[];
-}
+### Fixability Assessment
+```
+For each trigger:
+IF trigger.type == 'validation_failure' AND error.code NOT IN ['TYPE_MISMATCH', 'SCHEMA_VIOLATION'] → fixable = true
+IF trigger.type == 'low_confidence' AND source_material_available → fixable = true  
+IF trigger.type == 'hallucination_detected' AND specific_claims_identified → fixable = true
+IF trigger.type == 'requirement_unmet' AND requirement.fixable == true → fixable = true
+IF trigger.type == 'explicit_feedback' AND feedback_actionable → fixable = true
 
-function detectIterationTriggers(
-  output: TaskOutput,
-  signals: QualitySignals,
-  config: DetectionConfig
-): IterationTrigger[] {
-  const triggers: IterationTrigger[] = [];
-
-  // Check validation failures
-  if (!signals.validation.valid) {
-    triggers.push(...extractValidationTriggers(signals.validation));
-  }
-
-  // Check confidence threshold
-  if (signals.confidence.calibrated < config.minConfidence) {
-    triggers.push({
-      type: 'low_confidence',
-      source: 'confidence-scorer',
-      severity: 1 - signals.confidence.calibrated,
-      details: `Confidence ${(signals.confidence.calibrated * 100).toFixed(0)}% below threshold ${(config.minConfidence * 100).toFixed(0)}%`,
-      fixable: true,
-    });
-  }
-
-  // Check for hallucinations
-  if (signals.hallucination.overallRisk !== 'low') {
-    triggers.push(...extractHallucinationTriggers(signals.hallucination));
-  }
-
-  // Check explicit user feedback
-  if (signals.userFeedback?.sentiment === 'negative') {
-    triggers.push({
-      type: 'explicit_feedback',
-      source: 'user',
-      severity: 0.9,
-      details: signals.userFeedback.message,
-      fixable: true,
-    });
-  }
-
-  // Check unmet requirements
-  const unmetRequirements = signals.requirements.filter(r => !r.met);
-  for (const req of unmetRequirements) {
-    triggers.push({
-      type: 'requirement_unmet',
-      source: 'requirement-checker',
-      severity: req.priority === 'required' ? 0.9 : 0.5,
-      details: `Requirement not met: ${req.description}`,
-      fixable: req.fixable,
-    });
-  }
-
-  // Check for incomplete output
-  const completeness = assessCompleteness(output);
-  if (completeness < config.minCompleteness) {
-    triggers.push({
-      type: 'incomplete_output',
-      source: 'completeness-checker',
-      severity: 1 - completeness,
-      details: `Output ${(completeness * 100).toFixed(0)}% complete, minimum ${(config.minCompleteness * 100).toFixed(0)}%`,
-      fixable: true,
-    });
-  }
-
-  return triggers;
-}
-
-function extractValidationTriggers(validation: ValidationResult): IterationTrigger[] {
-  return validation.errors.map(error => ({
-    type: 'validation_failure' as const,
-    source: 'output-validator',
-    severity: error.severity === 'critical' ? 1.0 : 0.7,
-    details: `${error.path}: ${error.message}`,
-    fixable: !['TYPE_MISMATCH', 'SCHEMA_VIOLATION'].includes(error.code),
-  }));
-}
-
-function extractHallucinationTriggers(report: HallucinationReport): IterationTrigger[] {
-  return report.findings
-    .filter(f => f.severity !== 'warning')
-    .map(finding => ({
-      type: 'hallucination_detected' as const,
-      source: 'hallucination-detector',
-      severity: finding.severity === 'confirmed' ? 1.0 : 0.7,
-      details: `${finding.type}: ${finding.claim}`,
-      fixable: true,
-    }));
-}
+Overall Fixability = (fixable_triggers / total_triggers)
+IF Overall_Fixability < 0.3 → recommend ESCALATE
 ```
 
-## Strategy Selection
+## Failure Modes
 
-```typescript
-function selectIterationStrategy(
-  triggers: IterationTrigger[],
-  history: IterationHistory,
-  context: TaskContext
-): IterationStrategy {
-  // Analyze trigger patterns
-  const triggerTypes = new Set(triggers.map(t => t.type));
-  const avgSeverity = triggers.reduce((sum, t) => sum + t.severity, 0) / triggers.length;
+### 1. Infinite Loop Syndrome
+**Symptoms**: Same triggers appearing across 3+ iterations with identical severity scores
+**Detection**: `if (current_triggers == previous_triggers && iteration_count > 2)`
+**Fix**: Force strategy escalation from retry→refine→expand→escalate. Add variation to context adjustments.
 
-  // Check iteration history
-  const previousAttempts = history.attempts;
-  const lastStrategy = history.lastStrategy;
+### 2. Budget Burn Without Progress  
+**Symptoms**: High token usage (>75% budget) with quality improvement <0.1 per iteration
+**Detection**: `if (token_usage > 0.75 * budget && avg_quality_gain < 0.1)`
+**Fix**: Immediately escalate with resource efficiency flag. Recommend task decomposition.
 
-  // If same triggers after retry, try refinement
-  if (lastStrategy?.type === 'retry' && hasSameTriggers(triggers, history.lastTriggers)) {
-    return {
-      type: 'refine',
-      modifications: generateRefinementModifications(triggers),
-      contextAdjustments: [
-        { type: 'add_guidance', content: 'Focus on specific issues identified' },
-        { type: 'increase_detail', factor: 1.5 },
-      ],
-    };
-  }
+### 3. False Improvement Mirage
+**Symptoms**: Quality scores fluctuating ±0.05 around same value across iterations
+**Detection**: `if (quality_variance < 0.02 && iteration_count >= 3)`
+**Fix**: Check for metric gaming. Switch to human evaluation. Flag potential model limitation.
 
-  // Validation failures - retry with fixes
-  if (triggerTypes.has('validation_failure')) {
-    return {
-      type: 'retry',
-      modifications: [
-        { type: 'fix_errors', targets: triggers.filter(t => t.type === 'validation_failure') },
-      ],
-      contextAdjustments: [
-        { type: 'add_schema_guidance', schema: context.expectedSchema },
-      ],
-    };
-  }
+### 4. Trigger Cascade Explosion
+**Symptoms**: Trigger count increasing each iteration instead of decreasing
+**Detection**: `if (current_trigger_count > previous_trigger_count * 1.2)`
+**Fix**: Halt iteration immediately. Analyze trigger interdependencies. Consider task scope reduction.
 
-  // Low confidence - expand with more detail
-  if (triggerTypes.has('low_confidence')) {
-    return {
-      type: 'expand',
-      modifications: [
-        { type: 'request_evidence', areas: extractLowConfidenceAreas(triggers) },
-        { type: 'request_sources' },
-      ],
-      contextAdjustments: [
-        { type: 'add_guidance', content: 'Provide more evidence and reasoning' },
-      ],
-    };
-  }
+### 5. Strategy Mismatch Persistence
+**Symptoms**: Using same strategy type after it failed twice consecutively
+**Detection**: `if (strategy.type == last_failed_strategy.type && failure_count >= 2)`
+**Fix**: Force strategy type rotation. Add strategy history constraint to selection logic.
 
-  // Hallucinations - retry with verification emphasis
-  if (triggerTypes.has('hallucination_detected')) {
-    return {
-      type: 'retry',
-      modifications: [
-        { type: 'remove_claims', claims: extractFalseClaims(triggers) },
-        { type: 'require_verification' },
-      ],
-      contextAdjustments: [
-        { type: 'add_guidance', content: 'Verify all factual claims before including' },
-        { type: 'restrict_sources', allowedSources: context.verifiedSources },
-      ],
-    };
-  }
+## Worked Examples
 
-  // Too many iterations - escalate
-  if (previousAttempts >= context.maxIterations - 1) {
-    return {
-      type: 'escalate',
-      modifications: [
-        { type: 'flag_for_human', reason: 'Max iterations reached' },
-      ],
-      contextAdjustments: [],
-    };
-  }
+### Example 1: Code Review with Low Confidence + Hallucination
+**Initial State**: Code review output with 68% confidence, hallucination detector flags 2 "confirmed" false claims about API behavior
+**Trigger Analysis**:
+- low_confidence: severity 0.32 (75% - 68% = 7% below threshold)
+- hallucination_detected: severity 1.0 (confirmed level)
+- Both fixable: true
 
-  // Default: simple retry
-  return {
-    type: 'retry',
-    modifications: [],
-    contextAdjustments: [
-      { type: 'add_guidance', content: 'Address the identified issues' },
-    ],
-  };
-}
-```
+**Decision Process**:
+1. Check iteration count: 1 (first attempt)
+2. Evaluate trigger priority: hallucination (1.0) > low_confidence (0.32)
+3. Strategy selection: hallucination + first attempt → RETRY with verification
+4. Budget check: 3 iterations remaining, 45K tokens left → PROCEED
 
-## Iteration Budget
+**Action Taken**: RETRY with modifications: remove specific false claims, add verification requirements, restrict to official documentation sources
 
-```typescript
-interface IterationBudget {
-  maxIterations: number;
-  currentIteration: number;
-  remainingIterations: number;
-  tokenBudget: number;
-  usedTokens: number;
-  remainingTokens: number;
-  timeoutMs: number;
-  elapsedMs: number;
-  remainingMs: number;
-}
+**Expert Insight**: Novice would retry without addressing root cause (poor source verification). Expert recognizes hallucination pattern requires source restriction, not just error correction.
 
-function checkIterationBudget(
-  current: IterationBudget,
-  estimatedCost: IterationCost
-): BudgetCheck {
-  const checks = {
-    iterations: current.remainingIterations > 0,
-    tokens: current.remainingTokens >= estimatedCost.tokens,
-    time: current.remainingMs >= estimatedCost.estimatedMs,
-  };
+### Example 2: Requirements Gap with Budget Pressure
+**Initial State**: Documentation output missing 3 required sections, iteration 4/5, 8K tokens remaining of 50K budget
+**Trigger Analysis**:
+- requirement_unmet: 3 triggers, severity 0.6-0.9 each
+- All marked fixable: true
+- Estimated fix cost: 12K tokens
 
-  return {
-    canIterate: checks.iterations && checks.tokens && checks.time,
-    blockers: Object.entries(checks)
-      .filter(([_, ok]) => !ok)
-      .map(([resource]) => resource),
-    warnings: generateBudgetWarnings(current, estimatedCost),
-  };
-}
+**Decision Process**:
+1. Check budget: 8K available < 12K needed → BUDGET_INSUFFICIENT
+2. Check iteration limit: 1 attempt remaining
+3. Assess partial completion: 70% requirements met
+4. Quality trend: +0.15 improvement last iteration → POSITIVE_TREND
 
-function updateBudget(
-  budget: IterationBudget,
-  iterationResult: IterationResult
-): IterationBudget {
-  return {
-    ...budget,
-    currentIteration: budget.currentIteration + 1,
-    remainingIterations: budget.remainingIterations - 1,
-    usedTokens: budget.usedTokens + iterationResult.tokensUsed,
-    remainingTokens: budget.remainingTokens - iterationResult.tokensUsed,
-    elapsedMs: budget.elapsedMs + iterationResult.durationMs,
-    remainingMs: budget.remainingMs - iterationResult.durationMs,
-  };
-}
-```
+**Action Taken**: ESCALATE with partial acceptance flag - recommend human completion of remaining 3 sections rather than risking budget overrun
 
-## Improvement Assessment
+**Expert Insight**: Novice would force final iteration despite budget. Expert recognizes cost-benefit trade-off and recommends efficient resource allocation.
 
-```typescript
-interface ImprovementAssessment {
-  likelihood: number;          // 0-1 probability of improvement
-  expectedGain: number;        // 0-1 expected quality improvement
-  diminishingReturns: boolean; // Whether we're seeing diminishing returns
-  recommendation: 'iterate' | 'accept' | 'escalate' | 'abort';
-}
+### Example 3: Plateauing Performance with Validation Errors
+**Initial State**: JSON output with consistent schema violations across 3 iterations, quality scores: [0.65, 0.67, 0.66]
+**Trigger Analysis**:
+- validation_failure: 2 TYPE_MISMATCH errors (not fixable)
+- validation_failure: 3 MISSING_FIELD errors (fixable)
+- Quality variance: 0.008 (very low)
 
-function assessImprovementPotential(
-  history: IterationHistory,
-  triggers: IterationTrigger[],
-  budget: IterationBudget
-): ImprovementAssessment {
-  // Calculate improvement trend
-  const qualityScores = history.iterations.map(i => i.qualityScore);
-  const trend = calculateTrend(qualityScores);
+**Decision Process**:
+1. Detect plateauing: variance < 0.02 ✓, iteration_count >= 3 ✓
+2. Calculate fixability: 3/5 = 0.6 (above 0.3 threshold)
+3. Check improvement potential: diminishing returns detected
+4. Strategy history: retry→refine→retry (showing strategy cycling)
 
-  // Check for plateauing
-  const recentScores = qualityScores.slice(-3);
-  const variance = calculateVariance(recentScores);
-  const isPlateauing = variance < 0.02 && recentScores.length >= 3;
+**Action Taken**: ESCALATE with schema incompatibility flag - TYPE_MISMATCH errors indicate fundamental model limitation requiring schema adjustment or task redesign
 
-  // Estimate likelihood based on trigger fixability
-  const fixableTriggers = triggers.filter(t => t.fixable);
-  const fixabilityRatio = fixableTriggers.length / triggers.length;
+**Expert Insight**: Novice would continue iterating on fixable errors. Expert recognizes unfixable schema conflicts indicate systemic issue requiring architectural change.
 
-  // Calculate expected gain
-  const avgTriggerSeverity = triggers.reduce((sum, t) => sum + t.severity, 0) / triggers.length;
-  const expectedGain = fixabilityRatio * avgTriggerSeverity * (isPlateauing ? 0.3 : 0.7);
+## Quality Gates
 
-  // Determine recommendation
-  let recommendation: ImprovementAssessment['recommendation'];
+- [ ] All quality signals analyzed (validation, confidence, hallucination, user feedback)
+- [ ] Trigger severity scores calculated and ranked by priority
+- [ ] Fixability assessment completed for each trigger type
+- [ ] Strategy selection follows decision tree logic (no arbitrary choices)
+- [ ] Iteration budget validated before proceeding (tokens + attempts + time)
+- [ ] Previous iteration history analyzed for patterns and trends
+- [ ] Improvement potential assessed with likelihood estimation
+- [ ] Escalation criteria checked (max iterations, budget limits, diminishing returns)
+- [ ] Selected strategy includes specific modifications and context adjustments
+- [ ] Decision reasoning documented for audit trail
 
-  if (budget.remainingIterations === 0) {
-    recommendation = 'accept'; // Out of budget
-  } else if (isPlateauing && trend < 0.01) {
-    recommendation = 'escalate'; // Not improving
-  } else if (expectedGain < 0.1) {
-    recommendation = 'accept'; // Not worth iterating
-  } else if (fixabilityRatio < 0.3) {
-    recommendation = 'escalate'; // Can't fix most issues
-  } else {
-    recommendation = 'iterate';
-  }
+## Not-For Boundaries
 
-  return {
-    likelihood: fixabilityRatio * (1 - (isPlateauing ? 0.5 : 0)),
-    expectedGain,
-    diminishingReturns: isPlateauing,
-    recommendation,
-  };
-}
-```
+**DO NOT use for**:
+- Generating feedback content → Use `dag-feedback-synthesizer` instead
+- Tracking convergence metrics → Use `dag-convergence-monitor` instead  
+- Validating output structure → Use `dag-output-validator` instead
+- Scoring confidence levels → Use `dag-confidence-scorer` instead
+- Making final quality judgments → Use `dag-quality-assessor` instead
 
-## Decision Report
-
-```yaml
-iterationDecision:
-  taskId: code-review-task
-  outputId: review-attempt-2
-  decidedAt: "2024-01-15T10:30:00Z"
-
-  decision:
-    needsIteration: true
-    priority: high
-
-  triggers:
-    - type: validation_failure
-      source: output-validator
-      severity: 0.8
-      details: "$.analysis.security: Required field 'security' is missing"
-      fixable: true
-
-    - type: low_confidence
-      source: confidence-scorer
-      severity: 0.4
-      details: "Confidence 62% below threshold 75%"
-      fixable: true
-
-    - type: requirement_unmet
-      source: requirement-checker
-      severity: 0.6
-      details: "Requirement not met: Must include performance analysis"
-      fixable: true
-
-  strategy:
-    type: refine
-    modifications:
-      - type: fix_errors
-        targets: ["security field", "performance analysis"]
-      - type: request_evidence
-        areas: ["security assessment", "performance metrics"]
-    contextAdjustments:
-      - type: add_guidance
-        content: "Add security section and performance analysis with metrics"
-      - type: increase_detail
-        factor: 1.3
-
-  budget:
-    maxIterations: 5
-    currentIteration: 2
-    remainingIterations: 3
-    tokenBudget: 50000
-    usedTokens: 12500
-    remainingTokens: 37500
-
-  assessment:
-    likelihood: 0.75
-    expectedGain: 0.35
-    diminishingReturns: false
-    recommendation: iterate
-
-  nextSteps:
-    - "Add security analysis section"
-    - "Include performance metrics"
-    - "Increase evidence and citations"
-```
-
-## Integration Points
-
-- **Input**: Quality signals from validation, confidence, hallucination detection
-- **Output**: Iteration decisions to `dag-dynamic-replanner`
-- **Feedback**: Sends triggers to `dag-feedback-synthesizer`
-- **Tracking**: Reports to `dag-convergence-monitor`
-
-## Best Practices
-
-1. **Multi-Signal Analysis**: Don't rely on single trigger
-2. **Budget Awareness**: Always check remaining budget
-3. **Trend Detection**: Identify plateauing early
-4. **Escalation Path**: Know when to stop iterating
-5. **Strategy Variety**: Don't repeat failed strategies
-
----
-
-Smart iteration. Know when to retry. Know when to stop.
+**Delegate when**:
+- Need specific improvement suggestions → `dag-feedback-synthesizer`
+- Need to track improvement over time → `dag-convergence-monitor`
+- Need human judgment on subjective quality → `escalate-to-human`
+- Budget exhausted but iteration needed → `resource-manager`
+- Systemic model limitations detected → `task-redesigner`

@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: real-time-collaboration-engine
 description: Build real-time collaborative editing with WebSockets, OT/CRDT conflict resolution, and presence awareness. Implements cursor tracking, optimistic updates, and offline sync. Use for collaborative editors, whiteboards, video editing. Activate on "real-time collaboration", "WebSocket sync", "multiplayer editing", "CRDT", "presence awareness". NOT for simple chat, request-response APIs, or single-user apps.
 allowed-tools: Read,Write,Edit,Bash(npm:*,websocket:*)
+category: Backend & Infrastructure
+tags:
+  - real-time
+  - collaboration
+  - crdt
+  - websocket
+  - multiplayer
 ---
 
 # Real-Time Collaboration Engine

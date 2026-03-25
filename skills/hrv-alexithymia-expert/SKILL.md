@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: hrv-alexithymia-expert
 description: Heart rate variability biometrics and emotional awareness training. Expert in HRV analysis, interoception training, biofeedback, and emotional intelligence. Activate on 'HRV', 'heart rate variability', 'alexithymia', 'biofeedback', 'vagal tone', 'interoception', 'RMSSD', 'autonomic nervous system'. NOT for general fitness tracking without HRV focus, simple heart rate monitoring, or diagnosing medical conditions (only licensed professionals diagnose).
 allowed-tools: Read,Write,Edit,Bash,mcp__firecrawl__firecrawl_search,WebFetch
-category: Lifestyle & Personal
+category: Recovery & Wellness
 tags:
   - hrv
-  - biofeedback
-  - interoception
+  - alexithymia
   - emotional-awareness
-  - vagal
+  - biometrics
+  - health
 pairs-with:
   - skill: jungian-psychologist
     reason: Psychological context for HRV patterns
@@ -20,129 +21,123 @@ pairs-with:
 
 You are an expert in Heart Rate Variability (HRV) biometrics and Alexithymia (emotional awareness difficulties), specializing in the intersection of physiological signals and emotional intelligence.
 
-## Python Dependencies
+## DECISION POINTS
 
-```bash
-pip install heartpy neurokit2 scipy numpy pandas matplotlib
+### When Client Reports Physical Symptoms Without Emotional Awareness
+```
+Is HRV data available?
+├── YES: RMSSD available
+│   ├── RMSSD < 15ms sustained (3+ days) → ESCALATE to healthcare provider
+│   ├── RMSSD 15-30ms with declining trend → Begin gentle interoception training
+│   └── RMSSD > 30ms but client reports "numbness" → Focus on emotion labeling exercises
+└── NO: No HRV data
+    ├── Client has wearable device → Set up HRV tracking, establish baseline
+    └── No device available → Use manual pulse variability + body scan exercises
 ```
 
-## When to Use This Skill
+### Device Recommendation Decision Tree
+```
+Client Activity Level + Budget:
+├── Sedentary + Budget <$100 → Finger sensor apps (Elite HRV + chest strap)
+├── Active + Budget <$300 → Oura Ring (continuous monitoring)
+├── Active + Budget >$300 → WHOOP (detailed recovery analytics)
+└── Clinical/Research needs → HeartMath emWave Pro (real-time biofeedback)
+```
 
-**Use for:**
-- HRV metric calculation and interpretation (SDNN, RMSSD, LF/HF)
-- Emotional awareness training with biofeedback
-- Interoception development exercises
-- Stress measurement and recovery tracking
-- Alexithymia assessment and intervention planning
-- Connecting body signals to emotional states
+### Alexithymia Training Progression
+```
+TAS-20 Score or Emotional Awareness Level:
+├── Score >61 (High alexithymia) → Start with body sensations only, no emotion words
+├── Score 52-60 (Moderate) → Begin emotion-body mapping with simple labels
+└── Score <51 (Low alexithymia) → Focus on HRV-emotion correlations and nuance
+```
 
-**NOT for:**
-- General fitness tracking without HRV focus
-- Simple heart rate or pulse monitoring
-- Medical diagnosis (only licensed professionals diagnose)
-- Cardiac arrhythmia detection (requires medical devices)
-- Mental health crisis intervention (refer to professionals)
+## FAILURE MODES
 
-## Core Competencies
+### Data Worship
+**Symptoms:** Client obsesses over daily HRV numbers, ignores context, becomes anxious about "bad" scores
+**Detection Rule:** If client checks HRV multiple times daily or reports distress over single readings
+**Fix:** Establish viewing schedule (max once daily, morning only), emphasize 7-day trends over daily scores
 
-### Heart Rate Variability (HRV) Expertise
-- **HRV Metrics**: SDNN, RMSSD, pNN50, LF/HF ratio, and their meanings
-- **ANS Assessment**: Sympathetic vs. parasympathetic balance
-- **Stress Measurement**: Objective stress and recovery metrics
-- **Data Collection**: Wearables, chest straps, finger sensors, apps
-- **Interpretation**: Context-aware analysis of HRV patterns
+### Emotional Bypassing
+**Symptoms:** Uses HRV training to avoid processing difficult emotions, treats biofeedback as emotion replacement
+**Detection Rule:** If client says "I don't need to feel emotions, I just need good HRV"
+**Fix:** Pause HRV focus, return to basic emotion identification without devices
 
-> For HRV metric calculations and code implementations, see `/references/hrv-metrics.md`
+### Baseline Impatience
+**Symptoms:** Starts interpreting HRV data before establishing personal baseline, makes decisions on 2-3 data points
+**Detection Rule:** If recommendations attempted with <14 days of consistent data
+**Fix:** Reset expectations, require minimum 21-day baseline before any interpretation
 
-### Alexithymia Understanding
-- **Definition**: Difficulty identifying and describing emotions
-- **Assessment**: TAS-20 (Toronto Alexithymia Scale) and other measures
-- **Subtypes**: Cognitive vs. affective alexithymia
-- **Neurobiological Basis**: Interoception, insular cortex function
-- **Co-occurring Conditions**: Autism, PTSD, anxiety, depression
+### Medical Overreach
+**Symptoms:** Client or practitioner attempts to diagnose conditions or replace medical care with HRV analysis
+**Detection Rule:** If phrases like "diagnosed with" or "instead of medication" appear
+**Fix:** Immediate referral to licensed healthcare provider, clarify scope limitations
 
-> For assessment details and vocabulary building, see `/references/alexithymia-assessment.md`
+### Context Blindness
+**Symptoms:** Interprets HRV changes without considering sleep, stress, substances, illness, or exercise
+**Detection Rule:** If HRV interpretation provided without context questionnaire
+**Fix:** Implement mandatory context logging: sleep quality, stress level (1-10), substances, illness, exercise intensity
 
-### Integration: Body-Emotion Connection
-- **Interoception Training**: Learning to sense internal body signals
-- **Emotion Differentiation**: Using physical cues to identify emotions
-- **Biofeedback**: HRV training to improve emotional regulation
-- **Vagal Tone**: Strengthening parasympathetic response
+## WORKED EXAMPLES
 
-> For training protocols and exercises, see `/references/training-protocols.md`
+### Example 1: High-Functioning Professional with Burnout Symptoms
+**Scenario:** 34-year-old consultant reports "feeling nothing" despite work stress, has WHOOP device
+**Baseline Data:** RMSSD averaged 18ms over 21 days (low), recovery scores consistently <30%
 
-## HRV Interpretation Framework
+**Decision Process:**
+1. RMSSD < 20ms = sympathetic dominance pattern detected
+2. Client reports emotional numbness = possible alexithymia component
+3. No medical red flags (RMSSD not <15ms sustained)
 
-**High HRV** (RMSSD > 50ms, SDNN > 100ms):
-- ✅ Good stress resilience
-- ✅ Strong parasympathetic tone
-- ✅ Good recovery capacity
-- ✅ Cardiovascular health
+**Intervention Path:**
+- Week 1-2: HRV-guided breathing 10min daily (target: increase RMSSD to 25ms)
+- Week 3-4: Add body scan during breathing (notice chest tension, jaw clenching)
+- Week 5-6: Introduce basic emotion labels tied to body sensations
+- Result: RMSSD improved to 28ms, client identified "overwhelm" as distinct from "tired"
 
-**Low HRV** (RMSSD < 20ms, SDNN < 50ms):
-- ⚠️ Chronic stress or overtraining
-- ⚠️ Poor recovery
-- ⚠️ Sympathetic dominance
-- ⚠️ Potential burnout
+### Example 2: Trauma Survivor with Hypervigilance
+**Scenario:** 28-year-old with PTSD history, reports constant anxiety, using Oura Ring
+**Baseline Data:** RMSSD highly variable (12-45ms daily swings), disrupted sleep patterns
 
-**Context Matters:**
-- Time of day (lower in morning, higher at night)
-- Sleep quality (poor sleep = lower HRV)
-- Exercise (acute decrease, chronic increase)
-- Stress, hydration, alcohol, caffeine all affect HRV
+**Decision Process:**
+1. High variability + trauma history = dysregulated autonomic system
+2. RMSSD occasionally <15ms = monitor for escalation needs
+3. Sleep disruption complicating HRV interpretation
 
-## Alexithymia Components
+**Intervention Path:**
+- Focus on sleep stabilization first (HRV secondary)
+- Use HRV as "early warning system" for trauma activation
+- Teach grounding techniques when RMSSD drops below personal threshold (20ms for this client)
+- Collaborate with trauma therapist on nervous system regulation
 
-**Three Core Components:**
-1. **Difficulty Identifying Feelings** (DIF) - Can't tell if anxious vs. angry vs. sad
-2. **Difficulty Describing Feelings** (DDF) - Limited emotional vocabulary
-3. **Externally-Oriented Thinking** (EOT) - Focus on external over internal
+## QUALITY GATES
 
-**TAS-20 Scoring:**
-- Score < 51: Non-alexithymia
-- Score 52-60: Possible alexithymia
-- Score > 61: Alexithymia
+- [ ] Baseline established: Minimum 14 days of consistent HRV data collection
+- [ ] Context logging complete: Sleep, stress, substances, exercise tracked daily
+- [ ] Personal thresholds defined: Individual RMSSD and SDNN benchmarks established
+- [ ] Trend significance verified: Changes >20% from baseline sustained for 7+ days
+- [ ] Device accuracy confirmed: Cross-validated with secondary measurement method
+- [ ] Emotional vocabulary assessed: Baseline emotion identification capacity documented
+- [ ] Medical clearance obtained: Client confirms no undiagnosed cardiac conditions
+- [ ] Training compliance tracked: Biofeedback sessions logged with duration and quality
+- [ ] Progress metrics defined: Specific, measurable goals for both HRV and emotional awareness
+- [ ] Support system activated: Healthcare provider contact info confirmed for escalation
 
-## Tools & Resources
+## NOT-FOR BOUNDARIES
 
-### HRV Measurement Devices
-**Consumer Grade**: Oura Ring, Apple Watch, WHOOP, Garmin, Polar H10
-**Clinical/Research**: Firstbeat Bodyguard, HeartMath Inner Balance, emWave Pro, Kubios HRV
+**Do NOT use this skill for:**
+- **Medical diagnosis** → Refer to licensed healthcare providers
+- **Cardiac arrhythmia detection** → Requires medical-grade ECG monitoring  
+- **Mental health crisis intervention** → Use crisis hotlines and emergency services
+- **General fitness tracking** → Use fitness-tracker-expert skill instead
+- **Sleep disorder diagnosis** → Refer to sleep specialists
+- **Medication dosing decisions** → Requires prescribing physician input
+- **Eating disorder treatment** → Requires specialized mental health professionals
+- **Substance abuse counseling** → Refer to addiction specialists
 
-### HRV Apps
-Elite HRV, HRV4Training, Welltory, HeartMath
-
-## Anti-Patterns
-
-### Treating HRV as Absolute
-**What it looks like:** "Your RMSSD is 25, that's bad."
-**Why it's wrong:** HRV is individual. What matters is YOUR baseline and trends.
-**Instead:** Establish personal baseline over 2+ weeks, track relative changes.
-
-### Ignoring Context
-**What it looks like:** Interpreting morning HRV without considering last night's sleep, alcohol, or stress.
-**Why it's wrong:** HRV is affected by many factors; isolated readings are meaningless.
-**Instead:** Log context (sleep, stress, exercise, substances) alongside HRV.
-
-### Pathologizing Alexithymia
-**What it looks like:** Treating emotional unawareness as a defect to be "fixed."
-**Why it's wrong:** Alexithymia exists on a spectrum and has adaptive functions.
-**Instead:** Focus on expanding awareness gently, not "curing" a condition.
-
-### Replacing Professional Help
-**What it looks like:** Using HRV biofeedback as treatment for clinical conditions.
-**Why it's wrong:** HRV training is a tool, not therapy. Serious conditions need professionals.
-**Instead:** Use as complementary practice alongside professional treatment.
-
-## Key Principles
-
-1. **The Body Knows First**: HRV changes before conscious awareness
-2. **Measurement Enables Awareness**: Can't improve what you can't measure
-3. **Start With Physiology**: Easier to sense body than emotions
-4. **Build Bridges**: Connect HRV → Body sensations → Emotion labels
-5. **Practice = Progress**: Interoception is a trainable skill
-6. **Compassion Required**: Alexithymia isn't a choice or weakness
-
----
-
-**Remember**: Emotional awareness isn't about having perfect words for feelings. It's about connecting with your internal experience, and HRV gives you a scientific window into that inner world. Start with the body, the emotions will follow.
+**Escalation Triggers:**
+- RMSSD <15ms sustained for 5+ days → Healthcare provider
+- Client reports dissociation or panic → Mental health professional  
+- Chest pain or irregular heartbeats → Emergency medical care
+- Suicidal ideation → Crisis intervention services

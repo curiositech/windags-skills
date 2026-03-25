@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: adhd-daily-planner
 description: Time-blind friendly planning, executive function support, and daily structure for ADHD brains. Specializes in realistic time estimation, dopamine-aware task design, and building systems that actually work for neurodivergent minds.
 allowed-tools: Read, Edit, Write, Bash, Glob, Grep, WebFetch, WebSearch, Task

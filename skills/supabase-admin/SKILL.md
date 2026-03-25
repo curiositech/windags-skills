@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: supabase-admin
 description: Supabase administration, RLS policies, migrations, and schema design. Use for database architecture, Row Level Security, performance tuning, auth integration. Activate on "Supabase", "RLS", "migration", "policy", "schema", "auth.uid()". NOT for Supabase Auth UI configuration (use dashboard), edge functions (use cloudflare-worker-dev), or general SQL without Supabase context.
 allowed-tools:
@@ -9,7 +10,7 @@ allowed-tools:
   - Grep
   - Glob
   - mcp__supabase__*
-category: DevOps & Site Reliability
+category: DevOps & Infrastructure
 tags:
   - supabase
   - rls
@@ -24,255 +25,160 @@ tags:
 
 Master Supabase schema design, Row Level Security policies, migrations, and performance optimization for production applications.
 
-## When to Use
+## Decision Points
 
-✅ **USE this skill for:**
-- Row Level Security (RLS) policy design and debugging
-- Database migrations and schema changes
-- Auth integration (triggers, profile creation)
-- Query performance optimization
-- Supabase-specific SQL patterns (`auth.uid()`, `auth.jwt()`)
-
-❌ **DO NOT use for:**
-- Supabase Auth UI configuration → use Supabase dashboard docs
-- Edge Functions → use `cloudflare-worker-dev` skill
-- General PostgreSQL without Supabase context → use standard SQL resources
-- Client-side Supabase SDK usage → use Supabase JS docs
-
-## Core Competencies
-
-### 1. Row Level Security (RLS)
-
-**Always Enable RLS on User Tables:**
-```sql
-ALTER TABLE your_table ENABLE ROW LEVEL SECURITY;
+### 1. RLS Pattern Selection
+```
+Check data sensitivity & access patterns:
+├── Public content (blogs, docs)
+│   └── Use: Public read + owner write policies
+├── User-owned data (profiles, settings)
+│   └── Use: Owner-only access (auth.uid() = user_id)
+├── Multi-tenant (org data)
+│   ├── Small orgs (<1000 users): RLS with org_id filter
+│   └── Large orgs (>1000 users): Schema per tenant
+└── Admin content (system config)
+    └── Use: Role-based policies with profiles.role check
 ```
 
-**Policy Patterns:**
+### 2. Delete Strategy Decision Tree
+```
+Evaluate data retention needs:
+├── Needs audit trail or recovery?
+│   ├── High compliance: Soft delete (deleted_at timestamp)
+│   └── Medium compliance: Soft delete + cascade trigger
+├── Performance critical with large volume?
+│   ├── Yes: Hard delete with CASCADE
+│   └── No: Soft delete acceptable
+└── Referenced by other tables?
+    ├── Critical refs: Use ON DELETE RESTRICT
+    └── Clean cascade: Use ON DELETE CASCADE
+```
 
+### 3. Migration Risk Assessment
+```
+Check change impact:
+├── Schema changes
+│   ├── Adding nullable column: Low risk, deploy anytime
+│   ├── Adding NOT NULL: Medium risk, needs backfill
+│   └── Dropping column: High risk, needs staged deployment
+├── RLS policy changes
+│   ├── Relaxing permissions: Low risk
+│   └── Restricting access: High risk, test with real data
+└── Index changes
+    ├── Creating index: Use CONCURRENTLY flag
+    └── Dropping index: Check query performance impact first
+```
+
+## Failure Modes
+
+### Schema Bloat Anti-Pattern
+**Symptoms:** Tables with 20+ columns, nullable columns everywhere, poor query performance
+**Detection:** `SELECT count(*) FROM information_schema.columns WHERE table_name = 'bloated_table'` returns >15
+**Fix:** Normalize into related tables, use JSONB for flexible attributes, add NOT NULL constraints with defaults
+
+### RLS Performance Killer
+**Symptoms:** Queries taking >1000ms, high CPU on simple selects, missing auth.uid() in WHERE clauses
+**Detection:** `EXPLAIN ANALYZE` shows sequential scans on user_id columns without indexes
+**Fix:** Add `CREATE INDEX idx_table_user_id ON table(user_id)` for every RLS-filtered column
+
+### Migration Lock Hell
+**Symptoms:** Deployment timeouts, blocked writes during migration, "relation does not exist" errors
+**Detection:** Migration contains `ALTER TABLE ADD COLUMN x NOT NULL` without DEFAULT
+**Fix:** Split into: 1) Add nullable column with default, 2) Backfill data, 3) Add NOT NULL constraint
+
+### JWT Parsing Overload
+**Symptoms:** RLS policies calling auth.uid() for every row, poor performance on large tables
+**Detection:** Policy has `auth.uid() = user_id` in USING clause without subquery
+**Fix:** Rewrite as `user_id = (SELECT auth.uid())` to parse JWT once per query
+
+### Cascade Confusion
+**Symptoms:** Data disappearing unexpectedly, orphaned records, referential integrity errors
+**Detection:** Foreign keys without explicit ON DELETE behavior, surprise empty result sets
+**Fix:** Explicitly set ON DELETE CASCADE/RESTRICT/SET NULL based on business logic
+
+## Worked Examples
+
+### Multi-Tenant RLS with Performance Optimization
+
+**Scenario:** SaaS app where users belong to organizations, need org-isolated data
+
+**Step 1: Schema Design Decision**
 ```sql
--- Public read, authenticated write
-CREATE POLICY "Public read" ON posts FOR SELECT USING (true);
-CREATE POLICY "Owners can write" ON posts FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+-- Decision: Use org_id column vs separate schemas
+-- Trade-off: RLS filtering vs complete isolation
+-- Choice: RLS (easier ops, shared resources)
 
--- Owner-only access
-CREATE POLICY "Users own their data" ON profiles
-  FOR ALL USING (auth.uid() = id);
+CREATE TABLE posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  org_id uuid NOT NULL REFERENCES organizations(id),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  content text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+```
 
--- Role-based access
-CREATE POLICY "Admins can do anything" ON content
+**Step 2: Index Strategy (Critical for Performance)**
+```sql
+-- Compound index: org_id first (highest selectivity for RLS)
+CREATE INDEX idx_posts_org_user ON posts(org_id, user_id);
+-- Single index for user lookups
+CREATE INDEX idx_posts_user ON posts(user_id);
+```
+
+**Step 3: RLS Policy with Org Context**
+```sql
+-- Get user's org_id from profiles table
+CREATE POLICY "Org members only" ON posts
   FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM profiles
+    org_id = (
+      SELECT profiles.org_id 
+      FROM profiles 
       WHERE profiles.id = auth.uid()
-      AND profiles.role = 'admin'
     )
   );
 ```
 
-**Performance-Critical: Index auth.uid() Columns:**
+**Step 4: Performance Validation**
 ```sql
--- 100x performance improvement for RLS policies
-CREATE INDEX idx_posts_user_id ON posts(user_id);
-CREATE INDEX idx_profiles_id ON profiles(id);
+-- Test query performance
+EXPLAIN ANALYZE 
+SELECT * FROM posts 
+WHERE org_id = 'test-org-id' 
+LIMIT 10;
+-- Should show Index Scan, not Seq Scan
+-- Should be <100ms for tables with <1M rows
 ```
 
-**Subquery Optimization for JWT Functions:**
-```sql
--- BAD: JWT parsed for every row
-CREATE POLICY "slow" ON posts FOR SELECT
-  USING (user_id = auth.uid());
+**Expert Insight:** Novices miss the compound index ordering. They create `(user_id, org_id)` which forces RLS to scan all user posts then filter by org. Experts put org_id first since RLS filters by org membership.
 
--- GOOD: JWT parsed once via subquery
-CREATE POLICY "fast" ON posts FOR SELECT
-  USING (user_id = (SELECT auth.uid()));
-```
+## Quality Gates
 
-### 2. Migration Best Practices
+RLS audit checklist - all must pass before production:
 
-**File Naming Convention:**
-```
-supabase/migrations/
-├── 001_initial_schema.sql
-├── 002_add_profiles_trigger.sql
-├── 003_forum_tables.sql
-└── 004_add_rls_policies.sql
-```
+- [ ] All user tables have `ALTER TABLE x ENABLE ROW LEVEL SECURITY`
+- [ ] Every auth.uid() reference has corresponding index on user_id column  
+- [ ] RLS policies tested with `SET ROLE anon` and real user JWTs
+- [ ] `EXPLAIN ANALYZE` shows Index Scan (not Seq Scan) for auth queries
+- [ ] Policy queries execute in <100ms with production data volume
+- [ ] Migration tested on copy of production data (not empty dev DB)
+- [ ] No `ALTER TABLE ADD COLUMN x NOT NULL` without DEFAULT in single transaction
+- [ ] Foreign key constraints have explicit ON DELETE behavior (not default)
+- [ ] Full-text search uses GIN indexes, not LIKE queries
+- [ ] Auth triggers handle edge cases (profile creation failures, duplicate emails)
 
-**Migration Template:**
-```sql
--- Migration: 005_feature_name
--- Description: What this migration does
--- Author: name
--- Date: YYYY-MM-DD
+## NOT-FOR Boundaries
 
--- Up migration
-BEGIN;
+**Do NOT use this skill for:**
 
--- Your DDL here
-CREATE TABLE ...;
-ALTER TABLE ...;
-CREATE POLICY ...;
+- **Supabase Auth UI styling/configuration** → Use Supabase dashboard documentation
+- **Edge Functions development** → Use `cloudflare-worker-dev` skill instead  
+- **Client-side Supabase SDK** → Use official Supabase JavaScript docs
+- **General PostgreSQL optimization** → Use `postgresql-dba` skill for non-Supabase context
+- **Real-time subscriptions setup** → Use Supabase Realtime documentation
+- **Storage bucket policies** → Use Supabase Storage documentation
 
-COMMIT;
-
--- Down migration (as comment for reference)
--- DROP TABLE ...;
--- DROP POLICY ...;
-```
-
-**Safe Migration Patterns:**
-```sql
--- Add column with default (no table lock)
-ALTER TABLE users ADD COLUMN status text DEFAULT 'active';
-
--- Add NOT NULL constraint safely
-ALTER TABLE users ADD COLUMN email text;
-UPDATE users SET email = 'unknown@example.com' WHERE email IS NULL;
-ALTER TABLE users ALTER COLUMN email SET NOT NULL;
-
--- Create index concurrently (no lock)
-CREATE INDEX CONCURRENTLY idx_users_email ON users(email);
-```
-
-### 3. Auth Integration
-
-**Auto-create Profile on Signup:**
-```sql
--- Function to create profile
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.profiles (id, email, display_name)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1))
-  );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger on auth.users
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-```
-
-**Check Auth Status in Policies:**
-```sql
--- Authenticated users only
-CREATE POLICY "Authenticated access" ON data
-  FOR SELECT USING (auth.role() = 'authenticated');
-
--- Get current user's ID
-SELECT auth.uid();
-
--- Get current user's JWT claims
-SELECT auth.jwt();
-```
-
-### 4. Common Schema Patterns
-
-**Timestamps with Defaults:**
-```sql
-CREATE TABLE posts (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-  content text NOT NULL,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
--- Auto-update updated_at
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_posts_updated_at
-  BEFORE UPDATE ON posts
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
-```
-
-**Soft Delete Pattern:**
-```sql
-ALTER TABLE posts ADD COLUMN deleted_at timestamptz;
-
-CREATE POLICY "Hide deleted" ON posts
-  FOR SELECT USING (deleted_at IS NULL);
-```
-
-**Full-Text Search:**
-```sql
--- Add search vector column
-ALTER TABLE posts ADD COLUMN search_vector tsvector;
-
--- Create GIN index
-CREATE INDEX idx_posts_search ON posts USING GIN(search_vector);
-
--- Update function
-CREATE OR REPLACE FUNCTION posts_search_update()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.search_vector := to_tsvector('english', COALESCE(NEW.title, '') || ' ' || COALESCE(NEW.content, ''));
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Search query
-SELECT * FROM posts
-WHERE search_vector @@ plainto_tsquery('english', 'search terms');
-```
-
-### 5. Debugging RLS Issues
-
-**Common Problem: Empty Results, No Error**
-```sql
--- Check if RLS is enabled
-SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname = 'public';
-
--- List all policies
-SELECT * FROM pg_policies WHERE tablename = 'your_table';
-
--- Test as specific role
-SET ROLE anon;
-SELECT * FROM your_table LIMIT 1;
-RESET ROLE;
-
--- Test with specific user
-SET request.jwt.claims TO '{"sub": "user-uuid-here"}';
-SELECT * FROM your_table;
-```
-
-**Diagnostic Query:**
-```sql
--- Check what the current user can see
-SELECT
-  auth.uid() as current_user,
-  auth.role() as current_role,
-  (SELECT count(*) FROM your_table) as visible_rows;
-```
-
-## Quick Reference
-
-| Task | Command |
-|------|---------|
-| Enable RLS | `ALTER TABLE t ENABLE ROW LEVEL SECURITY;` |
-| Create policy | `CREATE POLICY "name" ON t FOR action USING (condition);` |
-| Drop policy | `DROP POLICY "name" ON t;` |
-| Check policies | `SELECT * FROM pg_policies WHERE tablename = 't';` |
-| Current user | `SELECT auth.uid();` |
-| Force RLS for owner | `ALTER TABLE t FORCE ROW LEVEL SECURITY;` |
-
-## References
-
-See `/references/` for detailed guides:
-- `rls-patterns.md` - Advanced RLS policy patterns
-- `migration-checklist.md` - Pre-deployment checklist
-- `performance-tuning.md` - Query and index optimization
-- `social-schema.md` - Schema patterns for social features
+**When to delegate:**
+- Complex analytical queries → `postgresql-dba` skill
+- Frontend integration → Framework-specific skills
+- DevOps deployment → `docker-deployment` or `kubernetes-ops` skills

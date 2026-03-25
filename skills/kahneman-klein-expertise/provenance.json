@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Conditions_for_intuitive_expertise_A_fai.pdf",
+    "path": "../batch_ndm_remaining/Conditions_for_intuitive_expertise_A_fai.pdf",
+    "chars": 74039,
+    "tokens_approx": 18509
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T14:30:54.480731Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 22318,
+        "output": 27153
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T14:30:54.490292Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 2035,
+        "output": 3500
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 655.0452580451965,
+  "generated_at": "2026-02-24T14:30:54.498603Z"
+}

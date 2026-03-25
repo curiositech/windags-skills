@@ -1,25 +1,31 @@
 ---
+license: Apache-2.0
 name: error-handling-patterns
-description: Design error handling strategies for TypeScript and Python applications — exception hierarchies, Result/Either types, retry patterns, error boundaries, and structured error logging. Use when
-  designing error handling architecture, choosing between exceptions and Result types, implementing retry logic, or building error recovery flows. Activate on "error handling", "exception hierarchy", "Result
-  type", "retry pattern", "circuit breaker", "error boundary", "Pokemon exception". NOT for debugging specific runtime errors, logging infrastructure setup, or monitoring/alerting configuration.
+description: Design error handling strategies for TypeScript and Python applications — exception hierarchies, Result/Either types, retry patterns, error boundaries, and structured error logging. Use when designing error handling architecture, choosing between exceptions and Result types, implementing retry logic, or building error recovery flows. Activate on "error handling", "exception hierarchy", "Result type", "retry pattern", "circuit breaker", "error boundary", "Pokemon exception". NOT for debugging specific runtime errors, logging infrastructure setup, or monitoring/alerting configuration.
 allowed-tools: Read,Write,Edit,Grep,Glob
 argument-hint: '[language: typescript|python] [context: api|ui|worker|library]'
 metadata:
   category: DevOps & Site Reliability
   tags:
-  - error
-  - handling
-  - patterns
-  - error-handling
-  - exception-hierarchy
+    - error
+    - handling
+    - patterns
+    - error-handling
+    - exception-hierarchy
   pairs-with:
-  - skill: typescript-advanced-patterns
-    reason: Result/Either types and discriminated unions implement type-safe error handling in TS
-  - skill: logging-observability
-    reason: Structured error logging with correlation IDs enables effective error tracking and debugging
-  - skill: background-job-orchestrator
-    reason: Retry patterns and dead letter queues are error handling applied to job processing
+    - skill: typescript-advanced-patterns
+      reason: Result/Either types and discriminated unions implement type-safe error handling in TS
+    - skill: logging-observability
+      reason: Structured error logging with correlation IDs enables effective error tracking and debugging
+    - skill: background-job-orchestrator
+      reason: Retry patterns and dead letter queues are error handling applied to job processing
+category: Code Quality & Testing
+tags:
+  - error-handling
+  - patterns
+  - exceptions
+  - resilience
+  - best-practices
 ---
 
 # Error Handling Patterns

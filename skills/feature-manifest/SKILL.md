@@ -1,150 +1,152 @@
 ---
+license: Apache-2.0
 name: feature-manifest
 description: Manage feature manifests for code traceability. Use when creating new features, updating existing features, checking feature health, or exploring the feature-to-code relationship. Activates for manifest validation, feature creation, changelog updates, and traceability queries.
 allowed-tools: Read,Write,Edit,Bash(npm:*,npx:*)
 category: Productivity & Meta
 tags:
-  - feature-management
-  - code-traceability
-  - documentation
+  - feature-manifest
+  - planning
+  - requirements
+  - specification
+  - tracking
 ---
 
 # Feature Manifest Management
 
-This skill helps you work with the feature manifest system that tracks the relationship between features and their implementations.
+This skill manages the feature manifest system that tracks the relationship between features and their implementations.
 
-## When to Use This Skill
+## DECISION POINTS
 
-- Creating a new feature
-- Modifying existing feature code
-- Checking which feature owns a file
-- Validating manifest accuracy
-- Updating changelogs
-- Running feature health checks
+**When working with code changes, use this decision tree:**
 
-## Quick Commands
-
-```bash
-# List all features
-npm run feature:info -- --list
-
-# Get details about a feature
-npm run feature:info -- <feature-id>
-
-# Find which feature owns a file
-npm run feature:info -- --files <filepath>
-
-# Validate all manifests
-npm run feature:validate
-
-# Check feature health (staleness, orphans, coverage)
-npm run feature:health
-
-# Create a new feature manifest
-npm run feature:create
+```
+Is this code change happening?
+├── Creating new feature directory/component
+│   ├── New feature has >5 files OR touches multiple domains
+│   │   └── → CREATE new manifest (npm run feature:create)
+│   └── Small utility/helper (<5 files, single purpose)
+│       └── → ADD to existing related manifest
+├── Modifying existing tracked files
+│   ├── Files belong to known feature (check with: npm run feature:info -- --files <path>)
+│   │   ├── Adding/removing files to feature
+│   │   │   └── → UPDATE manifest files list + last_modified date
+│   │   └── Just changing file contents
+│   │       └── → UPDATE last_modified date only
+│   └── Files are orphaned (not in any manifest)
+│       └── → Determine owner with npm run feature:health, then UPDATE appropriate manifest
+└── Removing/deprecating code
+    ├── Entire feature being removed
+    │   └── → SET status to 'deprecated', add deprecation changelog entry
+    └── Some files being removed from feature
+        └── → UPDATE manifest files list, add changelog entry
 ```
 
-## Workflow: Creating a New Feature
+**For manifest validation failures:**
+- Missing files → Add files to manifest or remove from filesystem
+- Extra files → Remove from manifest files list
+- Stale manifest (>90 days) → Update last_modified and add changelog entry
+- No tests listed → Add test files or mark as technical debt
 
-1. **Create the manifest first:**
+## FAILURE MODES
+
+**1. Orphan File Syndrome**
+- *Detection:* `npm run feature:health` shows files in "Orphaned Files" section
+- *Cause:* Files created without updating any manifest
+- *Fix:* Run `npm run feature:info -- --files <path>` to find logical owner, then add files to appropriate manifest
+
+**2. Ghost Manifest References**
+- *Detection:* Validation errors about missing files that were deleted
+- *Cause:* Files removed from codebase but not from manifest
+- *Fix:* Edit manifest to remove deleted files from `implementation.files`, update `last_modified`, add changelog entry
+
+**3. Stale Dependency Web**
+- *Detection:* Features referencing deprecated or renamed dependencies in `dependencies.internal`
+- *Cause:* Feature refactoring without updating dependent manifests
+- *Fix:* Search codebase for references to old feature ID, update all dependent manifests
+
+**4. Test Coverage Blind Spot**
+- *Detection:* `npm run feature:health` shows features in "Without Tests" section
+- *Cause:* Tests exist but not listed in manifest, or no tests written
+- *Fix:* If tests exist, add to appropriate test section; if missing, create tests or document as technical debt
+
+**5. Manifest Explosion**
+- *Detection:* Too many tiny manifests (>20 manifests for <100 files)
+- *Cause:* Creating manifests for every small utility
+- *Fix:* Consolidate related small features into logical groupings, deprecate overly granular manifests
+
+## WORKED EXAMPLES
+
+**Example: Adding authentication middleware to existing API feature**
+
+1. **Identify impact:** New middleware affects multiple API routes
    ```bash
-   npm run feature:create -- --id=my-feature --name="My Feature"
+   npm run feature:info -- --files src/app/api
+   # Shows: api-core.yaml owns most API files
    ```
 
-2. **Implement the feature**, adding files as you go
-
-3. **Update the manifest** with:
-   - All implementation files in `implementation.files`
-   - Tests in `tests.unit/integration/e2e`
-   - Dependencies in `dependencies.internal/external`
-   - Environment variables in `dependencies.env_vars`
-
-4. **Validate before committing:**
+2. **Check current manifest:**
    ```bash
-   npm run feature:validate
+   npm run feature:info -- api-core
+   # Review current files list and dependencies
    ```
 
-## Workflow: Modifying an Existing Feature
+3. **Decision:** This is modifying existing feature (middleware is part of API infrastructure)
 
-1. **Read the manifest first:**
-   ```bash
-   npm run feature:info -- <feature-id>
+4. **Update manifest:** Add new middleware files to api-core.yaml:
+   ```yaml
+   implementation:
+     files:
+       - src/app/api/middleware/auth.ts  # NEW
+       - src/lib/auth-utils.ts          # NEW
+       # ... existing files
    ```
 
-2. **Make your changes** to the implementation files
-
-3. **Update the manifest:**
-   - Add new files to `implementation.files`
-   - Update `history.last_modified` to today's date
-   - Add a changelog entry
-
-4. **Validate:**
-   ```bash
-   npm run feature:validate
+5. **Update metadata:**
+   ```yaml
+   dependencies:
+     internal:
+       - features/user-management.yaml  # NEW dependency
+   history:
+     last_modified: "2024-12-23"       # TODAY
+   changelog:
+     - version: "1.2.0"                # NEW entry
+       date: "2024-12-23"
+       changes:
+         - "Added authentication middleware for API routes"
    ```
 
-## Manifest Structure
+6. **Validate:** `npm run feature:validate` confirms no errors
 
-```yaml
-id: feature-id
-name: Human Readable Name
-status: complete  # planned | in-progress | complete | deprecated
-priority: P1
+**What novice misses:** Updating dependencies.internal when middleware uses user auth
+**What expert catches:** All affected API routes need the auth dependency listed
 
-description: |
-  What this feature does and why it exists.
+## QUALITY GATES
 
-implementation:
-  files:
-    - src/app/api/feature/route.ts
-    - src/lib/feature.ts
-  entry_point: src/lib/feature.ts
-  database_tables:
-    - tableName
-  api_routes:
-    - POST /api/feature
+Task is complete when ALL conditions are met:
 
-tests:
-  unit:
-    - src/lib/__tests__/feature.test.ts
-  integration: []
-  e2e: []
+- [ ] `npm run feature:validate` passes with no errors
+- [ ] `npm run feature:health` shows no new orphaned files
+- [ ] All implementation files listed in manifest exist in codebase
+- [ ] All files in manifest have been modified more recently than `last_modified` date OR manifest updated
+- [ ] If adding dependencies, all internal deps reference existing manifests
+- [ ] If modifying feature, changelog has new entry with today's date
+- [ ] If creating feature, manifest has at least entry_point and one implementation file
+- [ ] Status field matches reality (complete features have tests, deprecated features noted)
+- [ ] Any new environment variables are documented in dependencies.env_vars
+- [ ] Database tables/API routes are documented if feature touches them
 
-dependencies:
-  internal:
-    - features/authentication.yaml
-  external:
-    - package-name
-  env_vars:
-    - FEATURE_SECRET
-  secrets:
-    - feature-api-key
+## NOT-FOR BOUNDARIES
 
-history:
-  created: "2024-12-01"
-  last_modified: "2024-12-23"
+**Do NOT use this skill for:**
 
-changelog:
-  - version: "1.0.0"
-    date: "2024-12-23"
-    changes:
-      - "Initial implementation"
-```
+- **Archived/legacy code** → Use `git-archaeology` skill instead for historical analysis
+- **Third-party vendor files** (node_modules, .next, etc.) → These are build artifacts, not features
+- **Configuration files** (package.json, tsconfig.json, etc.) → Use `project-config` skill instead
+- **Documentation-only changes** (README, docs/) → Use `documentation` skill instead
+- **Build/deployment scripts** → Use `devops-automation` skill instead
+- **Test files that don't belong to features** (setup files, mocks) → Use `test-infrastructure` skill instead
 
-## Health Report Interpretation
-
-When running `npm run feature:health`:
-
-- **Healthy Features**: Manifest matches code, tests exist
-- **Stale Features**: Manifest not updated in 90+ days, or code changed after manifest
-- **Without Tests**: Complete features that have no tests listed
-- **Orphaned Files**: Files in `src/` not tracked by any manifest
-- **Suggested Manifests**: New directories that should have manifests
-
-## Best Practices
-
-1. **One feature per manifest** - Keep them focused
-2. **Update on every change** - Don't let manifests go stale
-3. **Changelog is append-only** - Never modify old entries
-4. **Include all files** - Don't leave orphaned files
-5. **Link dependencies** - Show which features depend on others
+**For cross-cutting concerns spanning multiple features:**
+- Use `architecture-analysis` skill to understand system boundaries first
+- Then update multiple manifests consistently using this skill

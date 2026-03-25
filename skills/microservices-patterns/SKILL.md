@@ -1,25 +1,31 @@
 ---
+license: Apache-2.0
 name: microservices-patterns
-description: Microservice architecture patterns — service decomposition, inter-service communication, API gateway, saga pattern, event-driven architecture, service mesh, circuit breaker, CQRS, event sourcing.
-  Activate on "microservices", "service decomposition", "saga pattern", "API gateway", "event-driven", "service mesh", "circuit breaker", "CQRS", "event sourcing", "bounded context", "strangler fig", "distributed
-  transactions", "choreography vs orchestration". NOT for monolith design, serverless functions, or Kubernetes infrastructure.
+description: Microservice architecture patterns — service decomposition, inter-service communication, API gateway, saga pattern, event-driven architecture, service mesh, circuit breaker, CQRS, event sourcing. Activate on "microservices", "service decomposition", "saga pattern", "API gateway", "event-driven", "service mesh", "circuit breaker", "CQRS", "event sourcing", "bounded context", "strangler fig", "distributed transactions", "choreography vs orchestration". NOT for monolith design, serverless functions, or Kubernetes infrastructure.
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob
 metadata:
   category: DevOps & Site Reliability
   tags:
+    - microservices
+    - patterns
+    - service-decomposition
+    - saga-pattern
+  pairs-with:
+    - skill: api-architect
+      reason: Inter-service communication design (REST, gRPC, events) is core to microservice architecture
+    - skill: docker-containerization
+      reason: Each microservice is typically containerized and independently deployable
+    - skill: code-architecture
+      reason: Service internal architecture patterns (hexagonal, clean) apply within each microservice
+    - skill: background-job-orchestrator
+      reason: Saga patterns and event-driven workflows use background job queues for orchestration
+category: Backend & Infrastructure
+tags:
   - microservices
   - patterns
-  - service-decomposition
-  - saga-pattern
-  pairs-with:
-  - skill: api-architect
-    reason: Inter-service communication design (REST, gRPC, events) is core to microservice architecture
-  - skill: docker-containerization
-    reason: Each microservice is typically containerized and independently deployable
-  - skill: code-architecture
-    reason: Service internal architecture patterns (hexagonal, clean) apply within each microservice
-  - skill: background-job-orchestrator
-    reason: Saga patterns and event-driven workflows use background job queues for orchestration
+  - architecture
+  - distributed
+  - service-design
 ---
 
 # Microservices Patterns

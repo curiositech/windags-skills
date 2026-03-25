@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: video-processing-editing
 description: FFmpeg automation for cutting, trimming, concatenating videos. Audio mixing, timeline editing, transitions, effects. Export optimization for YouTube, social media. Subtitle handling, color grading, batch processing. Use for videogen projects, content creation, automated video production. Activate on "video editing", "FFmpeg", "trim video", "concatenate", "transitions", "export optimization". NOT for real-time video editing UI, 3D compositing, or motion graphics.
 allowed-tools: Read,Write,Edit,Bash(ffmpeg*,ffprobe*,python*)
+category: Video & Audio
+tags:
+  - video-editing
+  - processing
+  - ffmpeg
+  - transcoding
+  - production
 ---
 
 # Video Processing & Editing

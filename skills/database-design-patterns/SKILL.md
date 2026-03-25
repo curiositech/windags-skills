@@ -1,25 +1,31 @@
 ---
+license: Apache-2.0
 name: database-design-patterns
-description: Schema design, normalization decisions, indexing strategies, and migration safety for relational databases. Use when designing tables, choosing between normalize vs denormalize, selecting index
-  types, planning zero-downtime migrations, or setting up connection pooling. Activate on "schema design", "normalization", "denormalization", "foreign key", "index strategy", "migration", "connection pooling",
-  "composite key", "surrogate key", "soft delete", "polymorphic association". NOT for PostgreSQL-specific query tuning or EXPLAIN analysis (use postgresql-optimization), NoSQL or document database design,
-  or cloud database provisioning.
+description: Schema design, normalization decisions, indexing strategies, and migration safety for relational databases. Use when designing tables, choosing between normalize vs denormalize, selecting index types, planning zero-downtime migrations, or setting up connection pooling. Activate on "schema design", "normalization", "denormalization", "foreign key", "index strategy", "migration", "connection pooling", "composite key", "surrogate key", "soft delete", "polymorphic association". NOT for PostgreSQL-specific query tuning or EXPLAIN analysis (use postgresql-optimization), NoSQL or document database design, or cloud database provisioning.
 allowed-tools: Read,Write,Edit,Grep,Glob
 metadata:
   category: Design & Creative
   tags:
+    - database
+    - design
+    - patterns
+    - schema-design
+    - normalization
+  pairs-with:
+    - skill: drizzle-migrations
+      reason: Schema design decisions are implemented through ORM migration workflows
+    - skill: postgresql-optimization
+      reason: Index strategies and query patterns depend on underlying schema design choices
+    - skill: supabase-admin
+      reason: Supabase RLS policies and schema architecture implement database design patterns
+category: Backend & Infrastructure
+tags:
   - database
   - design
   - patterns
-  - schema-design
-  - normalization
-  pairs-with:
-  - skill: drizzle-migrations
-    reason: Schema design decisions are implemented through ORM migration workflows
-  - skill: postgresql-optimization
-    reason: Index strategies and query patterns depend on underlying schema design choices
-  - skill: supabase-admin
-    reason: Supabase RLS policies and schema architecture implement database design patterns
+  - sql
+  - postgresql
+  - ai
 ---
 
 # Database Design Patterns

@@ -1,216 +1,143 @@
 ---
+license: Apache-2.0
 name: recovery-app-legal-terms
 description: Generate legally-sound terms of service, privacy policies, and medical disclaimers for recovery and wellness applications. Expert in HIPAA, GDPR, CCPA compliance. Activate on 'terms of service', 'privacy policy', 'legal terms', 'medical disclaimer', 'HIPAA', 'user agreement'. NOT for contract negotiation (use attorney), app development (use domain skills), or moderation (use recovery-community-moderator).
-category: Business & Monetization
+category: Legal & Compliance
 tags:
-  - document
-  - strategy
-  - health
-  - production-ready
-  - beginner-friendly
+  - legal-terms
+  - privacy-policy
+  - tos
+  - recovery-app
+  - compliance
 allowed-tools: Read, Write, Edit, WebSearch
 ---
 
 # Recovery App Legal Terms
 
-Generate legally-sound terms of service, privacy policies, and medical disclaimers for recovery and wellness applications. Based on analysis of I Am Sober, Sober Grid, and other recovery apps.
+Generate legally-sound terms of service, privacy policies, and medical disclaimers for recovery and wellness applications that protect users while maintaining supportive, non-stigmatizing language.
 
-## Trigger Phrases
-- terms of service
-- privacy policy
-- legal terms
-- medical disclaimer
-- user agreement
-- data protection
-- HIPAA compliance
-- GDPR compliance
+## Decision Points
 
-## System Prompt
-
-You are a legal document specialist for recovery and wellness applications. You help generate terms of service, privacy policies, and medical disclaimers that protect both the platform and its users while maintaining a supportive, non-stigmatizing tone.
-
-### Critical Legal Requirements for Recovery Apps
-
-#### 1. Medical Disclaimer (MANDATORY)
-
-Every recovery app MUST include clear disclaimers that:
-
-- **Not Medical Advice**: The app is NOT a substitute for professional medical treatment, therapy, or counseling
-- **Not Emergency Services**: The app is NOT equipped to handle medical emergencies or crisis intervention
-- **User Responsibility**: Users are responsible for their own recovery decisions
-- **Consult Professionals**: Users should consult qualified healthcare providers for medical advice
-- **No Guarantees**: The app cannot guarantee recovery outcomes
-
-Example language:
+### GDPR Legal Basis Selection
 ```
-Junkie Buds 4 Life is NOT a medical service. The content, tools, and community
-features are for informational and peer support purposes only. This app is not
-intended to diagnose, treat, cure, or prevent any disease or condition.
-
-If you are experiencing a medical emergency, call 911 or your local emergency
-number immediately. If you are in crisis, please contact the 988 Suicide & Crisis
-Lifeline by calling or texting 988.
-
-Always seek the advice of qualified healthcare providers with any questions
-regarding a medical condition or treatment.
+Is user data processing?
+├─ YES: What type of processing?
+│   ├─ Service delivery (account, progress tracking)
+│   │   └─ USE: Contract performance (Art 6.1b)
+│   ├─ Analytics, improvements, marketing
+│   │   ├─ High privacy impact? 
+│   │   │   ├─ YES → USE: Explicit consent (Art 6.1a)
+│   │   │   └─ NO → USE: Legitimate interest (Art 6.1f)
+│   │   └─ INCLUDE: Opt-out mechanism
+│   └─ Health/recovery data (special category)
+│       └─ USE: Explicit consent (Art 9.2a) + health exception (Art 9.2h)
+└─ NO: No legal basis needed
 ```
 
-#### 2. Age Requirements
+### Medical Disclaimer Requirements
+```
+Does app provide any of these?
+├─ Progress tracking, sobriety counters → Include "not medical advice"
+├─ Peer support, community features → Include "not therapy/counseling" 
+├─ Motivational content, tips → Include "consult healthcare providers"
+├─ Crisis language detection → MUST include 988 hotline reference
+└─ Any recovery-related features → Include "no recovery guarantees"
 
-- **Minimum age**: 18 years old (some apps allow 13+ with parental consent)
-- **Parental consent**: Required for minors in jurisdictions where allowed
-- **Age verification**: Statement of age during signup
-
-#### 3. User Content Licensing
-
-Key principles from I Am Sober:
-- **"What's yours is yours"**: Users retain ownership of their content
-- **License to display**: Platform gets limited license to display/process content
-- **Deletion rights**: Users can delete their content at any time
-- **No commercial use**: Platform won't sell user content to third parties
-
-#### 4. Privacy Requirements
-
-**Data Collection Transparency:**
-- What data is collected (account info, usage data, health-related data)
-- How data is used (service delivery, analytics, improvements)
-- Who has access (staff, third-party processors)
-- Data retention periods (I Am Sober: 6 years after last activity)
-
-**User Rights:**
-- Access their data
-- Correct inaccuracies
-- Delete their account and data
-- Export their data
-- Opt out of marketing
-
-**Security Measures:**
-- Encryption in transit (TLS)
-- Encryption at rest
-- Access controls
-- Regular security audits
-
-#### 5. HIPAA Considerations
-
-Recovery apps that collect health information should:
-- Implement reasonable security safeguards
-- Limit data access to authorized personnel
-- Have Business Associate Agreements with vendors
-- Provide breach notification procedures
-
-Note: Most peer support apps are NOT covered entities under HIPAA, but following HIPAA-like practices builds trust.
-
-#### 6. Regulatory Compliance
-
-**GDPR (EU Users):**
-- Legal basis for processing (consent, legitimate interest)
-- Data subject rights
-- Data Protection Officer contact (if required)
-- International data transfer mechanisms
-
-**CCPA (California Users):**
-- Right to know what data is collected
-- Right to delete
-- Right to opt out of sale
-- Non-discrimination for exercising rights
-
-**COPPA (If allowing under-13):**
-- Parental consent requirements
-- Limited data collection for children
-
-### Document Structure Templates
-
-#### Terms of Service Structure:
-1. Acceptance of Terms
-2. Description of Service
-3. User Accounts
-4. User Conduct
-5. Content Ownership
-6. Prohibited Activities
-7. Termination
-8. Medical Disclaimer
-9. Limitation of Liability
-10. Indemnification
-11. Dispute Resolution
-12. Changes to Terms
-13. Contact Information
-
-#### Privacy Policy Structure:
-1. Information We Collect
-2. How We Use Your Information
-3. How We Share Your Information
-4. Data Retention
-5. Your Rights and Choices
-6. Security
-7. International Transfers
-8. Children's Privacy
-9. Changes to This Policy
-10. Contact Us
-
-### Tone Guidelines
-
-Recovery app legal documents should:
-- Be clear and readable (avoid unnecessary legalese)
-- Use compassionate, non-stigmatizing language
-- Acknowledge the vulnerability of users
-- Explain WHY certain policies exist
-- Provide easy ways to get help or ask questions
-
-**Avoid:**
-- Stigmatizing terms ("addict," "substance abuser")
-- Threatening or punitive language
-- Burying important information
-- Making users feel they have no rights
-
-**Use:**
-- Person-first language ("person in recovery")
-- Clear headings and sections
-- Plain English explanations
-- Empathetic framing
-
-### Output Format
-
-When generating legal documents, provide:
-
-```json
-{
-  "document_type": "terms_of_service|privacy_policy|medical_disclaimer",
-  "sections": [
-    {
-      "title": "Section Title",
-      "content": "Section content in markdown",
-      "legal_notes": "Notes about legal requirements this addresses"
-    }
-  ],
-  "compliance_checklist": {
-    "medical_disclaimer": true,
-    "age_requirement": true,
-    "user_rights": true,
-    "data_practices": true,
-    "security_measures": true,
-    "contact_info": true
-  },
-  "jurisdiction_notes": "Notes about jurisdiction-specific requirements"
-}
+Age verification needed?
+├─ Under 13 allowed → COPPA compliance required
+├─ 13-17 allowed → Parental consent mechanism
+└─ 18+ only → Simple age verification sufficient
 ```
 
-### References
+### Data Retention Decisions
+```
+What type of data?
+├─ Account/profile data
+│   └─ Retention: Until deletion requested or 6 years inactive
+├─ Health/recovery progress
+│   └─ Retention: User controlled + legal minimums (2-7 years)  
+├─ Community posts/messages
+│   └─ Retention: User controlled, immediate deletion option
+└─ Usage analytics
+    └─ Retention: Aggregate after 90 days, delete identifiers
+```
 
-- [I Am Sober Privacy Policy](https://www.iamsober.com/privacy)
-- [I Am Sober Terms of Service](https://www.iamsober.com/terms)
-- [Sober Grid Privacy Policy](https://www.sobergrid.com/privacy)
-- [FTC Health Apps Guide](https://www.ftc.gov/business-guidance/resources/mobile-health-apps-interactive-tool)
-- [SAMHSA Confidentiality Requirements](https://www.samhsa.gov/about-us/who-we-are/laws-regulations/confidentiality-regulations-faqs)
+## Failure Modes
 
-## Scripts
+### Missing Crisis Language
+- **Detection**: Medical disclaimer lacks crisis intervention references
+- **Symptoms**: No mention of 988 hotline, emergency services, or crisis resources
+- **Fix**: Add mandatory crisis section: "If experiencing crisis, call/text 988 or 911"
 
-The skill includes helper scripts in the `scripts/` directory:
-- `compliance_checklist.py` - Verify legal document compliance
-- `generate_documents.py` - Generate full document sets
+### Over-Legalese Complexity  
+- **Detection**: Flesch Reading Level > 12th grade, sentences > 25 words
+- **Symptoms**: Users can't understand their rights, intimidating language
+- **Fix**: Rewrite in plain English, add "What this means" explanations
 
-## Documents
+### Schema Bloat
+- **Detection**: Privacy policy > 5000 words, > 20 main sections
+- **Symptoms**: Users skip reading, key info buried, compliance theater
+- **Fix**: Use layered notices, highlight key points, group similar items
 
-Template documents in the `docs/` directory:
-- `PRIVACY_POLICY_TEMPLATE.md` - Privacy policy template
-- `TERMS_OF_SERVICE_TEMPLATE.md` - Terms of service template
-- `MEDICAL_DISCLAIMER.md` - Required medical disclaimers
+### Rubber Stamp Review
+- **Detection**: Template used without app-specific customization
+- **Symptoms**: Generic language, mismatched features, compliance gaps
+- **Fix**: Audit each section against actual app functionality and data flows
+
+### Jurisdiction Shopping
+- **Detection**: Governing law clause chooses business-friendly jurisdiction unrelated to operations
+- **Symptoms**: User confusion, potential enforceability issues  
+- **Fix**: Use jurisdiction where business operates or users primarily located
+
+## Worked Examples
+
+### Privacy Policy for Sobriety Tracking App
+
+**Scenario**: App tracks sobriety streaks, allows photo journals, has peer support chat
+
+**Decision Process**:
+1. **Data mapping**: Account data (contract), progress data (consent), chat (legitimate interest)
+2. **Legal basis selection**: Mixed - contract for core features, consent for health data sharing
+3. **Retention logic**: User controls progress data, chat auto-deletes after 1 year
+4. **Crisis handling**: Photo journal could reveal crisis → add crisis detection language
+
+**Expert catches**: Health data sharing with sponsors/counselors needs explicit opt-in
+**Novice misses**: Treating all data the same, missing special category health protections
+
+**Key sections generated**:
+```markdown
+## What Information We Collect
+- Account info (email, username) - needed to provide service
+- Sobriety progress (days sober, milestones) - you control sharing
+- Chat messages - support community features, auto-delete after 1 year
+```
+
+## Quality Gates
+
+- [ ] Medical disclaimer present with "not medical advice" language
+- [ ] Age requirement clearly stated (18+ or parental consent process)
+- [ ] Data retention periods defined for each data type
+- [ ] Crisis intervention resources included (988 hotline minimum)
+- [ ] GDPR legal basis specified for each processing purpose
+- [ ] User deletion rights explained with process steps
+- [ ] Security measures described (encryption, access controls)
+- [ ] Contact information provided for privacy questions
+- [ ] Plain English readability (Flesch score 60+, avg sentence < 20 words)
+- [ ] Jurisdiction and governing law specified
+- [ ] Non-stigmatizing language used throughout (no "addict", "substance abuser")
+
+## NOT-FOR Boundaries
+
+**Do NOT use this skill for**:
+- Contract negotiation or business agreements → Use attorney consultation
+- App development technical requirements → Use recovery-app-development skill  
+- Content moderation policies → Use recovery-community-moderator skill
+- Clinical/medical compliance beyond disclaimers → Use healthcare compliance expert
+- Complex international law beyond GDPR/CCPA basics → Use international legal counsel
+- Enforcement actions or legal disputes → Use litigation attorney
+
+**Delegate when**:
+- Client needs legal review before publishing → Refer to qualified attorney
+- App handles payments/subscriptions → Add e-commerce legal specialist
+- Integration with healthcare systems → Add HIPAA compliance expert
+- Multi-jurisdiction complex compliance → Add international legal team

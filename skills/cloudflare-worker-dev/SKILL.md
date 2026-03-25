@@ -1,8 +1,9 @@
 ---
+license: Apache-2.0
 name: cloudflare-worker-dev
 description: Cloudflare Workers, KV, Durable Objects, and edge computing development. Use for serverless APIs, caching, rate limiting, real-time features. Activate on "Workers", "KV", "Durable Objects", "wrangler", "edge function", "Cloudflare". NOT for Cloudflare Pages configuration (use deployment docs), DNS management, or general CDN settings.
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob
-category: DevOps & Site Reliability
+category: DevOps & Infrastructure
 tags:
   - cloudflare
   - workers
@@ -17,505 +18,214 @@ tags:
 
 Build high-performance edge APIs with Workers, KV for caching, and Durable Objects for real-time coordination.
 
-## Core Architecture
+## DECISION POINTS
 
-### When to Use What
+### Service Selection Decision Tree
 
-| Service | Use Case | Characteristics |
-|---------|----------|-----------------|
-| **Workers** | Request handling, API logic | Stateless, 50ms CPU (free), 30s (paid) |
-| **KV** | Caching, config, sessions | Eventually consistent, fast reads |
-| **Durable Objects** | Real-time, coordination | Strongly consistent, single-threaded |
-| **R2** | File storage | S3-compatible, no egress fees |
-| **D1** | SQLite at edge | Serverless SQL, good for reads |
-
-## Worker Fundamentals
-
-### Basic Worker Structure
-
-```typescript
-// src/index.ts
-export interface Env {
-  MEETING_CACHE: KVNamespace;
-  RATE_LIMIT: KVNamespace;
-  API_KEY: string;
-}
-
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-
-    // CORS handling
-    if (request.method === 'OPTIONS') {
-      return handleCORS();
-    }
-
-    try {
-      // Route handling
-      if (url.pathname === '/health') {
-        return json({ status: 'ok' });
-      }
-
-      if (url.pathname.startsWith('/api/')) {
-        return handleAPI(request, env, ctx);
-      }
-
-      return new Response('Not Found', { status: 404 });
-    } catch (error) {
-      console.error('Worker error:', error);
-      return json({ error: 'Internal error' }, 500);
-    }
-  },
-
-  // Cron trigger
-  async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runScheduledTask(env));
-  }
-};
+```
+Need real-time state consistency?
+├── YES → Use Durable Objects
+│   ├── Chat/collaboration → WebSocket pattern
+│   ├── Counters/queues → Atomic operations
+│   └── Session management → Per-user Objects
+└── NO → Continue to storage decision
+    ├── Need fast reads, eventual consistency OK?
+    │   ├── YES → Use KV
+    │   │   ├── Cache TTL < 1 hour → expirationTtl: 3600
+    │   │   ├── Config/sessions → expirationTtl: 86400
+    │   │   └── Long-term cache → expirationTtl: 604800
+    │   └── NO → Use external DB (D1/Postgres)
+    └── File storage needed?
+        └── YES → Use R2 (images, documents)
 ```
 
-### CORS Headers (Essential)
+### Geohash Precision vs Accuracy
 
-```typescript
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*', // Or specific origin
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Max-Age': '86400',
-};
+```
+Geographic scope?
+├── City-level (10km radius) → 4-character geohash
+├── Metro area (50km radius) → 3-character geohash  
+├── Regional (100km radius) → 2-character geohash
+└── Country-level → Use country code instead
 
-function handleCORS(): Response {
-  return new Response(null, { status: 204, headers: CORS_HEADERS });
-}
-
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      ...CORS_HEADERS,
-      'Content-Type': 'application/json',
-    },
-  });
-}
+Cache hit rate priority?
+├── HIGH → Use 2-3 character geohash (broader cache sharing)
+└── PRECISION → Use 4-5 character geohash (location accuracy)
 ```
 
-### wrangler.toml Configuration
+### Rate Limiting Strategy
 
-```toml
-name = "my-worker"
-main = "src/index.ts"
-compatibility_date = "2024-01-01"
+```
+Rate limit scope?
+├── Per IP → Use CF-Connecting-IP header
+├── Per user → Use auth token/user ID
+├── Per API key → Use Authorization header
+└── Global → Use fixed key
 
-# KV Namespaces
-[[kv_namespaces]]
-binding = "MEETING_CACHE"
-id = "abc123..."  # Production
-preview_id = "def456..."  # Dev
-
-[[kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "ghi789..."
-
-# Environment variables
-[vars]
-CACHE_TTL = "86400"
-RATE_LIMIT_REQUESTS = "100"
-RATE_LIMIT_WINDOW = "3600"
-
-# Secrets (set via `wrangler secret put`)
-# API_KEY, DATABASE_URL, etc.
-
-# Cron triggers
-[triggers]
-crons = ["0 */6 * * *"]  # Every 6 hours
-
-# Custom routes
-# routes = [{ pattern = "api.example.com/*", zone_name = "example.com" }]
+Time window?
+├── Burst protection (< 1 min) → Use in-memory counter
+├── Short term (1-60 min) → Use KV with TTL
+└── Long term (> 1 hour) → Use external storage
 ```
 
-## KV Storage Patterns
+## FAILURE MODES
 
-### Basic KV Operations
+### CPU Timeout Spiral
+**Symptoms:** Worker returns 1102 error code, logs show "CPU time limit exceeded"
+**Detection Rule:** If logs contain "exceeded CPU time" or status 1102 responses
+**Root Cause:** Synchronous operations blocking event loop (JSON parsing large payloads, complex loops)
+**Fix:** 
+1. Profile with `console.time()` to find bottlenecks
+2. Stream large JSON parsing: `response.json()` → `ReadableStream`
+3. Break loops with `await scheduler.wait(0)` every 1000 iterations
+4. Cache expensive calculations in KV
 
+### KV Inconsistency Race
+**Symptoms:** Stale data returned immediately after writes, cache "flapping" between values
+**Detection Rule:** If read-after-write returns old value or cache hit rate drops unexpectedly
+**Root Cause:** Reading KV immediately after write hits different edge nodes
+**Fix:**
+1. Never read KV immediately after write for validation
+2. Return the value you just wrote: `await kv.put(key, data); return data;`
+3. For consistency needs, use Durable Objects instead
+4. Add `X-Cache-Status` header to debug cache behavior
+
+### Rate Limit Race Condition
+**Symptoms:** Users get inconsistent rate limit responses, some bypass limits under load
+**Detection Rule:** If rate limit counters drift from expected values or users report sporadic 429s
+**Root Cause:** Multiple concurrent requests increment counter simultaneously
+**Fix:**
+1. Use atomic increment pattern with KV metadata versioning
+2. Implement jitter: random 10-50ms delay before rate limit check
+3. Add circuit breaker: if KV fails, allow request but log for monitoring
+4. Use Durable Objects for strict rate limiting on critical endpoints
+
+### CORS Preflight Failure
+**Symptoms:** Browser requests work in dev but fail in production, OPTIONS returns 404
+**Detection Rule:** If seeing "CORS policy" errors in browser console or 404s on OPTIONS requests
+**Root Cause:** Missing OPTIONS handler in route logic
+**Fix:**
+1. Add explicit OPTIONS handler before all other routes
+2. Return 204 status with proper CORS headers
+3. Include all HTTP methods your API supports in Allow-Methods header
+4. Test with browser DevTools Network tab to verify preflight
+
+### Background Task Abandonment
+**Symptoms:** Cache updates don't happen, cleanup tasks never run, inconsistent state
+**Detection Rule:** If cache miss rates increase or background metrics stop updating
+**Root Cause:** Using `await` instead of `ctx.waitUntil()` for background work
+**Fix:**
+1. Wrap all background tasks in `ctx.waitUntil()`
+2. Add logging inside background tasks to verify execution
+3. Set reasonable timeouts for background work (< 30s)
+4. Use scheduled triggers for critical maintenance tasks
+
+## WORKED EXAMPLES
+
+### Building a Location-Based Meeting Cache
+
+**Scenario:** API needs to cache meeting data by geographic region with sub-second response times.
+
+**Step 1: Service Selection Decision**
+- Need real-time consistency? NO (eventual consistency acceptable for meeting data)
+- Need fast reads? YES → Choose KV
+- Geographic scope? Metro area (50km) → Use 3-character geohash
+
+**Step 2: Implementation**
 ```typescript
-// Write with TTL
-await env.CACHE.put('key', JSON.stringify(data), {
-  expirationTtl: 86400, // 24 hours in seconds
-});
-
-// Write with metadata
-await env.CACHE.put('key', value, {
-  expirationTtl: 3600,
-  metadata: { createdAt: Date.now(), source: 'api' },
-});
-
-// Read
-const value = await env.CACHE.get('key');
-const parsed = await env.CACHE.get('key', 'json');
-
-// Read with metadata
-const { value, metadata } = await env.CACHE.getWithMetadata('key', 'json');
-
-// Delete
-await env.CACHE.delete('key');
-
-// List keys
-const { keys, cursor } = await env.CACHE.list({ prefix: 'meetings:' });
-```
-
-### Geohash-Based Caching
-
-```typescript
-import Geohash from 'latlon-geohash';
-
-function getCacheKey(lat: number, lng: number, radius: number): string {
-  // 3-char geohash = ~150km cells, good for metro areas
+async function getMeetings(lat: number, lng: number, env: Env, ctx: ExecutionContext) {
+  // 3-char geohash for ~150km cells (metro coverage)
   const geohash = Geohash.encode(lat, lng, 3);
-  return `meetings:${geohash}:${radius}`;
-}
-
-async function getMeetingsWithCache(
-  lat: number,
-  lng: number,
-  radius: number,
-  env: Env
-): Promise<{ data: Meeting[]; cached: boolean; geohash: string }> {
-  const geohash = Geohash.encode(lat, lng, 3);
-  const cacheKey = `meetings:${geohash}:${radius}`;
-
-  // Try cache first
+  const cacheKey = `meetings:${geohash}`;
+  
+  // Check cache first
   const cached = await env.MEETING_CACHE.get(cacheKey, 'json');
   if (cached) {
-    return { data: cached, cached: true, geohash };
+    return { data: cached, source: 'cache', geohash };
   }
-
-  // Fetch fresh data
-  const data = await fetchMeetings(lat, lng, radius);
-
-  // Cache in background (don't await)
-  env.ctx.waitUntil(
-    env.MEETING_CACHE.put(cacheKey, JSON.stringify(data), {
-      expirationTtl: 86400,
-      metadata: { cachedAt: Date.now(), geohash },
+  
+  // Cache miss - fetch fresh data
+  const meetings = await fetchFromAPI(lat, lng);
+  
+  // Background cache update (non-blocking)
+  ctx.waitUntil(
+    env.MEETING_CACHE.put(cacheKey, JSON.stringify(meetings), {
+      expirationTtl: 3600, // 1 hour TTL for meeting data
+      metadata: { cachedAt: Date.now(), coords: `${lat},${lng}` }
     })
   );
-
-  return { data, cached: false, geohash };
+  
+  return { data: meetings, source: 'api', geohash };
 }
 ```
 
-### Response Headers for Cache Debugging
+**Expert vs Novice Decision Points:**
+- **Novice:** Uses exact coordinates as cache key → Low hit rate
+- **Expert:** Uses geohash for geographic bucketing → High hit rate across nearby requests
+- **Novice:** Awaits cache write → Slower response times  
+- **Expert:** Background cache write with waitUntil → Fast responses
 
+**Step 3: Rate Limiting Integration**
 ```typescript
-function meetingsResponse(data: Meeting[], cached: boolean, geohash: string): Response {
-  return new Response(JSON.stringify(data), {
-    headers: {
-      ...CORS_HEADERS,
-      'Content-Type': 'application/json',
-      'X-Cache': cached ? 'HIT' : 'MISS',
-      'X-Geohash': geohash,
-      'Cache-Control': 'public, max-age=3600',
-    },
-  });
-}
-```
-
-## Rate Limiting
-
-### IP-Based Rate Limiting
-
-```typescript
-interface RateLimitConfig {
-  maxRequests: number;
-  windowSeconds: number;
-}
-
-async function checkRateLimit(
-  ip: string,
-  env: Env,
-  config: RateLimitConfig
-): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
-  const key = `rate:${ip}`;
-  const now = Math.floor(Date.now() / 1000);
-  const windowStart = now - config.windowSeconds;
-
-  // Get current state
-  const stored = await env.RATE_LIMIT.get(key, 'json') as {
-    count: number;
-    windowStart: number;
-  } | null;
-
-  // New window or expired
-  if (!stored || stored.windowStart < windowStart) {
-    await env.RATE_LIMIT.put(key, JSON.stringify({
-      count: 1,
-      windowStart: now,
-    }), { expirationTtl: config.windowSeconds });
-
-    return {
-      allowed: true,
-      remaining: config.maxRequests - 1,
-      resetAt: now + config.windowSeconds,
-    };
-  }
-
-  // Within window
-  if (stored.count >= config.maxRequests) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetAt: stored.windowStart + config.windowSeconds,
-    };
-  }
-
-  // Increment
-  await env.RATE_LIMIT.put(key, JSON.stringify({
-    count: stored.count + 1,
-    windowStart: stored.windowStart,
-  }), { expirationTtl: config.windowSeconds });
-
-  return {
-    allowed: true,
-    remaining: config.maxRequests - stored.count - 1,
-    resetAt: stored.windowStart + config.windowSeconds,
-  };
-}
-
-// Usage in handler
-async function handleAPI(request: Request, env: Env): Promise<Response> {
-  const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
-  const rateLimit = await checkRateLimit(ip, env, {
-    maxRequests: parseInt(env.RATE_LIMIT_REQUESTS || '100'),
-    windowSeconds: parseInt(env.RATE_LIMIT_WINDOW || '3600'),
-  });
-
-  if (!rateLimit.allowed) {
-    return json({ error: 'Rate limit exceeded' }, 429, {
-      'X-RateLimit-Remaining': '0',
-      'X-RateLimit-Reset': rateLimit.resetAt.toString(),
-    });
-  }
-
-  // ... handle request
-}
-```
-
-## Durable Objects (Real-Time)
-
-### Chat Room Example
-
-```typescript
-// wrangler.toml
-// [[durable_objects.bindings]]
-// name = "CHAT_ROOMS"
-// class_name = "ChatRoom"
-// [[migrations]]
-// tag = "v1"
-// new_classes = ["ChatRoom"]
-
-export class ChatRoom {
-  state: DurableObjectState;
-  sessions: WebSocket[] = [];
-
-  constructor(state: DurableObjectState) {
-    this.state = state;
-  }
-
-  async fetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-
-    if (url.pathname === '/websocket') {
-      if (request.headers.get('Upgrade') !== 'websocket') {
-        return new Response('Expected WebSocket', { status: 400 });
-      }
-
-      const [client, server] = Object.values(new WebSocketPair());
-
-      server.accept();
-      this.sessions.push(server);
-
-      server.addEventListener('message', (event) => {
-        this.broadcast(event.data as string, server);
-      });
-
-      server.addEventListener('close', () => {
-        this.sessions = this.sessions.filter(s => s !== server);
-      });
-
-      return new Response(null, { status: 101, webSocket: client });
-    }
-
-    return new Response('Not found', { status: 404 });
-  }
-
-  broadcast(message: string, exclude?: WebSocket) {
-    this.sessions.forEach(session => {
-      if (session !== exclude && session.readyState === WebSocket.OPEN) {
-        session.send(message);
-      }
-    });
-  }
-}
-
-// In main worker
 export default {
-  async fetch(request: Request, env: Env) {
-    const url = new URL(request.url);
-
-    if (url.pathname.startsWith('/room/')) {
-      const roomId = url.pathname.split('/')[2];
-      const id = env.CHAT_ROOMS.idFromName(roomId);
-      const room = env.CHAT_ROOMS.get(id);
-      return room.fetch(request);
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+    
+    // Check rate limit first (fail fast)
+    const rateCheck = await checkRateLimit(ip, env, { maxRequests: 100, windowSeconds: 3600 });
+    if (!rateCheck.allowed) {
+      return new Response('Rate limited', { status: 429 });
     }
+    
+    // Process request
+    const url = new URL(request.url);
+    const lat = parseFloat(url.searchParams.get('lat') || '0');
+    const lng = parseFloat(url.searchParams.get('lng') || '0');
+    
+    const result = await getMeetings(lat, lng, env, ctx);
+    
+    return new Response(JSON.stringify(result.data), {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Cache': result.source,
+        'X-Geohash': result.geohash,
+        'X-RateLimit-Remaining': rateCheck.remaining.toString()
+      }
+    });
   }
 };
 ```
 
-## Deployment & Debugging
+## QUALITY GATES
 
-### Commands
+**Deployment Readiness Checklist:**
 
-```bash
-# Development
-npx wrangler dev                    # Local dev server
-npx wrangler dev --remote           # Dev against real KV/DO
+- [ ] TTL Strategy Defined: All KV operations have appropriate expirationTtl values (3600s for dynamic, 86400s for config)
+- [ ] Origin Validation: Worker validates all external API responses and handles timeout/error cases with proper fallbacks
+- [ ] Secret Rotation Ready: All secrets use `wrangler secret put`, no hardcoded values in wrangler.toml or code
+- [ ] Latency Targets Met: P95 response time < 200ms for cached responses, < 2s for cache misses (verified via `wrangler tail`)
+- [ ] CORS Complete: OPTIONS preflight handler returns 204 with all required headers, tested in browser DevTools
+- [ ] Rate Limits Configured: IP-based rate limiting active with appropriate limits per endpoint and proper 429 responses
+- [ ] Error Handling: All external fetch calls wrapped in try/catch with timeout, proper HTTP status codes returned
+- [ ] Background Tasks: All cache updates and cleanup use `ctx.waitUntil()`, no blocking operations in response path
+- [ ] Monitoring Ready: Log structured data for cache hit rates, error counts, and performance metrics
+- [ ] Environment Parity: Staging environment mirrors production KV namespaces and secret configurations
 
-# Deployment
-npx wrangler deploy                 # Deploy to production
-npx wrangler deploy --env staging   # Deploy to staging
+## NOT-FOR BOUNDARIES
 
-# Secrets
-npx wrangler secret put API_KEY     # Set secret
-npx wrangler secret list            # List secrets
+**This skill should NOT be used for:**
 
-# KV Management
-npx wrangler kv:key list --namespace-id=xxx
-npx wrangler kv:key get --namespace-id=xxx "key"
-npx wrangler kv:key delete --namespace-id=xxx "key"
+- **Cloudflare Pages deployment** → Use `static-site-deployment` skill instead
+- **DNS record management** → Use `cloudflare-dns-management` skill instead  
+- **CDN/proxy-only configuration** → Use `cloudflare-cdn-config` skill instead
+- **Workers AI/Vectorize** → Use `ai-integration` skill instead
+- **Large file processing (>100MB)** → Use `batch-processing` skill with external storage
+- **Long-running tasks (>30s CPU)** → Use `background-job-processing` skill instead
+- **Complex SQL operations** → Use `database-optimization` skill with dedicated DB
+- **Email sending** → Use `email-service-integration` skill instead
 
-# Logs
-npx wrangler tail                   # Real-time logs
-npx wrangler tail --format=pretty   # Formatted output
-```
-
-### Error Codes
-
-| Code | Meaning |
-|------|---------|
-| 1101 | Worker threw exception |
-| 1102 | CPU time limit exceeded |
-| 1015 | Rate limited by Cloudflare |
-| 524 | Origin timeout (&gt;100s) |
-
-## Quick Reference
-
-```typescript
-// Get client IP
-const ip = request.headers.get('CF-Connecting-IP');
-
-// Get country
-const country = request.cf?.country;
-
-// Background task (won't block response)
-ctx.waitUntil(doBackgroundWork());
-
-// Streaming response
-return new Response(readableStream, {
-  headers: { 'Content-Type': 'text/event-stream' }
-});
-
-// Proxy request
-const response = await fetch(upstreamUrl, request);
-return new Response(response.body, response);
-```
-
-## Anti-Patterns
-
-### ❌ Awaiting KV writes in hot path
-
-```typescript
-// ❌ ANTI-PATTERN: Blocks response on cache write
-async function handler(request: Request, env: Env) {
-  const data = await fetchData();
-  await env.CACHE.put('key', data);  // Unnecessary wait!
-  return json(data);
-}
-
-// ✅ CORRECT: Background write with waitUntil
-async function handler(request: Request, env: Env, ctx: ExecutionContext) {
-  const data = await fetchData();
-  ctx.waitUntil(env.CACHE.put('key', data));  // Non-blocking
-  return json(data);
-}
-```
-
-### ❌ Missing CORS handling
-
-```typescript
-// ❌ ANTI-PATTERN: No preflight handling = broken browser requests
-export default {
-  async fetch(request: Request) {
-    return json({ data: 'hello' });  // OPTIONS requests fail!
-  }
-}
-
-// ✅ CORRECT: Handle OPTIONS preflight
-export default {
-  async fetch(request: Request) {
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
-    }
-    return json({ data: 'hello' });
-  }
-}
-```
-
-### ❌ Secrets in wrangler.toml
-
-```toml
-# ❌ ANTI-PATTERN: Secrets in config (committed to git!)
-[vars]
-API_KEY = "sk-live-xxxxx"
-
-# ✅ CORRECT: Use wrangler secret
-# Run: npx wrangler secret put API_KEY
-# Access: env.API_KEY
-```
-
-### ❌ Ignoring KV eventual consistency
-
-```typescript
-// ❌ ANTI-PATTERN: Read immediately after write
-await env.KV.put('count', String(newCount));
-const verify = await env.KV.get('count');  // May return old value!
-
-// ✅ CORRECT: Trust write succeeded, or use Durable Objects for consistency
-await env.KV.put('count', String(newCount));
-return json({ count: newCount });  // Return what you wrote
-```
-
-### ❌ Blocking on external APIs without timeout
-
-```typescript
-// ❌ ANTI-PATTERN: External API can hang your worker
-const data = await fetch('https://slow-api.com/data');
-
-// ✅ CORRECT: Add timeout with AbortController
-const controller = new AbortController();
-const timeout = setTimeout(() => controller.abort(), 5000);
-try {
-  const data = await fetch('https://slow-api.com/data', {
-    signal: controller.signal
-  });
-} finally {
-  clearTimeout(timeout);
-}
-```
-
-## References
-
-See `/references/` for detailed guides:
-- `kv-patterns.md` - Advanced KV usage patterns
-- `durable-objects.md` - Real-time features with DO
-- `debugging.md` - Troubleshooting common issues
+**Delegate when:**
+- Static site needs deployment → Pages handles build/deploy pipeline better
+- Complex database queries needed → D1 has SQL limitations, use external Postgres/MySQL
+- Heavy computation required → Workers have CPU limits, use dedicated compute instances
+- File uploads > 100MB → Use R2 direct upload patterns, not through Worker

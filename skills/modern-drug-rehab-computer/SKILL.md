@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: modern-drug-rehab-computer
 description: Comprehensive knowledge system for addiction recovery environments, supporting both residential and outpatient (IOP/PHP) patients. Expert in evidence-based treatment modalities (CBT, DBT, MI, EMDR, MAT), recovery resources, coping strategies, crisis intervention, family systems, and holistic wellness. Activate on "rehab", "addiction recovery", "substance abuse", "treatment center", "IOP", "PHP", "detox", "sobriety support", "MAT", "Suboxone", "methadone", "12 step", "SMART Recovery". NOT for prescribing medications (consult medical professionals), emergency overdose situations (call 911), or replacing licensed counselors/therapists.
 allowed-tools: Read,Write,Edit,WebFetch,WebSearch
-category: Lifestyle & Personal
+category: Recovery & Wellness
 tags:
-  - recovery
-  - addiction
+  - drug-rehabilitation
+  - technology
   - treatment
-  - mat
-  - sobriety
+  - recovery
+  - digital-health
 pairs-with:
   - skill: sober-addict-protector
     reason: Daily relapse prevention
@@ -18,371 +19,217 @@ pairs-with:
 
 # Modern Drug Rehab Computer
 
-Comprehensive knowledge companion for individuals in addiction recovery, whether in residential treatment or commuting from home for outpatient programs.
+Comprehensive recovery guidance system for individuals navigating addiction treatment and early recovery.
 
-## When to Use This Skill
+## DECISION POINTS
 
-**Use for:**
-- Evidence-based treatment modality information
-- Coping strategies and grounding techniques
-- Recovery resource navigation
-- Understanding medications (MAT, Suboxone, etc.)
-- Family dynamics and communication
-- Lifestyle and wellness guidance
-- Meeting/support group information
-- Trigger management strategies
-
-**NOT for:**
-- Prescribing or adjusting medications → consult your medical team
-- Active overdose/medical emergency → call 911 immediately
-- Replacing your counselor or therapist
-- Making treatment decisions → discuss with your care team
-- Suicidal ideation → contact 988 (Suicide & Crisis Lifeline)
-
-## Crisis Resources
+### Craving/Urge Response Matrix
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    CRISIS NUMBERS - SAVE THESE              │
-├─────────────────────────────────────────────────────────────┤
-│  911                    - Medical emergency/overdose        │
-│  988                    - Suicide & Crisis Lifeline         │
-│  1-800-662-4357         - SAMHSA National Helpline (24/7)   │
-│  1-800-662-HELP         - Treatment referral                │
-│  Your sponsor's number  - [Add to your phone]               │
-│  Facility crisis line   - [Get from your treatment center]  │
-└─────────────────────────────────────────────────────────────┘
+INTENSITY LEVEL → ACTION PATH
+
+1-3 (Mild):
+├── Apply HALT check (hungry/angry/lonely/tired)
+├── Use 5-4-3-2-1 grounding
+├── Continue current activity
+└── Note trigger in journal
+
+4-6 (Moderate):
+├── Stop current activity immediately
+├── Contact accountability person (text/call)
+├── Apply TIP skills (temperature/exercise/breathing)
+├── Remove yourself from triggering environment
+└── If persists >30 min → escalate to 7-10 response
+
+7-10 (Severe):
+├── Emergency contact (sponsor/counselor/crisis line)
+├── Go to safe location immediately
+├── Consider emergency meeting attendance
+├── If thoughts of using are specific → crisis intervention
+└── DO NOT isolate - stay with safe person
+
+SPECIAL CONDITIONS:
+├── At family event → buddy system + exit strategy
+├── In treatment setting → immediate staff notification
+├── Post-detox (first 30 days) → lower threshold for escalation
+└── PAWS symptoms → medical consultation if persistent
 ```
 
-## Treatment Modality Guide
-
-### Evidence-Based Approaches
-
-| Modality | What It Is | Best For | Key Skills Learned |
-|----------|-----------|----------|-------------------|
-| **CBT** | Cognitive Behavioral Therapy | Thought pattern change | Identifying distortions, thought challenging |
-| **DBT** | Dialectical Behavior Therapy | Emotional regulation | Distress tolerance, interpersonal effectiveness |
-| **MI** | Motivational Interviewing | Building motivation | Resolving ambivalence, finding internal motivation |
-| **EMDR** | Eye Movement Desensitization | Trauma processing | Processing traumatic memories safely |
-| **MAT** | Medication-Assisted Treatment | Opioid/alcohol use | Reducing cravings, preventing withdrawal |
-| **CM** | Contingency Management | Building healthy habits | Positive reinforcement for behaviors |
-| **MBT** | Mentalization-Based Therapy | Relationship issues | Understanding self and others |
-
-### 12-Step vs. Alternative Programs
+### Treatment Modality Selection
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    RECOVERY PROGRAM OPTIONS                  │
-├─────────────────────────────────────────────────────────────┤
-│  12-Step (AA/NA/CA)                                         │
-│  ├─ Spiritual foundation (Higher Power concept)             │
-│  ├─ Sponsor relationship                                    │
-│  ├─ Steps and traditions framework                          │
-│  └─ Widespread availability, community                      │
-│                                                             │
-│  SMART Recovery                                             │
-│  ├─ Science-based (CBT/REBT)                                │
-│  ├─ Self-empowerment focus                                  │
-│  ├─ 4-Point Program                                         │
-│  └─ No spiritual requirement                                │
-│                                                             │
-│  Refuge Recovery / Recovery Dharma                          │
-│  ├─ Buddhist-inspired, mindfulness-based                    │
-│  ├─ Meditation practice                                     │
-│  └─ Eightfold Path framework                                │
-│                                                             │
-│  LifeRing Secular Recovery                                  │
-│  ├─ Secular, self-directed                                  │
-│  ├─ "Sober self" concept                                    │
-│  └─ Peer support focus                                      │
-└─────────────────────────────────────────────────────────────┘
+PATIENT PROFILE → RECOMMENDED APPROACH
 
-Note: These can complement each other. Many people use multiple programs.
+Trauma History + Addiction:
+├── Primary: EMDR or trauma-informed CBT
+├── Secondary: DBT for emotional regulation
+├── MAT if opioid/alcohol involved
+└── Avoid exposure therapy until stabilized
+
+High Emotional Dysregulation:
+├── Primary: DBT (distress tolerance focus)
+├── Secondary: Mindfulness-based interventions
+├── Consider psychiatric evaluation
+└── Structure over insight-based therapy initially
+
+Motivation Ambivalence:
+├── Primary: Motivational Interviewing
+├── Avoid confrontational approaches
+├── Focus on discrepancy between values/behavior
+└── Let patient argue for change
+
+Opioid Use Disorder:
+├── MAT evaluation within 24-48 hours
+├── Buprenorphine if mild-moderate withdrawal
+├── Methadone if severe dependency/failed bup
+├── Vivitrol only after 7-14 days clean
+└── Combine with psychosocial treatment always
 ```
 
-## Coping Skills Toolkit
-
-### Immediate Craving Response (HALT + STOP)
+### Crisis Intervention Thresholds
 
 ```
-When craving hits, check HALT:
-├── H - Hungry? (eat something nutritious)
-├── A - Angry? (process the emotion)
-├── L - Lonely? (reach out to someone)
-└── T - Tired? (rest if possible)
+PRESENTATION → IMMEDIATE ACTION
 
-Then STOP:
-├── S - Stop what you're doing
-├── T - Take a breath
-├── O - Observe what you're feeling
-└── P - Proceed mindfully
+Active suicidal ideation with plan:
+├── 988 crisis line or 911
+├── Do not leave person alone
+├── Remove means if accessible
+└── Transport to emergency room
+
+Active withdrawal symptoms:
+├── Medical evaluation within 4 hours
+├── Alcohol withdrawal → ER (seizure risk)
+├── Opioid withdrawal → comfort measures + MAT consult
+└── Benzo withdrawal → medical supervision required
+
+Relapse with medical complications:
+├── Overdose risk assessment
+├── Tolerance may be reduced
+├── 911 if unconscious/slow breathing
+└── Medical clearance before treatment re-entry
+
+Family crisis/domestic violence:
+├── Safety planning immediate priority
+├── Remove from unsafe environment
+├── Connect with domestic violence resources
+└── Treatment secondary to safety
 ```
 
-### Grounding Techniques (5-4-3-2-1)
+## FAILURE MODES
 
-```
-For anxiety, dissociation, or overwhelming cravings:
+### 1. White-Knuckling (Willpower Dependency)
+**Detection**: Patient relies solely on determination, avoids tools/support, says "I should be stronger"
+**Symptoms**: Increasing irritability, isolation, "I don't need meetings/medication"
+**Fix**: Reframe recovery as skill-building, not character test. Introduce concrete coping tools. Address shame around needing help.
 
-5 things you can SEE
-├── Look around, name them out loud
+### 2. Program Shopping (Perpetual Seeking)
+**Detection**: Frequently changing programs, blaming failures on "wrong approach," never completing treatment
+**Symptoms**: "This program doesn't work for me," constant research into new methods
+**Fix**: Commit to one evidence-based approach for 90+ days. Address underlying perfectionism/control issues.
 
-4 things you can TOUCH
-├── Feel textures, temperatures
+### 3. Dry Drunk Syndrome (Abstinence Without Recovery)
+**Detection**: Stopped using but mood, relationships, and functioning remain poor; increased irritability, depression
+**Symptoms**: "I'm miserable sober," relationship conflicts, emotional instability despite abstinence
+**Fix**: Focus on underlying mental health, trauma work, relationship skills. Recovery is more than not using.
 
-3 things you can HEAR
-├── Ambient sounds, near and far
+### 4. All-or-Nothing Relapse Response (Relapse = Failure)
+**Detection**: After any slip, patient abandons all recovery efforts, "I've blown it completely"
+**Symptoms**: Binge after minor slip, quitting treatment post-relapse, shame spiraling
+**Fix**: Normalize slips as part of learning process. Immediate re-engagement strategy. Harm reduction mindset.
 
-2 things you can SMELL
-├── Notice scents in your environment
+### 5. Medication Stigma Trap (MAT Avoidance)
+**Detection**: Refusing MAT due to "not being really sober," pressure from others, shame about medication
+**Symptoms**: Multiple failed attempts without MAT, listening to anti-MAT voices in recovery community
+**Fix**: Education on brain disease model, connecting with MAT-positive peers, addressing internalized stigma.
 
-1 thing you can TASTE
-├── Focus on current taste in your mouth
-```
+## WORKED EXAMPLES
 
-### DBT Distress Tolerance (TIP Skills)
+### Example 1: Early Recovery Craving Episode
 
-```
-For high-intensity emotional moments:
+**Scenario**: Day 45 in IOP, patient Sarah texts at 7 PM: "Having massive craving. Just drove past my dealer's street. Don't know what to do."
 
-T - Temperature
-├── Hold ice cubes, cold water on face
-├── Activates dive reflex, calms nervous system
+**Expert Response Process**:
+1. **Immediate triage**: Assess current location/safety - still in car near dealer?
+2. **Intensity assessment**: Rate 1-10 → Sarah says "8"
+3. **Apply 7-10 protocol**: 
+   - Direct her to drive to safe location (coffee shop, meeting)
+   - Stay on phone/text until she's there
+   - Have her call sponsor while driving
+4. **HALT check**: Hasn't eaten since noon (hungry), angry about job rejection today
+5. **Physical intervention**: Order food, use ice cubes for TIP skills
+6. **Follow-up plan**: Stay at coffee shop 1 hour, attend 8:30 meeting
+7. **Next day processing**: Discuss trigger sequence in therapy
 
-I - Intense Exercise
-├── Run in place, jumping jacks, stairs
-├── Burns off stress hormones
+**Novice mistake**: Would focus on "willpower" or shame about the craving
+**Expert insight**: Cravings are neurobiological - treat with behavioral interventions, not moral judgment
 
-P - Paced Breathing
-├── Breathe out longer than in (4-7-8 pattern)
-├── Activates parasympathetic system
+### Example 2: Family Visit During Treatment
 
-P - Progressive Muscle Relaxation
-├── Tense and release muscle groups
-├── Releases physical tension
-```
+**Scenario**: Jake, 30 days residential, family visiting this weekend. Parents historically critical, triggering shame and previous relapses.
 
-### Urge Surfing
+**Expert Preparation Strategy**:
+1. **Pre-visit planning**: Role-play difficult conversations in therapy
+2. **Boundary setting**: Communicate visit structure to family beforehand
+3. **Exit strategy**: Clear plan for shortened visit if needed
+4. **Support activation**: Sponsor on standby, group members aware
+5. **Emotional preparation**: Process family trauma in therapy sessions
+6. **During visit**: 
+   - Structured activities (avoid unstructured time)
+   - Check-ins with staff every 2 hours
+   - Use bathroom breaks for grounding exercises
+7. **Post-visit debrief**: Process emotions in next therapy session
 
-```
-Instead of fighting the craving, ride it like a wave:
+**Novice approach**: "Just get through it" without preparation
+**Expert insight**: Family visits are high-risk periods requiring active management
 
-1. Notice the urge (don't judge it)
-2. Rate its intensity (1-10)
-3. Observe where you feel it in your body
-4. Breathe into that area
-5. Watch the intensity rise...
-6. ...peak...
-7. ...and fall (cravings typically last 15-30 minutes)
-8. Rate the intensity again
+### Example 3: PAWS vs. Depression Treatment Choice
 
-Key insight: Cravings are temporary. You don't have to act on them.
-```
+**Scenario**: Month 3 recovery, persistent depression, fatigue, anhedonia. Question: Start antidepressant or wait for PAWS to resolve?
 
-## Medication-Assisted Treatment (MAT)
+**Expert Decision Tree**:
+1. **Timeline assessment**: When did symptoms start? Pre-use, during use, or post-cessation?
+2. **Severity evaluation**: Functional impairment level? Suicidal ideation?
+3. **Previous episodes**: History of depression independent of substance use?
+4. **Substance of choice**: Alcohol/depressants more likely PAWS, stimulants may mask depression
+5. **Decision matrix**:
+   - If symptoms pre-date substance use + functional impairment → medication trial
+   - If closely tied to cessation + mild-moderate severity → wait 6 months with close monitoring
+   - If suicidal ideation present → immediate psychiatric evaluation
+   - If mixed picture → 3-month intensive therapy trial first
 
-### Understanding Your MAT Options
+**Novice error**: Assuming all post-cessation depression is PAWS
+**Expert nuance**: Distinguish between neurochemical rebalancing and underlying mood disorders
 
-| Medication | Used For | How It Works | Key Considerations |
-|------------|----------|--------------|-------------------|
-| **Suboxone** (buprenorphine/naloxone) | Opioid use | Partial agonist, blocks cravings | Must be in withdrawal to start |
-| **Sublocade** | Opioid use | Monthly injection of buprenorphine | Steady levels, no daily dosing |
-| **Methadone** | Opioid use | Full agonist, daily dosing | Clinic visits required |
-| **Vivitrol** | Opioid/alcohol | Blocks receptors, monthly injection | Must be opioid-free 7-14 days |
-| **Naltrexone** (oral) | Opioid/alcohol | Blocks receptors, daily pill | Reduces "high" from use |
-| **Antabuse** | Alcohol | Creates nausea if drinking | Deterrent effect |
-| **Campral** | Alcohol | Balances brain chemistry | Reduces cravings |
+## QUALITY GATES
 
-### MAT Myths vs. Facts
+Recovery Support Mastery Checklist:
 
-```
-MYTH: "MAT is just trading one drug for another"
-FACT: MAT is evidence-based medicine that normalizes brain function,
-      reduces cravings, and saves lives. It's no different than using
-      insulin for diabetes.
+- [ ] Can demonstrate 3+ coping skills under stress without prompting
+- [ ] Has identified specific personal triggers and corresponding response plans
+- [ ] Maintains regular contact with recovery support network (weekly minimum)
+- [ ] Can explain their medication regimen and when to contact medical team
+- [ ] Has completed crisis contact list and shared with family/friends
+- [ ] Demonstrates understanding of HALT principles and applies them consistently
+- [ ] Can articulate the difference between slip and relapse with recovery plan for each
+- [ ] Has established consistent daily structure including sleep/meal times
+- [ ] Shows evidence of processing trauma/underlying issues in therapy
+- [ ] Can identify warning signs of mental health deterioration and help-seeking steps
 
-MYTH: "You're not really sober if you're on MAT"
-FACT: Recovery is not defined by the absence of medication.
-      Stability, function, and quality of life are what matter.
+## NOT-FOR BOUNDARIES
 
-MYTH: "You should get off MAT as soon as possible"
-FACT: Research shows longer MAT duration = better outcomes.
-      The decision to taper should be made with your doctor when stable.
-```
+**DO NOT use this skill for:**
+- Prescribing or adjusting medications → defer to medical team
+- Crisis intervention with active suicidal ideation → use crisis-intervention-specialist
+- Active overdose situations → call 911 immediately
+- Family therapy facilitation → refer to family-systems-therapist
+- Trauma processing → use trauma-therapy-specialist
+- Legal advice regarding treatment or addiction-related charges → legal professional
+- Employment/disability determinations → vocational counselor
+- Child custody issues related to addiction → family law attorney
 
-## Living Situation Considerations
-
-### Residential Treatment
-
-```
-Making the Most of Residential:
-├── Engage fully in programming
-├── Build relationships with peers and staff
-├── Follow the structure (it's there for a reason)
-├── Be honest in groups and with your counselor
-├── Use free time productively
-├── Start planning for aftercare early
-└── Practice skills in a safe environment
-```
-
-### IOP/PHP (Outpatient - Living at Home)
-
-```
-Commuting to Treatment Challenges:
-├── Returning home to triggers daily
-├── Managing home responsibilities + treatment
-├── Partners/family who don't understand
-├── Work/childcare conflicts
-├── Isolation between sessions
-└── Access to substances
-
-Strategies:
-├── Secure your home environment (remove substances)
-├── Communicate with family about boundaries
-├── Build structure into non-treatment hours
-├── Attend extra meetings on non-treatment days
-├── Keep your counselor informed of home challenges
-├── Have phone numbers ready for crisis moments
-└── Consider sober living if home isn't safe
-```
-
-## Family & Relationship Dynamics
-
-### Communicating with Partners/Family
-
-```
-What families need to understand:
-├── Addiction is a brain disease, not a moral failing
-├── Recovery is a process, not an event
-├── Their role: support, not control
-├── Boundaries are healthy for everyone
-├── Al-Anon/Nar-Anon exists for them too
-
-What you can communicate:
-├── "I'm in treatment and taking this seriously"
-├── "This is what I need from you right now: [specific request]"
-├── "I understand I've hurt you. I'm working on making amends"
-├── "Recovery is my responsibility. I need your support, not your management"
-├── "Let's work on this together with a family counselor"
-```
-
-### Couples Therapy in Recovery
-
-```
-Why couples therapy matters:
-├── Addiction affects the whole relationship
-├── Communication patterns need rebuilding
-├── Trust takes time and structured work
-├── Both partners have healing to do
-├── Codependency patterns need addressing
-
-When to start:
-├── Usually after initial stabilization (30-90 days)
-├── When both partners are willing
-├── With a therapist who understands addiction
-├── As complement to individual work, not replacement
-```
-
-## Holistic Wellness
-
-### Daily Recovery Structure
-
-```
-Morning Routine:
-├── Gratitude list (3 things)
-├── Meditation/prayer (5-15 min)
-├── Healthy breakfast
-├── Review daily intentions
-└── Morning meeting (if helpful)
-
-Throughout Day:
-├── Regular check-ins with self
-├── Meals at consistent times
-├── Movement/exercise
-├── Connection with recovery support
-└── Practice skills from treatment
-
-Evening Routine:
-├── Review the day (what went well?)
-├── 10th step inventory (if in 12-step)
-├── Prepare for tomorrow
-├── Wind-down activities (no screens)
-└── Consistent bedtime
-```
-
-### Nutrition & Sleep
-
-```
-Nutrition in Recovery:
-├── Regular meals stabilize blood sugar and mood
-├── Protein helps rebuild neurotransmitters
-├── Reduce sugar/caffeine (can trigger cravings)
-├── Stay hydrated
-└── Consider consulting nutritionist
-
-Sleep Hygiene:
-├── Consistent sleep/wake times
-├── No screens 1 hour before bed
-├── Cool, dark room
-├── Limit caffeine after noon
-├── Address sleep issues with your doctor
-└── Many in recovery have disrupted sleep initially - it improves
-```
-
-## Common Challenges & Solutions
-
-### "I feel like I don't fit in at meetings"
-
-```
-Options:
-├── Try different meetings (they vary widely)
-├── Try different programs (SMART, Refuge, LifeRing)
-├── Look for specialized meetings (LGBTQ+, young people, professionals)
-├── Online meetings offer more variety
-├── Focus on similarities, not differences
-└── Give it time - connection builds gradually
-```
-
-### "My family doesn't trust me"
-
-```
-Understanding:
-├── Trust is rebuilt through consistent action over time
-├── It's not about proving yourself - it's about being yourself
-├── Their caution is protective, not punishing
-├── Focus on what you CAN control (your behavior)
-
-Actions:
-├── Be where you say you'll be
-├── Follow through on commitments
-├── Accept accountability without defensiveness
-├── Let time and consistency work
-└── Consider family therapy when appropriate
-```
-
-### "I'm bored without substances"
-
-```
-The Science:
-├── Dopamine system is recalibrating
-├── Things will feel less pleasurable for a while
-├── This is temporary (neuroplasticity!)
-
-Solutions:
-├── Exercise (natural dopamine boost)
-├── New hobbies (guitar, art, gaming, sports)
-├── Service work (helping others)
-├── Social connection (even when you don't feel like it)
-├── Accept boredom as part of healing
-└── Structure your time intentionally
-```
-
-## Integration Points
-
-- **sober-addict-protector**: Daily protection strategies
-- **partner-text-coach**: Communication with partners/family
-- **jungian-psychologist**: Shadow work and deeper psychological exploration
-- **hrv-alexithymia-expert**: Emotional awareness and regulation
-
----
-
-**Core Philosophy**: Recovery is possible. You are more than your addiction. This skill exists to provide information and support - but your treatment team, your sponsor/supports, and YOUR commitment are what make recovery real. Use this as a resource, not a replacement for human connection and professional care.
+**Refer to other skills:**
+- Daily relapse prevention → sober-addict-protector
+- Deep psychological work → jungian-psychologist
+- Communication with partners → partner-text-coach
+- Emotional regulation → hrv-alexithymia-expert

@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Towards_a_taxonomy_of_cognitive_task_ana.pdf",
+    "path": "../batch_ndm_remaining/Towards_a_taxonomy_of_cognitive_task_ana.pdf",
+    "chars": 226518,
+    "tokens_approx": 56629
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T16:27:19.150121Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 87985,
+        "output": 26507
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T16:27:19.159946Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1985,
+        "output": 3404
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 616.5583629608154,
+  "generated_at": "2026-02-24T16:27:19.168415Z"
+}

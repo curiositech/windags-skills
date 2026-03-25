@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: fancy-yard-landscaper
 description: Expert landscape designer transforming yards through photo mapping, 3D visualization, seasonal planning, and deep plant knowledge. Specializes in fast-growing privacy screens (knows arborvitae pitfalls), architecture-appropriate design, outdoor living spaces, and realistic maintenance expectations. Activate on "landscape design", "yard design", "garden planning", "plant selection", "privacy screen", "outdoor living", "backyard makeover", "arborvitae", "hedge", "fast growing tree", "landscaping ideas". NOT for interior design (use interior-design-expert), hardscape construction (consult contractors), or lawn care chemicals (consult local experts).
 allowed-tools: Read,Write,Edit,Bash,WebFetch,mcp__stability-ai__stability-ai-generate-image
@@ -20,386 +21,230 @@ pairs-with:
 
 Transform your outdoor space into a beautiful, functional landscape with expert plant knowledge and design principles.
 
-## When to Use This Skill
+## DECISION POINTS
 
-**Use for:**
-- Analyzing photos of your yard for design potential
-- Creating landscape plans with visualization
-- Plant selection for your climate and conditions
-- Privacy screening (fast-growing options that actually work)
-- Architecture-complementing design
-- Seasonal planning and phased implementation
-- Understanding what grows tall and fast (and what doesn't)
-
-**NOT for:**
-- Interior design → use interior-design-expert
-- Hardscape construction (patios, walls) → consult contractors
-- Chemical lawn treatments → consult local lawn services
-- Tree removal → hire certified arborists
-- Irrigation installation → consult irrigation specialists
-
-## The Design Process
+### Primary Design Process Decision Tree
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    LANDSCAPE DESIGN FLOW                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1. DOCUMENT         2. ANALYZE           3. DESIGN              │
-│  ├─ Photos (all      ├─ Sun/shade         ├─ Zones (public/     │
-│  │  angles, times)   │  mapping           │  private/utility)   │
-│  ├─ Measurements     ├─ Soil conditions   ├─ Focal points       │
-│  └─ Existing plants  └─ Drainage          └─ Plant palette      │
-│                                                                  │
-│  4. VISUALIZE        5. PHASE             6. IMPLEMENT          │
-│  ├─ AI renders       ├─ Priority items    ├─ Seasonal timing    │
-│  ├─ Plan drawings    ├─ Budget tiers      ├─ DIY vs. hire       │
-│  └─ Plant lists      └─ Year 1/2/3+       └─ Maintenance plan   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Photo Documentation Guide
-
-### What Photos to Take
-
-```
-ESSENTIAL SHOTS:
-├── Overview from each corner of property
-├── From each window looking out
-├── Problem areas (drainage, erosion, bare spots)
-├── Existing plants you want to keep
-├── Neighbor views you want to screen
-└── Architecture details for style matching
-
-TIMING:
-├── Morning (east sun exposure)
-├── Midday (overhead sun/shade patterns)
-├── Evening (west exposure, golden hour beauty)
-├── If possible: winter vs summer foliage
-
-INCLUDE IN FRAME:
-├── Property lines/fences
-├── Utility boxes/meters
-├── Windows and doors
-├── HVAC units, septic covers
-└── Overhead wires
-```
-
-## Fast-Growing Privacy Plants: The Truth
-
-### The Arborvitae Reality Check
-
-```
-ARBORVITAE (Thuja) - Everybody's First Choice
-
-Common types:
-├── 'Emerald Green' - Narrow, 12-15' mature height
-├── 'Green Giant' - Fast, 40-60' mature height
-└── 'American' - Native, 40-60' mature height
-
-THE PROBLEMS NOBODY TELLS YOU:
-├── Deer LOVE them (will eat to sticks in one winter)
-├── Bagworms can devastate entire hedges
-├── Heavy snow/ice breaks branches (often permanently)
-├── Root-bound nursery stock often fails
-├── They brown from inside out as they age
-├── 'Emerald Green' often dies in extreme cold
-└── They look sparse for 3-5 years before filling in
-
-VERDICT: Consider carefully. Have backup plan.
-```
-
-### Better Privacy Screen Options by Speed
-
-```
-VERY FAST (3-5' per year):
-├── Hybrid Willow - 6-10'/year, but SHORT-LIVED (15-20 years)
-├── Lombardy Poplar - 6'/year, but DISEASE-PRONE, messy
-├── Leyland Cypress - 3-4'/year, but BAGWORM/DISEASE susceptible
-└── Eastern Red Cedar - 2-3'/year, TOUGH but slow to fill
-
-FAST (2-3' per year):
-├── Cryptomeria 'Yoshino' - 3'/year, graceful, deer-resistant
-├── Green Giant Arborvitae - 3'/year, if deer aren't an issue
-├── Dawn Redwood - 2-3'/year, deciduous but stunning
-└── Nellie Stevens Holly - 2-3'/year, evergreen, berries
-
-MEDIUM (1-2' per year) BUT BETTER LONG-TERM:
-├── Eastern White Pine - 2'/year, soft texture, needs space
-├── Norway Spruce - 2'/year, classic, very hardy
-├── Canadian Hemlock - 1'/year, shade-tolerant, elegant
-├── American Holly - 1'/year, native, wildlife value
-└── Southern Magnolia - 1-2'/year (zones 7+), broadleaf evergreen
-
-THE HARD TRUTH:
-Fast growth often = weak wood, disease problems, short lifespan
-The best privacy screens are planted 10 years ago.
-Second best time: this fall.
-```
-
-### Privacy Screening Decision Tree
-
-```
-How quickly do you NEED privacy?
-├── ASAP (1-2 years)
-│   └── Consider fence + fast growers
-│       ├── Fence provides immediate privacy
-│       └── Plants soften and eventually replace
+CLIENT REQUEST → First Assessment
+├── Has photos + measurements + specific needs?
+│   ├── YES → Proceed to analysis phase
+│   └── NO → STOP. Get documentation first (see Quality Gates)
 │
-├── Medium-term (3-5 years)
-│   └── Plant mid-sized specimens now
-│       ├── 6-8' plants ($100-300 each)
-│       └── Mix species for resilience
+├── ANALYSIS PHASE: What's the primary constraint?
+│   ├── PRIVACY (most common)
+│   │   ├── Need screening within 2 years?
+│   │   │   ├── YES → Fast-growth options + fence hybrid
+│   │   │   └── NO → Quality long-term species
+│   │   └── Deer pressure high?
+│   │       ├── YES → Avoid arborvitae, use resistant species
+│   │       └── NO → Full plant palette available
+│   │
+│   ├── SHADE/SUN Issues
+│   │   ├── Less than 3 hours sun?
+│   │   │   ├── YES → Shade-tolerant palette only
+│   │   │   └── NO → Assess partial vs full sun zones
+│   │   └── More than 8 hours intense sun?
+│   │       ├── YES → Drought-tolerant, heat-resistant
+│   │       └── NO → Standard sun/part-shade options
+│   │
+│   └── BUDGET Constraints
+│       ├── Under $2000 total?
+│       │   ├── YES → Phased approach, start with structure
+│       │   └── NO → Can do comprehensive design
+│       └── DIY vs Professional install?
+│           ├── DIY → Simplify design, standard plants
+│           └── PRO → More complex features possible
+```
+
+### Soil/Drainage Decision Tree
+
+```
+DRAINAGE ASSESSMENT (critical but often skipped)
+├── Does water pool after rain?
+│   ├── YES → Poor drainage confirmed
+│   │   ├── Clay soil + pooling → Install bioswale or French drain
+│   │   ├── Just clay → Amend beds with compost + sand
+│   │   └── Compacted → Core aeration + organic matter
+│   │
+│   └── NO → Test infiltration rate
+│       ├── Dig 12" hole, fill with water, time drainage
+│       ├── Drains in <2 hours → Good drainage, standard plants
+│       ├── 2-6 hours → Moderate, some wet-soil adaptations
+│       └── >6 hours → Poor drainage, see above solutions
 │
-└── Long-term thinking (5+ years)
-    └── Plant smaller, healthier stock
-        ├── 3-5' plants ($30-75 each)
-        ├── Establish better root systems
-        └── Outperform larger transplants within 5 years
-
-BUDGET REALITY:
-├── Cheap/fast route often needs replacing in 10-15 years
-├── Quality/patient route lasts generations
-└── Consider: which will you regret more?
+├── PLANT SELECTION SHIFTS based on drainage:
+│   ├── Poor drainage → River birch, bald cypress, inkberry holly
+│   ├── Good drainage → Standard palette
+│   └── Excellent drainage → Drought-tolerant, Mediterranean plants
 ```
 
-## Plant Selection by Condition
-
-### Sun Exposure Guide
+### Privacy Timeline Decision Matrix
 
 ```
-FULL SUN (6+ hours direct sun):
-├── Most flowering shrubs (roses, hydrangea paniculata)
-├── Ornamental grasses
-├── Fruit trees
-├── Most privacy hedges
-└── Lavender, salvia, coneflowers
-
-PART SHADE (3-6 hours sun):
-├── Hydrangea (macrophylla, quercifolia)
-├── Azaleas and rhododendrons
-├── Japanese maples
-├── Hostas, ferns
-└── Astilbe, heuchera
-
-FULL SHADE (less than 3 hours):
-├── Hostas, ferns, wild ginger
-├── Pachysandra, vinca groundcovers
-├── Canadian hemlock (privacy)
-├── Some hydrangeas (oak leaf)
-└── Coral bells, bleeding heart
+URGENCY vs QUALITY Trade-off
+├── IMMEDIATE (fence + plants)
+│   ├── 6' fence now, plants to soften/replace over time
+│   ├── Cost: $25-50/linear foot fencing + $200-400 plants
+│   └── Result: Privacy now, beauty in 3-5 years
+│
+├── FAST (2-3 years acceptable)
+│   ├── 6-8' specimens of proven species
+│   ├── Cost: $150-300 per plant, closer spacing
+│   └── Result: Screening in 2-3 years, mature in 5-7
+│
+└── PATIENT (5+ years acceptable)
+    ├── 3-5' healthy nursery stock, proper spacing
+    ├── Cost: $50-100 per plant, wider spacing
+    └── Result: Better long-term health, lower cost
 ```
 
-### Deer Resistance Reality
+## FAILURE MODES
 
-```
-DEER-RESISTANT (not deer-proof):
-├── Ornamental grasses
-├── Lavender, Russian sage, catmint
-├── Boxwood (usually)
-├── Japanese pieris
-├── Barberry (invasive in some areas)
-├── Most ferns
-└── Daffodils, alliums
+### "Arborvitae Tunnel Vision" Anti-Pattern
+**DETECTION RULE**: Client says "I want arborvitae for privacy" as first plant mentioned
+**SYMPTOMS**: Fixated on single species, ignores site conditions, dismisses alternatives
+**DIAGNOSIS**: Falling for nursery marketing without understanding trade-offs
+**FIX**: 
+- Show arborvitae failure photos (deer damage, bagworm, snow break)
+- Present 3 alternatives with pros/cons comparison
+- If they insist: specify deer protection and maintenance requirements
 
-DEER CANDY (they WILL eat):
-├── Hostas
-├── Arborvitae
-├── Rhododendrons and azaleas
-├── Tulips
-├── Daylilies
-├── Roses
-└── Most fruit trees
+### "Mature Size Blindness" Anti-Pattern  
+**DETECTION RULE**: Spacing plants based on nursery size, not mature spread
+**SYMPTOMS**: Plants too close to house/fence/each other, "room for one more" thinking
+**DIAGNOSIS**: Not visualizing 10-20 year growth
+**FIX**:
+- Draw mature footprints on site plan
+- Show before/after photos of overcrowded plantings
+- Calculate cost of future removal/replacement
 
-STRATEGY IN HIGH-DEER AREAS:
-├── Accept some plants are off the menu
-├── Deer fencing (8' minimum for dedicated deer)
-├── Repellent rotation (they adapt)
-├── Plant sacrificial perimeter
-└── Native plants deer evolved with = more resistant
-```
+### "Foundation Suffocation" Anti-Pattern
+**DETECTION RULE**: Any plant within 3 feet of house foundation
+**SYMPTOMS**: Shrubs touching walls, blocking windows, pest entry points
+**DIAGNOSIS**: Traditional "foundation planting" mentality without modern understanding
+**FIX**:
+- Move plantings to mature width + 2 feet from structure
+- Use low shrubs under windows, taller plants at corners
+- Show moisture/pest damage examples
 
-## Architecture-Matched Design
+### "Big Box Bargain Hunter" Anti-Pattern
+**DETECTION RULE**: Planning around clearance/sale plants without species research
+**SYMPTOMS**: "I got 20 arborvitae for $300!" without knowing mature needs
+**DIAGNOSIS**: Price-first instead of site-appropriate selection
+**FIX**:
+- Calculate replacement costs in 5-10 years
+- Show photos of failed cheap plantings
+- Redirect to local nursery with site-appropriate alternatives
 
-### House Style → Landscape Style
+### "Maintenance Amnesia" Anti-Pattern
+**DETECTION RULE**: Client wants "low maintenance" but selects high-maintenance plants
+**SYMPTOMS**: Roses + boxwood + pristine lawn + perfect edges desired with "no work"
+**DIAGNOSIS**: Instagram expectations without reality check
+**FIX**:
+- Define actual maintenance hours available per week
+- Show maintenance-appropriate plant palettes
+- Phase in higher-maintenance areas over time
 
-```
-COLONIAL/TRADITIONAL:
-├── Formal symmetry
-├── Boxwood hedges, foundation shrubs
-├── Classic perennial borders
-├── Brick or stone paths
-└── Traditional roses, hydrangeas
+## WORKED EXAMPLES
 
-MODERN/CONTEMPORARY:
-├── Asymmetric, sculptural
-├── Ornamental grasses, architectural plants
-├── Minimalist plant palette (repeat!)
-├── Concrete, steel, gravel hardscape
-└── Green walls, dramatic specimens
+### Example 1: Suburban Deer Problem Privacy Screen
+**SCENARIO**: Colonial home, 40' back fence needs screening, heavy deer pressure, $3000 budget, 5-year timeline acceptable
 
-CRAFTSMAN/BUNGALOW:
-├── Naturalistic, arts-and-crafts feeling
-├── Native plants, cottage garden style
-├── Stone walls, wood arbors
-├── Mix of formal structure + flowing plants
-└── Ferns, hostas, informal hedges
+**DECISION PROCESS**:
+1. **Initial Assessment**: Photos show deer trails, damaged hostas, neighbors' arborvitae eaten to sticks
+2. **Drainage Test**: Good drainage, full sun location
+3. **Species Selection**: AVOID arborvitae (deer candy), consider alternatives
+4. **Final Choice**: Mix of Nellie Stevens Holly (deer resistant) + native Eastern Red Cedar
+5. **Spacing**: 5 plants total, 8' apart (accounts for mature 10-12' width)
+6. **Phasing**: Install fall Year 1, assess gaps Year 3, infill if needed
 
-FARMHOUSE:
-├── Mix of utility and beauty
-├── Kitchen gardens, cutting gardens
-├── Picket fences, informal hedges
-├── Heirloom varieties
-└── Meadow plantings, pollinator gardens
+**NOVICE WOULD MISS**: Would pick arborvitae based on "fast growing" label, ignore deer evidence
+**EXPERT CATCHES**: Deer scat near fence = avoid deer-favorite plants, mix species for resilience
 
-MID-CENTURY MODERN:
-├── Bold, geometric
-├── Desert-adapted or sculptural plants
-├── Specimen trees (Japanese maple, olive)
-├── Gravel, aggregate, pavers
-└── Indoor-outdoor flow
-```
+**OUTCOME**: Initial slower growth but no deer damage, full screening by Year 5, 20+ year lifespan
 
-## Seasonal Planning
+### Example 2: Shaded Urban Courtyard Design  
+**SCENARIO**: Townhouse backyard, 80% shade from surrounding buildings, wants "garden room" feel, concrete patio exists
 
-### When to Plant What
+**DECISION PROCESS**:
+1. **Sun Mapping**: Only 2-3 hours morning sun on east side
+2. **Constraint**: Shade limits flowering plants, focus on texture/foliage
+3. **Style Match**: Contemporary townhouse = clean lines, limited palette
+4. **Plant Selection**: 
+   - Structure: Japanese maple (specimen tree)
+   - Mass: Boxwood spheres (3 sizes for rhythm)
+   - Texture: Mixed ferns + hostas in drifts
+   - Accent: White caladiums for summer pop
+5. **Layout**: Asymmetric groupings, clear sight lines to patio
 
-```
-SPRING (after last frost):
-├── Annuals and tender perennials
-├── Warm-season grasses
-├── Container plantings
-└── Vegetable gardens
+**NOVICE WOULD MISS**: Would try sun plants in shade, create busy mixed borders
+**EXPERT CATCHES**: Embrace shade as design opportunity, use foliage contrast instead of flowers
 
-FALL (6 weeks before freeze):
-├── Trees and shrubs (BEST TIME)
-├── Spring bulbs
-├── Cool-season grasses (seed)
-├── Perennial divisions
-└── Garlic
+**OUTCOME**: Sophisticated shade garden, low maintenance, year-round structure
 
-WHY FALL PLANTING IS BEST:
-├── Roots grow while tops are dormant
-├── Winter rain establishes roots
-├── Less transplant shock (cool temps)
-├── Plants are often on sale
-└── Spring = immediate growth
-```
+### Example 3: Fast Privacy on Tight Budget with Trade-offs
+**SCENARIO**: Ranch home, noisy road frontage, $1200 budget, need screening ASAP, willing to replace in 10-15 years
 
-### Phased Implementation
+**DECISION PROCESS**:
+1. **Reality Check**: Fast + cheap + permanent = pick two
+2. **Client Choice**: Fast + cheap, accept temporary solution
+3. **Species**: Hybrid willow (6' growth/year) with replacement plan
+4. **Staging**: 8 small willows now ($400), plant permanent species behind ($600), maintenance fund ($200)
+5. **Timeline**: Willows provide screening Year 2-3, permanent plants take over Year 8-10, remove willows
 
-```
-YEAR 1 (Bones):
-├── Trees (they take longest)
-├── Major hardscape
-├── Irrigation rough-in
-└── Screening/privacy plants
+**TRADE-OFF ANALYSIS**:
+- PRO: Privacy in 2 years, fits budget
+- CON: Willows messy, short-lived, need eventual removal
+- ALTERNATIVE: Wait/save for quality plants (client rejected)
 
-YEAR 2 (Structure):
-├── Large shrubs
-├── Paths and borders
-├── Irrigation refinement
-└── Raised beds if desired
+**EXPERT INSIGHT**: Sometimes temporary solutions are appropriate if client understands trade-offs explicitly
 
-YEAR 3+ (Flesh):
-├── Perennials and groundcovers
-├── Fine-tuning
-├── Annual color spots
-└── Maintenance refinement
+## QUALITY GATES
 
-BUDGET TIP: This phasing lets you spend money
-where it matters most first (trees!).
-```
+### Documentation Phase Complete
+- [ ] Photos taken from all four property corners
+- [ ] Photos from each window looking out to landscape area
+- [ ] Measurements of property lines and major features recorded
+- [ ] Existing plants identified and evaluated (keep/remove)
+- [ ] Sun/shade patterns documented for full day
+- [ ] Drainage assessed with dig test or observation after rain
+- [ ] Neighbor screening needs identified with sight line analysis
 
-## Visualization Tools
+### Site Analysis Phase Complete
+- [ ] Soil conditions mapped (drainage, pH if available, compaction)
+- [ ] Microclimates identified (wind patterns, frost pockets)
+- [ ] Utilities located (overhead/underground, septic, well)
+- [ ] Access routes planned for installation and maintenance
+- [ ] Architecture style documented for design cohesion
+- [ ] Deer/pest pressure assessed from evidence
+- [ ] Existing irrigation evaluated or new needs identified
 
-### AI Landscape Rendering
+### Design Approval Phase Complete  
+- [ ] Plant list includes mature sizes and spacing requirements
+- [ ] Budget breakdown shows costs for plants, installation, amendments
+- [ ] Timeline shows phased installation over multiple seasons
+- [ ] Maintenance requirements explicitly discussed and accepted
+- [ ] Alternative options presented for key decisions (3 privacy screen options)
+- [ ] Client signed off on mature plant footprints (no "too big" surprises)
+- [ ] Installation method decided (DIY vs professional vs hybrid)
 
-```
-For Stability AI / Ideogram renders:
+## NOT-FOR BOUNDARIES
 
-PROMPT STRUCTURE:
-[style] landscape design, [house type], [key plants],
-[season], [time of day], [specific features],
-professional landscape photography, magazine quality
+**This skill should NOT be used for:**
 
-EXAMPLE:
-"Modern farmhouse backyard landscape design,
-green giant arborvitae privacy screen along fence,
-ornamental grasses in foreground, stone patio,
-early autumn, golden hour lighting,
-native pollinator garden border,
-professional landscape photography"
+- **Hardscape construction** (patios, retaining walls, drainage systems) → Consult structural engineers and contractors
+- **Tree removal or major pruning** → Use certified arborists only  
+- **Irrigation system design/installation** → Delegate to irrigation specialists
+- **Chemical lawn treatments** → Consult local extension services or licensed applicators
+- **Interior design or houseplant selection** → Use interior-design-expert instead
+- **Vegetable gardening or food production** → Specialized knowledge needed for crop rotation, pest management
+- **Large-scale commercial landscaping** → Requires commercial design training and liability considerations
+- **Native habitat restoration** → Use ecological restoration specialists
+- **Pest/disease diagnosis beyond basic identification** → Consult local extension offices or plant pathologists
 
-REQUEST MULTIPLE ANGLES:
-├── Front elevation
-├── Backyard overview
-├── Patio-eye-view
-└── Aerial/plan view
-```
-
-## Anti-Patterns
-
-### "I Want It to Look Mature Now"
-**Wrong**: Planting 12' trees at $500+ each.
-**Why**: Large transplants often struggle; smaller stock catches up in 3-5 years.
-**Right**: Plant 6-8' trees, invest savings in soil prep and irrigation.
-
-### "One Species Hedge"
-**Wrong**: 50 feet of identical arborvitae.
-**Why**: One disease/pest wipes out entire screen.
-**Right**: Mix 2-3 compatible species for resilience.
-
-### "Foundation Planting Right Against House"
-**Wrong**: Shrubs touching the house.
-**Why**: Moisture damage, pest entry, plant stress, access problems.
-**Right**: Plant mature-width away from foundation.
-
-### "Ignoring Mature Size"
-**Wrong**: Planting Green Giant arborvitae 4' from fence.
-**Why**: They grow 40-60' tall and 12-20' wide.
-**Right**: Research mature size. Plant for 20 years from now.
-
-### "Cheap Nursery Stock"
-**Wrong**: Big-box store clearance plants.
-**Why**: Often root-bound, stressed, or wrong for your zone.
-**Right**: Local nurseries, native plant sales, mail-order specialists.
-
-## Quick Reference Tables
-
-### Fast-Growing Trees by Region
-
-| Tree | Annual Growth | Mature Size | Zones | Notes |
-|------|--------------|-------------|-------|-------|
-| Hybrid Poplar | 5-8' | 40-50' | 3-9 | Short-lived, messy |
-| Weeping Willow | 3-8' | 30-40' | 4-9 | Needs water, invasive roots |
-| Tulip Tree | 2-3' | 70-90' | 4-9 | Native, needs space |
-| Dawn Redwood | 2-3' | 70-100' | 5-8 | Deciduous conifer, stunning |
-| River Birch | 2-3' | 40-70' | 4-9 | Native, peeling bark |
-| Red Maple | 2' | 40-60' | 3-9 | Native, fall color |
-| Bald Cypress | 2' | 50-70' | 4-10 | Deciduous, tough |
-
-### Privacy Screen Plant Spacing
-
-| Plant | Mature Width | Spacing for Hedge | Screen Fill Time |
-|-------|-------------|-------------------|------------------|
-| Arborvitae 'Emerald' | 3-4' | 2-3' apart | 4-6 years |
-| Arborvitae 'Green Giant' | 12-20' | 5-6' apart | 3-5 years |
-| Leyland Cypress | 10-15' | 4-6' apart | 3-4 years |
-| Nellie Stevens Holly | 10-12' | 5-6' apart | 5-7 years |
-| Eastern Red Cedar | 8-15' | 4-6' apart | 5-8 years |
-| Skip Laurel | 6-10' | 4-5' apart | 4-6 years |
-
-## Integration Points
-
-- **interior-design-expert**: Indoor-outdoor flow design
-- **collage-layout-expert**: Garden photo documentation
-- **color-theory-palette-harmony-expert**: Seasonal color planning
-- **drone-cv-expert**: Aerial property mapping
-
----
-
-**Core Philosophy**: Great landscapes grow from understanding—understanding your site, your climate, your maintenance reality, and the true nature of plants. The best garden is one that thrives with the attention you'll actually give it, not the attention you imagine you'll give.
-
-Plant for your future self. That person will thank you.
+**Delegation Points:**
+- For structural issues: "This needs an engineer's assessment"
+- For plant health problems: "Contact your county extension office"  
+- For irrigation: "A certified irrigation designer can optimize this"
+- For mature tree work: "This requires a certified arborist"

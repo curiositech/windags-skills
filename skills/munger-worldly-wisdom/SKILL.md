@@ -1,8 +1,9 @@
 ---
+license: Apache-2.0
 name: munger-worldly-wisdom
-description: "Multidisciplinary decision-making using mental models from psychology, economics, mathematics, and science to identify high-conviction opportunities and avoid cognitive biases. Keywords: latticework, lollapalooza, circle of competence, inversion, moats. NOT for single-discipline analysis, high-frequency trading, or speculative diversification."
+description: 'Multidisciplinary decision-making using mental models from psychology, economics, mathematics, and science to identify high-conviction opportunities and avoid cognitive biases. Keywords: latticework, lollapalooza, circle of competence, inversion, moats. NOT for single-discipline analysis, high-frequency trading, or speculative diversification.'
 allowed-tools: Read
-category: "Wisdom & Decision Making"
+category: Cognitive Science & Decision Making
 tags:
   - mental-models
   - investing

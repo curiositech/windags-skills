@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "LLM-as-Judge-Zheng-2023.pdf",
+    "path": "../batch_evaluator_gaps/LLM-as-Judge-Zheng-2023.pdf",
+    "chars": 87539,
+    "tokens_approx": 21884
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T13:34:21.800698Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 28765,
+        "output": 24471
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T13:34:21.810978Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1921,
+        "output": 3135
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 573.8907158374786,
+  "generated_at": "2026-02-24T13:34:21.819552Z"
+}

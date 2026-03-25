@@ -1,8 +1,9 @@
 ---
+license: Apache-2.0
 name: career-biographer
 description: AI-powered career biographer that conducts empathetic interviews, extracts structured career narratives, and transforms professional stories into portfolios, CVs, and personal brand assets. This skill should be used when users want to document their career journey, create professional portfolios, generate CVs, or craft compelling career narratives.
-allowed-tools: Read,Write,Edit
-category: Business & Monetization
+allowed-tools: Read,Write,Write
+category: Content & Marketing
 tags:
   - career
   - narrative
@@ -20,249 +21,161 @@ pairs-with:
 
 An AI-powered professional biographer that conducts thoughtful, structured interviews about career journeys and transforms stories into actionable professional assets.
 
-## Quick Start
+## Decision Points
 
-**Minimal example to begin a career interview:**
-
+**SITUATION: Interviewee gives vague answer**
 ```
-User: "Help me document my career for a portfolio"
+If → Answer lacks specifics ("I improved things")
+Then → Probe with follow-up: "By how much? For whom? Over what timeframe?"
 
-Biographer:
-1. "Let's start with your current role. How would you describe what you do to someone outside your field?"
-2. [Listen and validate]
-3. "What's the thread that connects your various roles and experiences?"
-4. [Extract themes, probe for specifics, quantify impact]
-5. Generate structured CareerProfile with timeline, skills, projects
-```
+If → Answer is generic ("I led a team")  
+Then → Drill down: "Team of how many? What was your leadership style? What did they deliver?"
 
-**Key principle**: Start broad to establish rapport, then drill into specifics with follow-up questions.
+If → Still vague after 2 probes
+Then → Skip to next topic, return later with different angle
 
-## Core Capabilities
-
-### Empathetic Interview Methodology
-The biographer conducts conversational interviews using a phased approach:
-
-1. **Introduction Phase**: Establish rapport, understand current role and identity
-2. **Career History Phase**: Chronological journey with role transitions and pivotal moments
-3. **Achievements Phase**: Patents, awards, hackathons, talks, publications, and milestones
-4. **Skills Phase**: Technical competencies, leadership abilities, domain expertise
-5. **Aspirations Phase**: Short-term goals, long-term vision, and values
-6. **Audience Phase**: Target readers, desired positioning, and brand identity
-
-### Interview Techniques
-
-To conduct effective career interviews:
-
-- Ask open-ended questions that invite storytelling ("Tell me about a project that changed how you think...")
-- Follow up on interesting details with curiosity ("What made that moment significant?")
-- Connect themes across experiences ("I notice a pattern of...")
-- Validate emotions and challenges ("That sounds like a pivotal moment...")
-- Probe for quantifiable impact ("What was the measurable outcome?")
-- Explore the "why" behind decisions ("What drew you to that opportunity?")
-
-### Structured Data Extraction
-
-Transform interview content into structured career data:
-
-```typescript
-interface CareerProfile {
-  // Identity
-  name: string;
-  headline: string;
-  summary: string;
-
-  // Timeline
-  timelineEvents: {
-    date: string;
-    type: 'role_change' | 'patent' | 'hackathon' | 'award' | 'talk' | 'publication' | 'milestone';
-    title: string;
-    description: string;
-    impact: string;
-    tags: string[];
-  }[];
-
-  // Skills
-  skills: {
-    category: 'technical' | 'leadership' | 'domain' | 'soft';
-    name: string;
-    proficiency: number; // 0-100
-    yearsOfExperience: number;
-  }[];
-
-  // Projects
-  projects: {
-    name: string;
-    role: string;
-    description: string;
-    technologies: string[];
-    impact: string;
-    metrics: string[];
-  }[];
-
-  // Aspirations
-  aspirations: {
-    shortTerm: string[];
-    longTerm: string;
-    values: string[];
-  };
-
-  // Brand
-  brand: {
-    targetAudience: string;
-    keywords: string[];
-    tone: string;
-    colors?: string[];
-  };
-}
+If → Completely stuck on topic
+Then → Ask for story instead: "Tell me about a day when this skill really mattered"
 ```
 
-## Interview Protocol
+**SITUATION: Contradictory information emerges**
+```
+If → Timeline doesn't match across topics
+Then → Flag politely: "Help me reconcile - earlier you said X, now Y"
 
-### Opening Questions
-- "What would you like people to understand about your professional journey?"
-- "How would you describe what you do to someone outside your field?"
-- "What's the thread that connects your various roles and experiences?"
+If → Skills/achievements conflict with role level
+Then → Re-ask with context: "Given you were [level], how did you have authority to [action]?"
 
-### Career History Deep Dives
-- "Walk me through your path from [early role] to [current role]"
-- "What was the hardest transition you made? What did you learn?"
-- "Which role taught you the most about yourself?"
+If → Emotional reaction to flagging
+Then → Validate: "Memory reconstruction is normal, let's find the version that feels most accurate"
+```
 
-### Achievement Mining
-- "What accomplishment are you most proud of that people might not know about?"
-- "Tell me about a time you solved a problem no one else could"
-- "What recognition has meant the most to you, and why?"
+**SITUATION: Interview goes off-track**
+```
+If → Tangent is emotionally important to them
+Then → Acknowledge: "That sounds significant. Let me note it, and let's return to [topic]"
 
-### Skills Discovery
-- "If I were to shadow you for a day, what would I see you excel at?"
-- "What do colleagues consistently come to you for?"
-- "What technical depths would surprise people?"
+If → Multiple tangents in same phase
+Then → Pause interview: "I'm hearing several important threads. Which matters most for your story?"
 
-### Aspirations Exploration
-- "Where do you want to be in 3 years? 10 years?"
-- "What problem do you want to solve that you haven't yet?"
-- "What values guide your career decisions?"
+If → Tangent reveals hidden achievement
+Then → Pivot: "This sounds like something we should explore properly"
+```
 
-### Audience Targeting
-- "Who do you want to reach with your portfolio?"
-- "What's the one thing you want visitors to remember?"
-- "How do you want to be positioned relative to peers?"
+**SITUATION: Determining interview depth**
+```
+If → Portfolio purpose = job search
+Then → Focus on quantified impact, recent 5 years, technical depth
 
-## Output Formats
+If → Portfolio purpose = thought leadership
+Then → Focus on unique insights, industry patterns, speaking/writing
 
-### Portfolio Content
-Generate narrative content for portfolio sections:
-- Hero headline and tagline
-- About me narrative (compelling story arc)
-- Experience descriptions (impact-focused)
-- Project case studies (problem → solution → outcome)
-- Skills visualization data
+If → Portfolio purpose = career transition
+Then → Focus on transferable skills, learning agility, adaptability stories
 
-### CV Generation
-Create structured CV content:
-- Professional summary (3-4 sentences)
-- Experience entries (role, company, dates, bullets)
-- Skills section (categorized and prioritized)
-- Education and certifications
-- Awards and recognition
+If → Timeline pressure (< 30 min available)
+Then → Skip aspirations phase, focus on current role + top 2 achievements
+```
 
-### Personal Brand Assets
-- LinkedIn headline and summary
-- Twitter/X bio (160 characters)
-- Conference speaker bio (100 words, 50 words, 25 words)
-- Email signature tagline
+**SITUATION: Extracting career narrative**
+```
+If → Clear progression pattern visible
+Then → Reinforce thread: "I see a progression toward [theme]"
 
-## Adaptive Questioning
+If → Scattered roles with no obvious connection
+Then → Find hidden theme: "What skill/value connects these experiences?"
 
-The biographer adapts based on career type:
+If → Career gap or setback present
+Then → Frame positively: "What did that experience teach you?"
 
-### Technical Individual Contributors
-Focus on: Technical depth, impact metrics, patents, open source, technical writing
+If → Multiple career pivots
+Then → Position as adaptability: "You've successfully navigated multiple transitions"
+```
 
-### Engineering Managers/Leaders
-Focus on: Team building, culture creation, delivery metrics, mentorship stories
+## Failure Modes
 
-### Founders/Entrepreneurs
-Focus on: Origin story, problem discovery, pivots, lessons learned, vision
+| Anti-Pattern | Symptom | Diagnosis | Fix |
+|--------------|---------|-----------|-----|
+| **Generic Interviewing** | Getting responses like "I do software development" or "I manage people" | Asked softball questions without context or follow-up | DETECT: No specific metrics, technologies, or outcomes mentioned. FIX: Probe with "Walk me through your typical day" or "What would your colleagues say you're known for?" |
+| **Metrics-Free Zone** | All achievements sound like "increased efficiency" or "improved performance" | Interviewee in non-technical role OR interviewer accepted vague answers | DETECT: No numbers, percentages, timelines, or user counts. FIX: Ask "What did your manager use to measure success?" or "How could someone verify this improvement?" |
+| **Timeline Soup** | Career story jumps around chronologically, roles/dates don't connect logically | Rushed through career history phase without establishing structure | DETECT: Can't build coherent timeline from interview notes. FIX: Stop and create visual timeline together: "Let's map this out year by year" |
+| **Achievement Inflation** | Claims sound too senior for stated role level (intern "led company strategy") | Interviewee conflating team achievements with individual contributions | DETECT: Mismatch between job title/level and claimed responsibilities. FIX: Clarify: "What was your specific contribution to that team outcome?" |
+| **Brand Blindness** | Can't articulate target audience or desired positioning beyond "get hired" | Skipped audience phase OR treating all portfolios the same | DETECT: No clear career positioning, generic language throughout. FIX: Ask "Who's the ideal reader?" and "What should they think after reading your story?" |
 
-### Career Transitioners
-Focus on: Transferable skills, motivation for change, unique perspective
+## Worked Example
 
-### Creative Professionals
-Focus on: Portfolio pieces, creative process, client relationships, style evolution
+**Scenario**: Interviewing a Senior Software Engineer transitioning to Engineering Management
 
-## Best Practices
+**Phase 1 - Current Role Discovery**
+```
+Q: "How would you describe what you do to someone outside tech?"
+A: "I build software and help other developers"
+[EXPERT CATCH: Too vague. NOVICE MISS: Would accept this answer]
 
-### Interview Flow
-- Start broad, then drill into specifics
-- One topic per question (avoid compound questions)
-- Allow silence for reflection
-- Mirror language the interviewee uses
-- Summarize and validate understanding before moving on
+Q: "What kind of software? What does 'help' look like day-to-day?"
+A: "I work on our payment processing system. I do code reviews and mentor junior devs"
+[DECISION POINT: Good specifics, probe for metrics]
 
-### Data Quality
-- Extract specific numbers when possible ("led a team of X" → X=?)
-- Get date ranges for all experiences
-- Clarify vague terms ("senior" means what level?)
-- Distinguish between individual and team contributions
+Q: "How many developers do you mentor? What's the scale of the payment system?"
+A: "Three juniors on my team. We process about $2M in transactions daily"
+[EXPERT CATCH: Quantified impact, good foundation for management transition narrative]
+```
 
-### Narrative Craft
-- Find the unique angle (what makes this person's story different?)
-- Connect dots the interviewee might not see
-- Balance humility with accomplishment
-- Make technical work accessible without dumbing down
+**Phase 2 - Career History Navigation**
+```
+Q: "Walk me through your path from first dev role to here"
+A: "Started as junior at startup, then senior at mid-size company, now here"
+[NOVICE: Would move on. EXPERT: Probe transitions]
 
-## When NOT to Use
+Q: "What made you leave the startup for the mid-size company?"
+A: "Startup was chaotic. Wanted more structure"
+[DECISION POINT: Career transition story emerging - structure/process-oriented]
 
-This skill is NOT appropriate for:
-- Quick LinkedIn headline updates (just ask directly)
-- Resume formatting/layout (this extracts content, not formatting)
-- Interview preparation or coaching (this documents past, not prepares for future)
-- Career counseling or job search strategy (this captures stories, not advises on next steps)
+Q: "What did 'chaotic' look like? What kind of structure were you seeking?"
+A: "No code reviews, direct pushes to prod, constant firefighting. I wanted proper development practices"
+[EXPERT CATCH: Values-driven decision, management aptitude signal]
+```
 
-## Common Anti-Patterns
+**Phase 3 - Achievement Extraction**
+```
+Q: "Tell me about an accomplishment you're proud of that people might not know about"
+A: "I implemented our code review process at the mid-size company"
+[DECISION POINT: Leadership/process improvement - perfect for management transition]
 
-### Anti-Pattern: Generic Softball Questions
-**What it looks like**: "Tell me about your career" or "What do you do?"
-**Why it's wrong**: Too broad, loses narrative thread, gets generic responses
-**What to do instead**: Ask about specific transitions: "Walk me through your path from [early role] to [current role]"
+Q: "What was happening before you implemented it? What changed after?"
+A: "Bug reports dropped 60%, deployment confidence went way up, junior devs learned faster"
+[EXPERT CATCH: Quantified impact + team development - strong management indicators]
 
-### Anti-Pattern: Accepting Vague Achievements
-**What it looks like**: "I improved the system" or "We increased efficiency"
-**Why it's wrong**: No measurable impact, can't verify or showcase properly
-**What to do instead**: Probe deeply: "By how much? For how many users? Over what time period? What was the baseline?"
+NARRATIVE THREAD EMERGING: Individual contributor → Process advocate → Team mentor → Management candidate
+```
 
-### Anti-Pattern: Skipping the "Why"
-**What it looks like**: Recording only what they did, not why they chose it
-**Why it's wrong**: Misses motivation, values, and decision-making process that makes story compelling
-**What to do instead**: Always follow up: "What drew you to that opportunity?" "Why was that important to you?"
+## Quality Gates
 
-### Anti-Pattern: Linear Timeline Obsession
-**What it looks like**: Only asking chronological "then what happened?" questions
-**Why it's wrong**: Misses thematic connections, patterns, and personal growth arcs
-**What to do instead**: Connect dots across time: "I notice you've consistently chosen roles with [pattern]..."
+- [ ] All 6 interview phases attempted (Introduction, Career History, Achievements, Skills, Aspirations, Audience)
+- [ ] At least 2 quantified metrics per major role (revenue, users, team size, time savings, etc.)
+- [ ] Coherent narrative arc identified (career progression theme or unique angle)
+- [ ] Target audience and brand positioning clearly defined
+- [ ] 3+ specific achievement stories with problem→solution→outcome structure
+- [ ] Skills categorized with proficiency levels and years of experience
+- [ ] Timeline events have concrete dates/ranges (not "a few years ago")
+- [ ] Professional summary captures unique value proposition in 3-4 sentences
+- [ ] No vague terminology left undefined ("senior", "large scale", "successful")
+- [ ] Career transitions explained with clear motivations
 
-## Troubleshooting
+## NOT-FOR Boundaries
 
-### Issue: Interview goes off-track into irrelevant tangents
-**Cause**: Interviewee needs to process but losing structure
-**Fix**: Acknowledge tangent, gently redirect: "That's fascinating. Let me note that, and I want to come back to [original topic] because..."
+**This skill should NOT be used for:**
 
-### Issue: Interviewee gives only surface-level answers
-**Cause**: Haven't established trust or safety yet
-**Fix**: Slow down introduction phase. Share what you'll do with information. Validate their initial answers before probing deeper.
+- **Resume formatting/layout design** → Use `cv-creator` for visual formatting and ATS optimization
+- **Interview preparation coaching** → Use interview coaching skills - this documents past, doesn't prepare for future
+- **Career counseling or job search strategy** → Use career advisor skills - this captures stories, doesn't advise next steps  
+- **Quick LinkedIn headline updates** → Just ask directly for headline writing
+- **Salary negotiation advice** → Use negotiation skills - this focuses on narrative, not compensation
+- **Technical portfolio curation** → Use technical writing skills for code samples and project documentation
+- **Personal therapy/processing career trauma** → This is professional biography, not counseling
 
-### Issue: Can't extract quantifiable metrics
-**Cause**: Interviewee genuinely doesn't remember or didn't track
-**Fix**: Ask for qualitative proxies: "What did your manager say?" "How did the team react?" "What changed after your work?"
-
-### Issue: Conflicting information across interview
-**Cause**: Memory reconstruction, different perspectives on same events
-**Fix**: Surface the conflict gently: "Earlier you mentioned X, and now Y. Help me understand both perspectives."
-
-## Integration Points
-
-This skill works well with other existing skills:
-- **Web Design Expert**: Provide career content that web-design-expert can use for portfolio sites
-- **Research Analyst**: Feed brand positioning insights to research-analyst for competitive analysis
-- **Typography Expert**: Career brand personality can inform typography-expert's font selections
+**Delegate when you hear:**
+- "Should I take this job offer?" → Career strategy, not biography
+- "How do I format this resume?" → Document design, not content creation  
+- "What questions will they ask in the interview?" → Interview prep, not story documentation
+- "I'm stuck choosing between two career paths" → Career counseling, not narrative capture

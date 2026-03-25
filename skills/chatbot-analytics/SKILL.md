@@ -1,332 +1,163 @@
 ---
+license: Apache-2.0
 name: chatbot-analytics
 description: Implement AI chatbot analytics and conversation monitoring. Use when adding conversation metrics, tracking AI usage, measuring user engagement with chat, or building conversation dashboards. Activates for AI analytics, token tracking, conversation categorization, and chat performance.
 allowed-tools: Read,Write,Edit,Bash(npm:*,npx:*)
-category: Data & Analytics
+category: AI & Machine Learning
 tags:
-  - analytics
   - chatbot
-  - ai-metrics
+  - analytics
+  - conversation
+  - metrics
+  - optimization
 ---
 
 # AI Chatbot Analytics
 
 This skill helps you implement analytics for the AI coaching chat feature while maintaining HIPAA compliance.
 
-## Core Metrics to Track
+## Decision Points
 
-Based on [industry best practices](https://hiverhq.com/blog/chatbot-analytics), track these 13 key metrics:
+### 1. Alert Threshold Configuration
+```
+IF abandonment_rate > 40% within 24h
+  → THEN escalate to admin team
+  → ELSE log for trending analysis
 
-| Metric | Description | HIPAA Safe? |
-|--------|-------------|-------------|
-| Total Sessions | Number of chat sessions | Yes |
-| Avg Messages/Session | Messages per conversation | Yes |
-| Avg Session Duration | Time spent in chat | Yes |
-| Engagement Rate | % users who use chat | Yes |
-| Completion Rate | Sessions ended naturally | Yes |
-| Abandonment Rate | Sessions ended early | Yes |
-| Response Time | AI response latency | Yes |
-| Token Usage | Total/avg tokens consumed | Yes |
-| Error Rate | Failed responses | Yes |
-| Fallback Rate | "I don't understand" responses | Yes |
-| Topic Categories | What users discuss | Metadata only |
-| Sentiment Trend | Emotional direction | Derived only |
-| Crisis Triggers | Emergency detection | Metadata only |
+IF crisis_escalations > 5 within 24h  
+  → THEN send email alert immediately
+  → ELSE track for weekly review
 
-## HIPAA-Compliant Analytics
+IF error_rate > 10% within 1h
+  → THEN send Slack alert
+  → ELSE continue monitoring
 
-### What to Track
+IF token_cost > budget_threshold
+  → THEN enable cost controls
+  → ELSE continue tracking
+```
+
+### 2. Category Classification Decision Tree
+```
+IF metadata.usedCrisisProtocol == true
+  → category = "crisis_support"
+ELSE IF metadata.usedCopingStrategies == true
+  → category = "coping_strategies"  
+ELSE IF metadata.usedCheckInSupport == true
+  → category = "checkin_support"
+ELSE IF metadata.requestedClarification == true
+  → category = "clarification"
+ELSE
+  → category = "general_chat"
+```
+
+### 3. Data Storage Compliance Check
+```
+IF data_contains(PHI_indicators)
+  → REJECT storage, log metadata only
+ELSE IF data_is_aggregate()
+  → STORE for analytics
+ELSE IF data_is_metadata()
+  → STORE with encryption
+ELSE
+  → REVIEW manually before storage
+```
+
+## Failure Modes
+
+### 1. **PHI Leakage**
+- **Symptom**: Analytics contain user messages, specific health topics, or emotional states
+- **Detection Rule**: If analytics tables contain columns like `messageContent`, `userQuery`, or `specificTopics`
+- **Fix**: Remove PHI columns, implement metadata-only tracking with category flags
+
+### 2. **Alert Fatigue**
+- **Symptom**: Too many false positive alerts overwhelming admin team
+- **Detection Rule**: If alert frequency > 10 per day or admin response rate < 20%
+- **Fix**: Raise thresholds, add time windows, implement alert severity levels
+
+### 3. **Token Cost Explosion**
+- **Symptom**: Unexpectedly high AI usage costs without visibility
+- **Detection Rule**: If monthly cost > budget by 50% or avg tokens/session > baseline by 200%
+- **Fix**: Check input length validation, implement conversation limits, add real-time cost tracking
+
+### 4. **Incomplete Session Tracking**
+- **Symptom**: Analytics show many abandoned sessions that were actually completed
+- **Detection Rule**: If abandonment rate > 60% but user satisfaction remains high
+- **Fix**: Verify `trackConversationEnd()` is called in all exit paths, add session timeout logic
+
+### 5. **Slow Query Performance**
+- **Symptom**: Dashboard loads taking >10 seconds, analytics queries timing out
+- **Detection Rule**: If query latency > 2s or dashboard bounce rate > 80%
+- **Fix**: Add indexes on `started_at`, `user_id`, and `outcome` columns, implement query optimization
+
+## Worked Example
+
+### Scenario: Implementing Crisis Escalation Tracking
+
+**Setup**: User reports feeling overwhelmed, AI detects crisis indicators
 
 ```typescript
-// Conversation metadata (SAFE)
-interface ConversationAnalytics {
-  id: string;
-  conversationId: string;
-  userId: string;  // For aggregation, not individual tracking
-  startedAt: Date;
-  endedAt: Date | null;
-  messageCount: number;
-  userMessageCount: number;
-  aiMessageCount: number;
-  totalTokens: number;
-  inputTokens: number;
-  outputTokens: number;
-  category: string;  // Derived from metadata flags
-  outcome: 'completed' | 'abandoned' | 'error' | 'crisis_escalated';
-  avgResponseTime: number;
-  hadFallback: boolean;
+// 1. Start tracking conversation
+await trackConversationStart('conv-789', 'user-123');
+
+// 2. AI processes message and sets metadata flags
+const aiResponse = await processMessage(userMessage);
+const metadata = {
+  usedCrisisProtocol: true,
+  usedCopingStrategies: false,
+  requestedClarification: false
+};
+
+// 3. Expert decision: Check crisis threshold first
+if (metadata.usedCrisisProtocol) {
+  // Set category immediately
+  const category = 'crisis_support';
+  
+  // Track the exchange with crisis flag
+  await trackMessageExchange('conv-789', 
+    { input: 150, output: 300 },
+    1200, // 1.2s response time
+    { hadFallback: false, hasCrisisIndicator: true }
+  );
+}
+
+// 4. End conversation with escalation
+await trackConversationEnd('conv-789', 'crisis_escalated');
+
+// 5. Check if alert threshold reached
+const recentCrises = await countCrisisEscalations(24); // last 24h
+if (recentCrises > 5) {
+  await sendAlert('crisis_spike', { count: recentCrises });
 }
 ```
 
-### What NOT to Track
+**Expert catches**: The crisis flag triggers immediate categorization and outcome tracking, bypassing normal conversation flow analysis.
 
-```typescript
-// NEVER store these in analytics
-interface PROHIBITED {
-  messageContent: string;      // PHI
-  userQuery: string;           // PHI
-  aiResponse: string;          // PHI
-  specificTopics: string[];    // Could reveal health info
-  exactSentiment: 'sad';       // Could reveal mental state
-}
-```
+**Novice misses**: Would wait until conversation end to classify, missing real-time escalation opportunity.
 
-## Implementation Pattern
+## Quality Gates
 
-### Tracking Conversation Start
+- [ ] HIPAA audit passes: No PHI stored in analytics tables
+- [ ] Query performance: All dashboard queries complete in <2s  
+- [ ] Data completeness: >95% of conversations have complete analytics records
+- [ ] Alert accuracy: False positive rate <10% for all alert types
+- [ ] Cost tracking: Token usage tracked within 1% accuracy of actual API calls
+- [ ] Category coverage: >90% of conversations automatically categorized (not 'unknown')
+- [ ] Session integrity: Abandonment rate calculation matches user exit patterns
+- [ ] Real-time updates: Analytics refresh within 30s of conversation events
+- [ ] Index coverage: All queries use database indexes (no table scans)
+- [ ] Compliance validation: All stored fields pass PHI detection rules
 
-```typescript
-// src/lib/ai/analytics.ts
-export async function trackConversationStart(
-  conversationId: string,
-  userId: string
-): Promise<void> {
-  await db.insert(conversationAnalytics).values({
-    id: generateId(),
-    conversationId,
-    userId,
-    startedAt: new Date(),
-    messageCount: 0,
-    totalTokens: 0,
-    category: 'unknown',
-    outcome: 'in_progress'
-  });
-}
-```
+## NOT-FOR Boundaries
 
-### Tracking Message Exchange
+**Do NOT use this skill for:**
+- **Individual user profiling**: Use [user-management] skill instead
+- **Content analysis of messages**: Use [ai-safety] skill for content moderation  
+- **Billing/payment tracking**: Use [subscription-management] skill instead
+- **Performance monitoring of AI model**: Use [ai-monitoring] skill instead
+- **Security audit trails**: Use [audit-logging] skill instead
 
-```typescript
-export async function trackMessageExchange(
-  conversationId: string,
-  tokens: { input: number; output: number },
-  responseTimeMs: number,
-  flags: { hadFallback: boolean; hasCrisisIndicator: boolean }
-): Promise<void> {
-  await db
-    .update(conversationAnalytics)
-    .set({
-      messageCount: sql`message_count + 1`,
-      totalTokens: sql`total_tokens + ${tokens.input + tokens.output}`,
-      inputTokens: sql`input_tokens + ${tokens.input}`,
-      outputTokens: sql`output_tokens + ${tokens.output}`,
-      avgResponseTime: sql`(avg_response_time * (message_count - 1) + ${responseTimeMs}) / message_count`,
-      hadFallback: flags.hadFallback,
-      ...(flags.hasCrisisIndicator && { outcome: 'crisis_escalated' })
-    })
-    .where(eq(conversationAnalytics.conversationId, conversationId));
-}
-```
-
-### Tracking Conversation End
-
-```typescript
-export async function trackConversationEnd(
-  conversationId: string,
-  outcome: 'completed' | 'abandoned' | 'error'
-): Promise<void> {
-  await db
-    .update(conversationAnalytics)
-    .set({
-      endedAt: new Date(),
-      outcome
-    })
-    .where(eq(conversationAnalytics.conversationId, conversationId));
-}
-```
-
-## Category Detection (Metadata-Based)
-
-Detect conversation categories WITHOUT reading content:
-
-```typescript
-// Categories based on metadata flags from AI response
-interface AIResponseMetadata {
-  usedCopingStrategies: boolean;
-  usedCrisisProtocol: boolean;
-  usedCheckInSupport: boolean;
-  usedGeneralChat: boolean;
-  requestedClarification: boolean;
-}
-
-function deriveCategory(metadata: AIResponseMetadata): string {
-  if (metadata.usedCrisisProtocol) return 'crisis_support';
-  if (metadata.usedCopingStrategies) return 'coping_strategies';
-  if (metadata.usedCheckInSupport) return 'checkin_support';
-  if (metadata.requestedClarification) return 'clarification';
-  return 'general_chat';
-}
-```
-
-## Dashboard Aggregations
-
-### Session Metrics
-
-```typescript
-// Get aggregated session stats (HIPAA safe - no individual data)
-async function getSessionStats(days: number = 30) {
-  const since = subDays(new Date(), days);
-
-  return db
-    .select({
-      totalSessions: count(),
-      avgMessages: avg(conversationAnalytics.messageCount),
-      avgDuration: avg(
-        sql`JULIANDAY(ended_at) - JULIANDAY(started_at)) * 24 * 60`
-      ),
-      completionRate: sql`
-        CAST(SUM(CASE WHEN outcome = 'completed' THEN 1 ELSE 0 END) AS FLOAT) /
-        CAST(COUNT(*) AS FLOAT)
-      `,
-      crisisEscalations: sql`
-        SUM(CASE WHEN outcome = 'crisis_escalated' THEN 1 ELSE 0 END)
-      `
-    })
-    .from(conversationAnalytics)
-    .where(gte(conversationAnalytics.startedAt, since));
-}
-```
-
-### Token Usage for Cost Tracking
-
-```typescript
-async function getTokenUsage(days: number = 30) {
-  const since = subDays(new Date(), days);
-
-  const result = await db
-    .select({
-      totalTokens: sum(conversationAnalytics.totalTokens),
-      inputTokens: sum(conversationAnalytics.inputTokens),
-      outputTokens: sum(conversationAnalytics.outputTokens),
-      avgTokensPerSession: avg(conversationAnalytics.totalTokens)
-    })
-    .from(conversationAnalytics)
-    .where(gte(conversationAnalytics.startedAt, since));
-
-  // Estimate cost (Claude pricing)
-  const inputCost = (result.inputTokens / 1_000_000) * 3.00;  // $3/M input
-  const outputCost = (result.outputTokens / 1_000_000) * 15.00; // $15/M output
-
-  return {
-    ...result,
-    estimatedCost: inputCost + outputCost
-  };
-}
-```
-
-### Category Breakdown
-
-```typescript
-async function getCategoryBreakdown(days: number = 30) {
-  const since = subDays(new Date(), days);
-
-  return db
-    .select({
-      category: conversationAnalytics.category,
-      count: count(),
-      percentage: sql`
-        CAST(COUNT(*) AS FLOAT) * 100.0 /
-        (SELECT COUNT(*) FROM conversation_analytics WHERE started_at >= ${since})
-      `
-    })
-    .from(conversationAnalytics)
-    .where(gte(conversationAnalytics.startedAt, since))
-    .groupBy(conversationAnalytics.category)
-    .orderBy(desc(count()));
-}
-```
-
-## Alert Configuration
-
-Set up alerts for concerning patterns:
-
-```typescript
-interface AnalyticsAlert {
-  type: 'crisis_spike' | 'error_spike' | 'abandonment_spike';
-  threshold: number;
-  windowHours: number;
-  action: 'log' | 'email' | 'slack';
-}
-
-const alerts: AnalyticsAlert[] = [
-  {
-    type: 'crisis_spike',
-    threshold: 5,  // 5+ crisis escalations
-    windowHours: 24,
-    action: 'email'
-  },
-  {
-    type: 'error_spike',
-    threshold: 10, // 10+ errors
-    windowHours: 1,
-    action: 'slack'
-  },
-  {
-    type: 'abandonment_spike',
-    threshold: 0.5, // 50%+ abandonment rate
-    windowHours: 24,
-    action: 'log'
-  }
-];
-```
-
-## Database Schema
-
-```sql
-CREATE TABLE conversation_analytics (
-  id TEXT PRIMARY KEY,
-  conversation_id TEXT NOT NULL,
-  user_id TEXT NOT NULL,
-  started_at TEXT NOT NULL,
-  ended_at TEXT,
-  message_count INTEGER DEFAULT 0,
-  user_message_count INTEGER DEFAULT 0,
-  ai_message_count INTEGER DEFAULT 0,
-  total_tokens INTEGER DEFAULT 0,
-  input_tokens INTEGER DEFAULT 0,
-  output_tokens INTEGER DEFAULT 0,
-  category TEXT DEFAULT 'unknown',
-  outcome TEXT DEFAULT 'in_progress',
-  avg_response_time REAL DEFAULT 0,
-  had_fallback INTEGER DEFAULT 0,
-
-  FOREIGN KEY (conversation_id) REFERENCES conversations(id),
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
-
-CREATE INDEX idx_conv_analytics_started ON conversation_analytics(started_at);
-CREATE INDEX idx_conv_analytics_user ON conversation_analytics(user_id);
-CREATE INDEX idx_conv_analytics_outcome ON conversation_analytics(outcome);
-```
-
-## Testing Analytics
-
-```typescript
-describe('Conversation Analytics', () => {
-  it('tracks session without PHI', async () => {
-    const analytics = await trackConversationStart('conv-123', 'user-456');
-
-    // Verify no PHI is stored
-    expect(analytics).not.toHaveProperty('messageContent');
-    expect(analytics).not.toHaveProperty('userQuery');
-
-    // Verify metadata is stored
-    expect(analytics.conversationId).toBe('conv-123');
-    expect(analytics.messageCount).toBe(0);
-  });
-
-  it('calculates aggregates correctly', async () => {
-    const stats = await getSessionStats(30);
-
-    expect(stats.totalSessions).toBeGreaterThanOrEqual(0);
-    expect(stats.completionRate).toBeBetween(0, 1);
-  });
-});
-```
-
-## Resources
-
-- [Chatbot Analytics Guide](https://hiverhq.com/blog/chatbot-analytics)
-- [Botpress Analytics](https://botpress.com/blog/chatbot-analytics)
-- [13 Core Metrics](https://www.tidio.com/blog/chatbot-analytics/)
-- Admin Suite Design: `docs/ADMIN-DEVELOPER-SUITE.md`
+**Delegate when:**
+- Need to analyze actual message content → Use content analysis tools with proper PHI handling
+- Need real-time conversation interruption → Use AI safety monitoring
+- Need detailed user behavior beyond chat → Use comprehensive user analytics platform

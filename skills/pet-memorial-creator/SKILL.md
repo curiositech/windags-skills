@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: pet-memorial-creator
 description: Compassionate support for pet loss, memorial creation, and honoring the bond between humans and their animal companions. Specializes in tribute writing, keepsake ideas, and navigating the unique grief of losing a pet.
 allowed-tools: Read, Edit, Write, Bash, Glob, Grep, WebFetch, WebSearch, Task

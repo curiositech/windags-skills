@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: knot-theory-educator
-description: "Expert in visualizing and explaining braid theory, knot mathematics, and topological concepts for educational purposes. Use for creating interactive visualizations, explainer cards, step-wise animations, and translating abstract algebra into intuitive understanding. Activate on keywords: braid theory, knot visualization, σ notation, crossing diagrams, Yang-Baxter, topological education. NOT for general math tutoring, pure knot invariant computation, or non-educational knot theory research."
+description: 'Expert in visualizing and explaining braid theory, knot mathematics, and topological concepts for educational purposes. Use for creating interactive visualizations, explainer cards, step-wise animations, and translating abstract algebra into intuitive understanding. Activate on keywords: braid theory, knot visualization, σ notation, crossing diagrams, Yang-Baxter, topological education. NOT for general math tutoring, pure knot invariant computation, or non-educational knot theory research.'
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep
-category: Content & Writing
+category: Productivity & Meta
 tags:
-  - knots
-  - topology
-  - braid-theory
-  - visualization
+  - knot-theory
   - education
+  - mathematics
+  - teaching
+  - visualization
 pairs-with:
   - skill: diagramming-expert
     reason: Visual representations of knots

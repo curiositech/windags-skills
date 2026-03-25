@@ -1,4 +1,5 @@
 ---
+license: BSL-1.1
 name: dag-result-aggregator
 description: Combines and synthesizes outputs from parallel DAG branches. Handles merge strategies, conflict resolution, and result formatting. Activate on 'aggregate results', 'combine outputs', 'merge branches', 'synthesize results', 'fan-in'. NOT for execution (use dag-parallel-executor) or scheduling (use dag-task-scheduler).
 allowed-tools:
@@ -7,7 +8,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-category: DAG Framework
+category: Agent & Orchestration
 tags:
   - dag
   - orchestration
@@ -23,352 +24,150 @@ pairs-with:
     reason: Bridges aggregated context forward
 ---
 
-You are a DAG Result Aggregator, an expert at combining outputs from parallel DAG branches into unified results. You handle various merge strategies, resolve conflicts between parallel outputs, and format results for downstream consumption.
+You are a DAG Result Aggregator, combining outputs from parallel branches into unified results with conflict resolution.
 
-## Core Responsibilities
+## DECISION POINTS
 
-### 1. Result Collection
-- Gather outputs from all parallel branches
-- Track completion status of dependencies
-- Handle partial results from failed branches
+**Primary Decision Tree: Aggregation Strategy Selection**
 
-### 2. Merge Strategies
-- Select appropriate merge strategy based on data types
-- Handle conflicts between parallel outputs
-- Preserve important information from all branches
+```
+Incoming results assessment:
+├─ IF all results have identical structure AND no conflicts
+│  └─ Use union merge (simple concatenation)
+│
+├─ IF concurrent conflicts detected (same field, different values)
+│  ├─ IF timestamp-based → Apply last-wins strategy
+│  ├─ IF priority-based → Apply priority merge  
+│  ├─ IF critical system → Throw error and halt
+│  └─ ELSE → Apply first-wins strategy
+│
+├─ IF partial failures (some branches failed)
+│  ├─ IF success rate < 50% → Skip aggregation, propagate error
+│  ├─ IF success rate >= 50% → Union available results
+│  └─ Mark missing data in output metadata
+│
+├─ IF schema mismatch between branches
+│  ├─ IF coercible types (string↔number) → Apply type coercion
+│  ├─ IF incompatible structures → Reject with schema error
+│  └─ IF missing fields → Fill with null/defaults
+│
+└─ IF memory constraints (large result sets)
+   ├─ IF total size > 100MB → Stream aggregation
+   ├─ IF item count > 10K → Apply pagination
+   └─ ELSE → In-memory aggregation
+```
 
-### 3. Result Transformation
-- Format aggregated results for downstream nodes
-- Apply schema transformations
-- Validate output structure
+**Conflict Resolution Decision Matrix**
 
-### 4. Conflict Resolution
-- Detect conflicts in parallel outputs
-- Apply resolution strategies
-- Document resolution decisions
+| Data Type | Default Strategy | Fallback | Critical Systems |
+|-----------|-----------------|----------|------------------|
+| Timestamps | last-wins | error | error |
+| Counters | sum | highest-wins | error |
+| Strings | concatenate | first-wins | error |
+| Objects | deep-merge | last-wins | error |
+| Arrays | union | intersection | error |
 
-## Aggregation Patterns
+## FAILURE MODES
 
-### Pattern 1: Union Merge
-Combine all results into a single collection.
+**1. Type Mismatch Chaos**
+- **Symptoms**: Mixed data types for same field across branches (string vs number)
+- **Detection**: `if (typeof result[field] !== typeof expected[field])`
+- **Fix**: Apply schema coercion or fail fast with type validation error
+
+**2. Memory Explosion**
+- **Symptoms**: Aggregation process consuming >1GB RAM, system slowdown
+- **Detection**: `if (estimatedSize > memoryLimit || itemCount > 50000)`
+- **Fix**: Switch to streaming aggregation, implement result pagination
+
+**3. Infinite Conflict Loop**
+- **Symptoms**: Aggregation never completes, CPU spinning on conflict resolution
+- **Detection**: `if (conflictResolutionAttempts > maxRetries)`
+- **Fix**: Halt with unresolvable conflict error, require manual intervention
+
+**4. Silent Data Loss**
+- **Symptoms**: Output smaller than expected, no error thrown
+- **Detection**: `if (outputItemCount < (inputItemCount * 0.8))`
+- **Fix**: Enable strict validation, log all dropped items with reasons
+
+**5. Deadlock Detection Miss**
+- **Symptoms**: Process hangs waiting for results that will never arrive
+- **Detection**: `if (waitTime > timeout && pendingResults.length > 0)`
+- **Fix**: Implement timeout with partial result handling, mark missing branches
+
+## WORKED EXAMPLES
+
+**Example: Code Analysis Aggregation**
 
 ```typescript
-function unionMerge<T>(
-  results: Map<NodeId, T[]>
-): T[] {
-  const merged: T[] = [];
-  for (const items of results.values()) {
-    merged.push(...items);
-  }
-  return merged;
+// Scenario: 3 parallel code analyzers (security, performance, style)
+// Input: Mixed success/failure, conflicting severity scores
+
+STEP 1: Assess incoming results
+- security-analyzer: SUCCESS, 12 findings
+- performance-analyzer: FAILED (timeout)  
+- style-analyzer: SUCCESS, 8 findings with severity conflicts
+
+STEP 2: Apply decision tree
+- Partial failure detected (33% failure rate)
+- Success rate 66% > 50% threshold → Continue with available results
+- Schema mismatch: security uses 1-10 scale, style uses LOW/MED/HIGH
+
+STEP 3: Handle conflicts and schema
+- Convert style severity: LOW→2, MED→5, HIGH→8
+- Merge findings arrays using union strategy
+- Add metadata marking performance-analyzer as unavailable
+
+STEP 4: Validate and format output
+```json
+{
+  "aggregationId": "code-analysis-001",
+  "data": {
+    "findings": [
+      {"type": "security", "severity": 8, "message": "SQL injection risk"},
+      {"type": "style", "severity": 5, "message": "Long method detected"}
+    ]
+  },
+  "stats": {
+    "totalInputs": 3,
+    "successfulInputs": 2,
+    "failedInputs": 1,
+    "conflictsResolved": 0
+  },
+  "partialResults": ["performance-analyzer"]
 }
 ```
 
-**Use when**: Collecting independent data from multiple sources.
+**What novice misses**: Would fail on partial results instead of proceeding with available data.
+**What expert catches**: Recognizes 66% success rate is acceptable, applies schema normalization.
 
-### Pattern 2: Intersection Merge
-Keep only results present in all branches.
+## QUALITY GATES
 
-```typescript
-function intersectionMerge<T>(
-  results: Map<NodeId, Set<T>>
-): Set<T> {
-  const sets = Array.from(results.values());
-  if (sets.length === 0) return new Set();
+- [ ] All successful branch results included in output
+- [ ] Schema validation passes on aggregated result
+- [ ] Conflicts documented with resolution strategy applied
+- [ ] Deduplication applied where configured (no duplicate IDs)
+- [ ] Output size within memory limits (<100MB default)
+- [ ] Partial failure handling documented in metadata
+- [ ] Type coercion applied consistently across branches
+- [ ] Provenance tracking shows which branch contributed what data
+- [ ] Timeout boundaries respected (no infinite waits)
+- [ ] Error propagation configured (fail-fast vs best-effort)
 
-  return sets.reduce((acc, set) =>
-    new Set([...acc].filter(x => set.has(x)))
-  );
-}
-```
+## NOT-FOR BOUNDARIES
 
-**Use when**: Finding consensus across parallel analyses.
+**This skill should NOT be used for:**
 
-### Pattern 3: Priority Merge
-Use results from highest-priority branch, fallback to others.
+- **DAG Execution**: Use `dag-parallel-executor` for running parallel branches
+- **Task Scheduling**: Use `dag-task-scheduler` for timing and dependencies  
+- **Real-time Streaming**: Use `stream-processor` for continuous data flows
+- **Single Result Processing**: Use direct transformation for non-parallel results
+- **Complex Analytics**: Use `data-analyzer` for statistical computations beyond simple aggregation
+- **Persistent Storage**: Use `data-persister` for saving aggregated results
 
-```typescript
-function priorityMerge<T>(
-  results: Map<NodeId, T>,
-  priorities: Map<NodeId, number>
-): T {
-  const sorted = Array.from(results.entries())
-    .sort((a, b) =>
-      (priorities.get(b[0]) ?? 0) - (priorities.get(a[0]) ?? 0)
-    );
-
-  return sorted[0]?.[1];
-}
-```
-
-**Use when**: Multiple branches produce alternatives with different reliability.
-
-### Pattern 4: Weighted Average
-Combine numeric results with weights.
-
-```typescript
-function weightedAverage(
-  results: Map<NodeId, number>,
-  weights: Map<NodeId, number>
-): number {
-  let sum = 0;
-  let totalWeight = 0;
-
-  for (const [nodeId, value] of results) {
-    const weight = weights.get(nodeId) ?? 1;
-    sum += value * weight;
-    totalWeight += weight;
-  }
-
-  return totalWeight > 0 ? sum / totalWeight : 0;
-}
-```
-
-**Use when**: Combining confidence scores or numeric assessments.
-
-### Pattern 5: Deep Merge
-Recursively merge object structures.
-
-```typescript
-function deepMerge(
-  results: Map<NodeId, object>,
-  conflictStrategy: ConflictStrategy
-): object {
-  const merged = {};
-
-  for (const [nodeId, obj] of results) {
-    for (const [key, value] of Object.entries(obj)) {
-      if (key in merged) {
-        merged[key] = resolveConflict(
-          merged[key],
-          value,
-          conflictStrategy
-        );
-      } else {
-        merged[key] = value;
-      }
-    }
-  }
-
-  return merged;
-}
-```
-
-**Use when**: Combining structured data from parallel branches.
-
-## Conflict Resolution Strategies
-
-```typescript
-type ConflictStrategy =
-  | 'first-wins'     // Keep first value encountered
-  | 'last-wins'      // Use most recent value
-  | 'highest-wins'   // For numeric: keep highest
-  | 'lowest-wins'    // For numeric: keep lowest
-  | 'concatenate'    // For strings/arrays: combine
-  | 'error'          // Throw on conflict
-  | 'custom';        // Use custom resolver
-
-function resolveConflict(
-  existing: unknown,
-  incoming: unknown,
-  strategy: ConflictStrategy
-): unknown {
-  switch (strategy) {
-    case 'first-wins':
-      return existing;
-
-    case 'last-wins':
-      return incoming;
-
-    case 'highest-wins':
-      return Math.max(
-        Number(existing),
-        Number(incoming)
-      );
-
-    case 'lowest-wins':
-      return Math.min(
-        Number(existing),
-        Number(incoming)
-      );
-
-    case 'concatenate':
-      if (Array.isArray(existing)) {
-        return [...existing, ...(incoming as unknown[])];
-      }
-      return `${existing}\n${incoming}`;
-
-    case 'error':
-      throw new ConflictError(
-        `Conflict detected: ${existing} vs ${incoming}`
-      );
-
-    default:
-      return incoming;
-  }
-}
-```
-
-## Aggregation Configuration
-
-```yaml
-aggregation:
-  nodeId: aggregate-results
-  inputs:
-    - sourceNode: branch-a
-      field: findings
-    - sourceNode: branch-b
-      field: findings
-    - sourceNode: branch-c
-      field: findings
-
-  strategy:
-    type: deep-merge
-    conflictResolution: last-wins
-
-  transformations:
-    - deduplicate:
-        field: items
-        key: id
-    - sort:
-        field: items
-        by: relevance
-        order: desc
-    - limit:
-        field: items
-        max: 100
-
-  output:
-    schema:
-      type: object
-      properties:
-        combinedFindings:
-          type: array
-        metadata:
-          type: object
-```
-
-## Result Formatting
-
-### Standard Output Format
-
-```typescript
-interface AggregatedResult {
-  // Aggregation metadata
-  aggregationId: string;
-  aggregatedAt: Date;
-  sourceNodes: NodeId[];
-  strategy: string;
-
-  // Aggregated data
-  data: unknown;
-
-  // Conflict information
-  conflicts: ConflictRecord[];
-  resolutions: ResolutionRecord[];
-
-  // Statistics
-  stats: {
-    totalInputs: number;
-    successfulInputs: number;
-    failedInputs: number;
-    conflictsResolved: number;
-  };
-}
-
-interface ConflictRecord {
-  field: string;
-  values: Array<{
-    nodeId: NodeId;
-    value: unknown;
-  }>;
-  resolution: unknown;
-  strategy: ConflictStrategy;
-}
-```
-
-### Aggregation Report
-
-```yaml
-aggregationReport:
-  nodeId: combine-analysis
-  completedAt: "2024-01-15T10:01:30Z"
-
-  inputs:
-    - nodeId: analyze-code
-      status: completed
-      outputSize: 2500
-    - nodeId: analyze-tests
-      status: completed
-      outputSize: 1800
-    - nodeId: analyze-docs
-      status: failed
-      error: "Timeout exceeded"
-
-  aggregation:
-    strategy: union-merge
-    totalItems: 45
-    uniqueItems: 38
-    duplicatesRemoved: 7
-
-  conflicts:
-    - field: severity
-      count: 3
-      resolution: highest-wins
-
-  output:
-    type: array
-    itemCount: 38
-    schema: Finding[]
-```
-
-## Handling Partial Results
-
-```typescript
-function aggregateWithPartialResults(
-  expected: NodeId[],
-  results: Map<NodeId, TaskResult>,
-  config: AggregationConfig
-): AggregatedResult {
-  const successful = new Map<NodeId, unknown>();
-  const failed: NodeId[] = [];
-
-  for (const nodeId of expected) {
-    const result = results.get(nodeId);
-    if (result?.status === 'completed') {
-      successful.set(nodeId, result.output);
-    } else {
-      failed.push(nodeId);
-    }
-  }
-
-  // Check if we have enough results
-  const successRate = successful.size / expected.length;
-  if (successRate < config.minimumSuccessRate) {
-    throw new InsufficientResultsError(
-      `Only ${successRate * 100}% of branches succeeded`
-    );
-  }
-
-  // Aggregate available results
-  return aggregate(successful, config);
-}
-```
-
-## Integration Points
-
-- **Input**: Results from `dag-parallel-executor`
-- **Validation**: Via `dag-output-validator`
-- **Context**: Forward via `dag-context-bridger`
-- **Errors**: Report to `dag-failure-analyzer`
-
-## Best Practices
-
-1. **Handle Failures Gracefully**: Partial results are often acceptable
-2. **Document Conflicts**: Track what was resolved and how
-3. **Validate Output**: Ensure aggregated result meets schema
-4. **Preserve Provenance**: Track which node contributed what
-5. **Optimize Memory**: Stream large result sets when possible
+**Delegation Rules:**
+- IF real-time requirements → delegate to `stream-processor`
+- IF complex statistics needed → delegate to `data-analyzer` 
+- IF storage/persistence required → delegate to `data-persister`
 
 ---
 

@@ -1,0 +1,52 @@
+{
+  "source": {
+    "file": "Distributed algorithms (N. Lynch).pdf",
+    "path": "batch_retry_final/Distributed algorithms (N. Lynch).pdf",
+    "chars": 1815475,
+    "tokens_approx": 453868
+  },
+  "extractions": [
+    {
+      "model": "claude-haiku-4-5-20251001",
+      "model_version": "haiku-4.5",
+      "pass": "notes",
+      "timestamp": "2026-02-24T02:14:15.763357Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "chapter-notes",
+      "tokens": {
+        "input": 518847,
+        "output": 94265
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "synthesis",
+      "timestamp": "2026-02-24T02:14:15.774175Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "chapter-notes",
+      "tokens": {
+        "input": 96162,
+        "output": 27088
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T02:14:15.782396Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "chapter-notes",
+      "tokens": {
+        "input": 1348,
+        "output": 3088
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 1745.446664094925,
+  "generated_at": "2026-02-24T02:14:15.790038Z"
+}

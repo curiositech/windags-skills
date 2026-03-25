@@ -1,7 +1,8 @@
 ---
+license: Apache-2.0
 name: execution-lifecycle-manager
 description: Manage DAG execution lifecycles including start, stop, pause, resume, and cleanup. Activate on 'execution lifecycle', 'stop execution', 'abort DAG', 'graceful shutdown', 'kill process'. NOT for cost estimation, DAG building, or skill selection.
-category: DAG Orchestration
+category: Agent & Orchestration
 tags:
   - dag
   - execution

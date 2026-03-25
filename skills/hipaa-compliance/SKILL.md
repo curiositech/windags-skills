@@ -1,11 +1,14 @@
 ---
+license: Apache-2.0
 name: hipaa-compliance
 description: Ensure HIPAA compliance when handling PHI (Protected Health Information). Use when writing code that accesses user health data, check-ins, journal entries, or any sensitive information. Activates for audit logging, data access, security events, and compliance questions.
 allowed-tools: Read,Write,Edit
-category: Code Quality & Testing
+category: Legal & Compliance
 tags:
   - hipaa
   - compliance
+  - healthcare
+  - privacy
   - security
 ---
 
@@ -13,207 +16,167 @@ tags:
 
 This skill helps you maintain HIPAA compliance when developing features that handle Protected Health Information (PHI).
 
-## What is PHI in This Application?
+## DECISION POINTS
 
-| Data Type | PHI Status | Handling |
-|-----------|------------|----------|
-| Check-in mood/cravings | PHI | Audit all access |
-| Journal entries | PHI | Audit all access |
-| Chat conversations | PHI | Audit all access |
-| User profile (name, email) | PHI | Audit modifications |
-| Sobriety date | PHI | Audit access |
-| Emergency contacts | PHI | Audit access |
-| Usage analytics (aggregated) | NOT PHI | No audit needed |
-| Page views (no content) | NOT PHI | No audit needed |
+### PHI Classification Decision Tree
 
-## Audit Logging Requirements
-
-### When to Log
-
-**Always log these operations:**
-- Viewing any PHI (check-ins, journal, messages)
-- Creating/updating/deleting PHI
-- Exporting user data
-- Admin access to user information
-- Failed authentication attempts
-- Security events (rate limiting, unauthorized access)
-
-### How to Log
-
-Use the audit logging utilities in `src/lib/hipaa/audit.ts`:
-
-```typescript
-import {
-  logPHIAccess,
-  logPHIModification,
-  logSecurityEvent,
-  logAdminAction
-} from '@/lib/hipaa/audit';
-
-// Viewing PHI
-await logPHIAccess(
-  userId,
-  'checkin',        // targetType
-  checkinId,        // targetId
-  AuditAction.PHI_VIEW
-);
-
-// Modifying PHI
-await logPHIModification(
-  userId,
-  'journal',
-  journalId,
-  AuditAction.PHI_UPDATE,
-  { field: 'content' }  // Never include actual content!
-);
-
-// Security event
-await logSecurityEvent(
-  userId,
-  AuditAction.RATE_LIMIT,
-  { path: '/api/chat', attempts: 60 }
-);
-
-// Admin action
-await logAdminAction(
-  adminId,
-  AuditAction.ADMIN_USER_VIEW,
-  'user',
-  targetUserId
-);
+```
+Is this user data?
+├─ NO → No HIPAA requirements, proceed normally
+└─ YES → Is it health-related or personally identifiable?
+   ├─ NO (aggregated analytics, page views) → No audit logging needed
+   └─ YES → PHI detected, proceed to access type:
+      ├─ READ access → Use logPHIAccess() + authentication check
+      ├─ WRITE/UPDATE → Use logPHIModification() + change tracking
+      ├─ DELETE → Use logPHIModification() + soft delete preferred
+      └─ EXPORT → Use logAdminAction() + encryption required
 ```
 
-## Data Sanitization
+### Ambiguous Data Classification
 
-### Never Log These Fields
+| Data Type | PHI Status | Decision Rule |
+|-----------|------------|---------------|
+| Check-in mood/cravings | PHI | Always audit - health condition |
+| Journal entries | PHI | Always audit - personal health notes |
+| Chat messages | PHI | Always audit - health discussions |
+| User profile (name/email) | PHI | Audit modifications only |
+| Sobriety date | PHI | Always audit - health milestone |
+| Usage patterns (timing) | Depends | If linkable to individual → PHI |
+| Error logs with userIds | PHI | If contains health context → PHI |
 
-The audit system automatically sanitizes, but be explicit:
+### Logging Performance Decision Tree
 
-```typescript
-// BAD - Contains PHI
-await logPHIAccess(userId, 'journal', id, action, {
-  content: journalEntry.content  // NEVER DO THIS
-});
-
-// GOOD - Only metadata
-await logPHIAccess(userId, 'journal', id, action, {
-  wordCount: journalEntry.content.length,
-  hasAttachments: false
-});
+```
+Is this a high-frequency operation (>100/min)?
+├─ NO → Use synchronous audit logging
+└─ YES → Performance consideration needed:
+   ├─ Critical PHI access → Async logging with failure retry
+   ├─ Bulk operations → Batch logging every 100 records
+   └─ Analytics tracking → Sample logging (1 in 10)
 ```
 
-### Sanitized Fields (Auto-Redacted)
+## FAILURE MODES
 
-- `password`, `token`, `secret`, `key`
-- `authorization`, `cookie`, `session`
-- `credential`, `content`, `message`, `notes`
+### Anti-Pattern: Audit Log Gaps
+**Symptoms:** Missing entries in audit trail, incomplete access records
+**Detection:** `if (auditLog.count < actualOperations.count)`
+**Fix:** Add try-catch around all PHI operations, implement audit middleware
 
-## Session Security Requirements
+### Anti-Pattern: PHI Content Leakage
+**Symptoms:** Actual health data appears in logs or error messages
+**Detection:** `if (logEntry.includes(personalHealthInfo))`
+**Fix:** Use sanitization middleware, audit log reviews, content redaction
 
-From `src/lib/auth.ts`:
+### Anti-Pattern: Session Hijacking Vulnerability
+**Symptoms:** Users accessing data without recent authentication
+**Detection:** `if (timeSinceLastAuth > 15_MINUTES && accessingPHI)`
+**Fix:** Force re-authentication for PHI access, implement session timeouts
 
-- **Session timeout**: 15 minutes of inactivity (HIPAA requirement)
-- **Max session**: 8 hours absolute maximum
-- **Failed login lockout**: 5 attempts = 30 minute ban
-- **Password requirements**: 12+ chars, mixed case, numbers, special chars
+### Anti-Pattern: Break Glass Abuse
+**Symptoms:** Emergency access used for non-emergencies
+**Detection:** `if (breakGlassUsage.frequency > normalPatterns)`
+**Fix:** Require written justification, automated compliance officer alerts
 
-## Code Patterns
+### Anti-Pattern: Encryption At Rest Failures
+**Symptoms:** PHI stored in plaintext, backup files unencrypted
+**Detection:** `if (database.encryption === false && containsPHI)`
+**Fix:** Enable database encryption, encrypt export files, audit storage
 
-### API Route with Audit Logging
+## WORKED EXAMPLES
 
+### Scenario: Building Chat History Viewer with Performance Trade-offs
+
+**Context:** User wants to view 6 months of chat history (1000+ messages).
+
+**Step 1 - PHI Classification:**
 ```typescript
-import { getSession, requireAuth } from '@/lib/auth';
-import { logPHIAccess } from '@/lib/hipaa/audit';
+// Decision: Chat messages contain health discussions → PHI
+const messageType = 'chat';
+const isPHI = true; // Health-related conversations
+```
 
-export async function GET(request: Request) {
-  const session = await getSession();
-  if (!session) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+**Step 2 - Performance vs Compliance Trade-off:**
+```typescript
+// OPTION A: Real-time logging (high latency)
+messages.forEach(async (msg) => {
+  await logPHIAccess(userId, 'chat', msg.id, AuditAction.PHI_VIEW);
+});
 
-  // Fetch the data
-  const data = await fetchUserData(session.userId);
+// OPTION B: Batch logging (chosen solution)
+const batchSize = 100;
+const messageChunks = chunk(messages, batchSize);
 
-  // Log the access
-  await logPHIAccess(
-    session.userId,
-    'userdata',
-    session.userId,
-    AuditAction.PHI_VIEW
+for (const chunk of messageChunks) {
+  await logBatchPHIAccess(
+    userId, 
+    'chat_bulk', 
+    chunk.map(m => m.id),
+    AuditAction.PHI_VIEW,
+    { messageCount: chunk.length }
   );
-
-  return Response.json(data);
 }
 ```
 
-### Component with PHI Access
+**Expert vs Novice:**
+- **Novice miss:** Would log each message individually, causing 5+ second load times
+- **Expert catch:** Batch logging maintains compliance while preserving UX, includes metadata count for audit completeness
 
+**Step 3 - Implementation:**
 ```typescript
-'use client';
-
-import { useEffect } from 'react';
-
-export function JournalViewer({ entryId }: { entryId: string }) {
-  useEffect(() => {
-    // Log view on mount (server-side preferred, but client backup)
-    fetch('/api/audit/log', {
-      method: 'POST',
-      body: JSON.stringify({
-        action: 'PHI_VIEW',
-        targetType: 'journal',
-        targetId: entryId
-      })
-    });
-  }, [entryId]);
-
-  // ... render
+export async function getChatHistory(userId: string) {
+  const session = await requireAuth();
+  
+  // Performance: Paginated fetch
+  const messages = await db.messages.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+    take: 100 // First page only
+  });
+  
+  // Compliance: Batch audit log
+  await logBatchPHIAccess(
+    session.userId,
+    'chat_history',
+    messages.map(m => m.id),
+    AuditAction.PHI_VIEW,
+    { 
+      pageSize: messages.length,
+      totalRequested: '6_months',
+      loadTime: performance.now()
+    }
+  );
+  
+  return messages;
 }
 ```
 
-## Compliance Checklist
+## QUALITY GATES
 
-Before shipping any feature that touches PHI:
+Before deploying any PHI-related feature:
 
-- [ ] All PHI access is audit logged
-- [ ] No PHI content in logs (only IDs and metadata)
-- [ ] Data access requires authentication
-- [ ] Admin access has separate audit trail
-- [ ] Failed access attempts are logged
-- [ ] Data export includes audit entry
-- [ ] Sensitive fields are encrypted at rest
-- [ ] Session timeout is enforced
+- [ ] All PHI read operations have corresponding audit log entries
+- [ ] All PHI write operations include change metadata (never actual content)
+- [ ] Authentication check exists before any PHI access
+- [ ] Session timeout enforcement is active (15 min for PHI routes)
+- [ ] Error handling never exposes PHI in error messages
+- [ ] Database queries use parameterized statements (SQL injection prevention)
+- [ ] PHI export features create audit trail entries
+- [ ] Failed access attempts trigger security event logs
+- [ ] Break glass access requires written justification
+- [ ] All audit logs exclude actual PHI content (IDs and metadata only)
 
-## Audit Log Retention
+## NOT-FOR BOUNDARIES
 
-- **Minimum**: 6 years (HIPAA requirement)
-- **Format**: Raw logs for 1 year, compressed thereafter
-- **Location**: `audit_log` table in database
-- **Export**: Encrypted exports for compliance audits
+**Do NOT use this skill for:**
 
-## Emergency Access (Break Glass)
+- **Non-health applications** → For general privacy compliance, use [gdpr-compliance] skill instead
+- **Financial data protection** → For PCI DSS compliance, use [financial-security] skill instead  
+- **Internal analytics** → For usage tracking without PHI, use [analytics-privacy] skill instead
+- **API rate limiting** → For general security, use [api-security] skill instead
+- **Database design** → For schema design, use [data-modeling] skill instead
 
-For emergency situations, use break-glass access:
-
-```typescript
-import { requestBreakGlassAccess } from '@/lib/hipaa/break-glass';
-
-// This creates enhanced audit trail
-const access = await requestBreakGlassAccess(
-  adminId,
-  targetUserId,
-  'Emergency support required - user reported crisis'
-);
-```
-
-Break glass access:
-- Requires written justification
-- Creates permanent audit record
-- Triggers alert to compliance officer
-- Must be reviewed within 24 hours
-
-## Resources
-
-- HIPAA Security Rule: 45 C.F.R. § 164.312
-- Audit controls standard: 45 C.F.R. § 164.312(b)
-- Incident response plan: `docs/INCIDENT-RESPONSE-PLAN.md`
-- Security documentation: `docs/SECURITY-HARDENING.md`
+**When to delegate:**
+- **If handling payment data:** Use [pci-compliance] skill
+- **If building authentication:** Use [auth-security] skill  
+- **If designing data retention:** Use [data-lifecycle] skill
+- **If incident response needed:** Use [security-incident] skill

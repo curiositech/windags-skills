@@ -1,7 +1,16 @@
 ---
+license: Apache-2.0
 name: computer-vision-pipeline
 description: Build production computer vision pipelines for object detection, tracking, and video analysis. Handles drone footage, wildlife monitoring, and real-time detection. Supports YOLO, Detectron2, TensorFlow, PyTorch. Use for archaeological surveys, conservation, security. Activate on "object detection", "video analysis", "YOLO", "tracking", "drone footage". NOT for simple image filters, photo editing, or face recognition APIs.
 allowed-tools: Read,Write,Edit,Bash(python*,pip*,ffmpeg*)
+category: AI & Machine Learning
+tags:
+  - computer
+  - vision
+  - pipeline
+  - api
+  - ui
+  - security
 ---
 
 # Computer Vision Pipeline

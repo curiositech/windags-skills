@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: grief-companion
 description: Compassionate bereavement support, memorial creation, grief education, and healing journey guidance. Specializes in understanding grief stages, creating meaningful tributes, and supporting the non-linear path of loss.
 allowed-tools: Read, Edit, Write, Bash, Glob, Grep, WebFetch, WebSearch, Task, NotebookEdit

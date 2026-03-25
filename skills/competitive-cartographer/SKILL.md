@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: competitive-cartographer
 description: Strategic analyst that maps competitive landscapes, identifies white space opportunities, and provides positioning recommendations. Use when users need competitive analysis, market positioning strategy, differentiation tactics, or "how do I stand out?" guidance across any domain (portfolios, products, services). NOT for market size estimation or financial forecasting.
 allowed-tools: Read,Write,WebSearch,WebFetch
-category: Research & Analysis
+category: Content & Marketing
 tags:
   - competitive-analysis
-  - market
-  - positioning
+  - market-research
+  - mapping
   - strategy
-  - differentiation
+  - positioning
 pairs-with:
   - skill: career-biographer
     reason: Position career narratives competitively

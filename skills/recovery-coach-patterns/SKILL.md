@@ -1,389 +1,197 @@
 ---
+license: Apache-2.0
 name: recovery-coach-patterns
 description: Follow Recovery Coach codebase patterns and conventions. Use when writing new code, components, API routes, or database queries. Activates for general development, code organization, styling, and architectural decisions in this project.
 allowed-tools: Read,Write,Edit,Bash(npm:*,npx:*)
-category: Lifestyle & Personal
+category: Recovery & Wellness
 tags:
   - recovery
   - patterns
+  - coaching
+  - development
   - next-js
 ---
 
 # Recovery Coach Development Patterns
 
-This skill helps you follow the established patterns and conventions in the Recovery Coach codebase.
+## Decision Points
 
-## When to Use
-
-✅ **USE this skill for:**
-- Writing new components, pages, or API routes in Recovery Coach
-- Following established code organization patterns
-- Implementing database queries with Drizzle ORM
-- Understanding project architecture and conventions
-- Styling components to match the design system
-
-❌ **DO NOT use for:**
-- Crisis intervention implementation → use `crisis-response-protocol`
-- General Next.js questions → use Next.js docs
-- AI/LLM integration patterns → use `modern-drug-rehab-computer`
-- Content moderation → use `recovery-community-moderator`
-
-## Project Structure
-
+### Component Architecture Selection
 ```
-src/
-├── app/              # Next.js App Router
-│   ├── api/          # API routes (REST endpoints)
-│   │   ├── auth/     # Authentication endpoints
-│   │   ├── check-in/ # Daily check-in endpoints
-│   │   ├── chat/     # AI coaching endpoints
-│   │   └── admin/    # Admin-only endpoints
-│   ├── admin/        # Admin dashboard page
-│   ├── settings/     # User settings page
-│   └── page.tsx      # Home page
-├── components/       # React components
-│   ├── ui/           # Base UI components (Button, Card, etc.)
-│   └── *.tsx         # Feature components
-├── lib/              # Core business logic
-│   ├── ai/           # Anthropic integration
-│   ├── hipaa/        # HIPAA compliance utilities
-│   ├── auth.ts       # Authentication
-│   ├── db.ts         # Database connection
-│   └── rate-limit.ts # Rate limiting
-├── db/               # Database schema (Drizzle ORM)
-│   ├── schema.ts     # Table definitions
-│   └── secure-db.ts  # RLS-enforced queries
-└── test/             # Test utilities
-
-features/             # Feature manifests (YAML)
-docs/                 # Documentation
-scripts/              # Build and utility scripts
+Is this component handling user data?
+├─ YES: Does it need real-time updates?
+│  ├─ YES: Use Client Component with useEffect + fetch
+│  └─ NO: Use Server Component with direct DB query
+└─ NO: Is it interactive (forms, buttons, state)?
+   ├─ YES: Use Client Component
+   └─ NO: Use Server Component
 ```
 
-## API Route Pattern
+### API Route Security Level
+```
+What data does this route access?
+├─ Public data only → Basic rate limiting (100/min)
+├─ User's own data → Auth + RLS + moderate rate limiting (30/min)  
+├─ Cross-user data → Auth + explicit permission check + PHI audit
+└─ Admin data → requireAdmin() + strict rate limiting (10/min) + security audit
+```
 
+### Database Query Pattern
+```
+Who can access this data?
+├─ User's own data only
+│  └─ Use secure-db with RLS (filters automatically)
+├─ Admin accessing any data
+│  ├─ Call requireAdmin() first
+│  └─ Log admin access with logSecurityEvent()
+└─ System/background job
+   └─ Use regular db connection with explicit WHERE clauses
+```
+
+## Failure Modes
+
+### Anti-Pattern: RLS Bypass Attempt
+**Symptoms:** Using regular `db` instead of `secure-db` for user data queries
+**Detection:** `import { db } from '@/lib/db'` in user-facing code
+**Fix:** 
+1. Change to `import { db } from '@/db/secure-db'`
+2. Ensure RLS policies exist for the table
+3. Test with different user sessions
+
+### Anti-Pattern: Missing Rate Limit
+**Symptoms:** API route accepts unlimited requests, potential DoS
+**Detection:** No `createRateLimiter` call in route handler
+**Fix:**
+1. Add rate limiter with appropriate limits for endpoint type
+2. Apply `rateLimitResult` check before processing
+3. Return 429 status with retry headers
+
+### Anti-Pattern: PHI Logging Leak
+**Symptoms:** User health data appears in console.log or error messages
+**Detection:** `console.log` or `throw new Error` containing user data
+**Fix:**
+1. Remove sensitive data from logs
+2. Use `logPHIAccess()` for legitimate audit trails
+3. Return generic error messages to client
+
+### Anti-Pattern: Schema Validation Skip
+**Symptoms:** API accepts malformed data, causing runtime errors
+**Detection:** Missing `z.object()` schema or `.safeParse()` call
+**Fix:**
+1. Define Zod schema for all inputs
+2. Use `.safeParse()` and check `success` property
+3. Return validation errors with 400 status
+
+### Anti-Pattern: Unhandled Auth State
+**Symptoms:** Component crashes when user logs out mid-session
+**Detection:** Assuming session exists without null checks
+**Fix:**
+1. Check `if (!session)` before using session data
+2. Show login prompt or redirect to auth page
+3. Handle loading states during auth checks
+
+## Worked Examples
+
+### Creating a New Check-In API Route
+
+**Scenario:** Add endpoint for users to submit daily wellness check-ins with mood and notes.
+
+**Expert Decision Process:**
+1. **Security Assessment:** User's own health data → needs auth + RLS + PHI audit
+2. **Rate Limiting:** Personal health data → moderate limits (30/min)
+3. **Validation:** User input → strict Zod schema required
+
+**Implementation:**
 ```typescript
-// src/app/api/[feature]/route.ts
+// src/app/api/check-in/route.ts
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { createRateLimiter } from '@/lib/rate-limit';
 import { logPHIAccess } from '@/lib/hipaa/audit';
+import { db, checkIns } from '@/db/secure-db';
 import { z } from 'zod';
 
-// 1. Define rate limiter
 const rateLimiter = createRateLimiter({
   windowMs: 60000,
-  maxRequests: 30,
-  keyPrefix: 'api:feature'
+  maxRequests: 30, // Health data = moderate limit
+  keyPrefix: 'api:check-in'
 });
 
-// 2. Define input schema
-const RequestSchema = z.object({
-  field: z.string().min(1).max(1000),
+const CheckInSchema = z.object({
+  mood: z.number().min(1).max(10),
+  notes: z.string().max(1000).optional(),
+  symptoms: z.array(z.string()).max(10)
 });
 
 export async function POST(request: Request) {
-  // 3. Check authentication
+  // Auth check (required for user data)
   const session = await getSession();
   if (!session) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // 4. Apply rate limiting
+  // Rate limiting (prevent abuse)
   const rateLimitResult = await rateLimiter.check(session.userId);
   if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded' },
-      { status: 429, headers: rateLimitResult.headers }
-    );
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 });
   }
 
-  // 5. Parse and validate input
+  // Input validation (prevent bad data)
   const body = await request.json();
-  const parsed = RequestSchema.safeParse(body);
+  const parsed = CheckInSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid input', details: parsed.error.issues },
-      { status: 400 }
-    );
+    return NextResponse.json({
+      error: 'Invalid input',
+      details: parsed.error.issues
+    }, { status: 400 });
   }
 
-  // 6. Perform operation
-  const result = await performOperation(session.userId, parsed.data);
+  // Database operation (RLS auto-filters to user's data)
+  const checkIn = await db.insert(checkIns).values({
+    userId: session.userId,
+    mood: parsed.data.mood,
+    notes: parsed.data.notes,
+    symptoms: parsed.data.symptoms,
+    createdAt: new Date()
+  }).returning();
 
-  // 7. Audit log (if PHI)
-  await logPHIAccess(session.userId, 'feature', result.id, 'CREATE');
+  // PHI audit log (required for health data)
+  await logPHIAccess(session.userId, 'check-in', checkIn[0].id, 'CREATE');
 
-  // 8. Return response
-  return NextResponse.json(result);
+  return NextResponse.json(checkIn[0]);
 }
 ```
 
-## React Component Pattern
+**What novices miss:** Skip rate limiting, forget PHI audit logging, use console.log for debugging user data
+**What experts catch:** Health data needs all security layers, RLS handles user isolation automatically
 
-```typescript
-// src/components/FeatureComponent.tsx
-'use client';
+## Quality Gates
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+Pre-submit checklist for all code changes:
 
-interface FeatureProps {
-  id: string;
-  initialData?: FeatureData;
-  onComplete?: (result: Result) => void;
-}
+- [ ] Authentication verified: `getSession()` called for protected routes
+- [ ] Rate limiting configured: Appropriate limits for endpoint type  
+- [ ] Input validation: Zod schemas defined and `.safeParse()` used
+- [ ] RLS enabled: Using `secure-db` for user data queries
+- [ ] PHI audit logging: `logPHIAccess()` called for health data operations
+- [ ] Error handling: No user data in error messages or logs
+- [ ] Type safety: TypeScript strict mode passes without `any` types
+- [ ] Testing: Unit tests cover happy path and error conditions
+- [ ] HIPAA compliance: No PHI in client-side storage or URLs
+- [ ] Accessibility: Semantic HTML and ARIA labels for interactive elements
 
-export function FeatureComponent({
-  id,
-  initialData,
-  onComplete
-}: FeatureProps) {
-  const [data, setData] = useState<FeatureData | null>(initialData ?? null);
-  const [loading, setLoading] = useState(!initialData);
-  const [error, setError] = useState<string | null>(null);
+## NOT-FOR Boundaries
 
-  useEffect(() => {
-    if (!initialData) {
-      fetchData();
-    }
-  }, [id]);
+**DO NOT use this skill for:**
 
-  async function fetchData() {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/feature/${id}`);
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
-      setData(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
-  }
+- Crisis intervention features → Use `crisis-response-protocol` instead
+- Content moderation rules → Use `recovery-community-moderator` instead  
+- AI coaching logic → Use `modern-drug-rehab-computer` instead
+- General Next.js patterns → Use Next.js documentation instead
+- Third-party integrations → Create specific integration skills instead
 
-  if (loading) {
-    return <div className="animate-pulse">Loading...</div>;
-  }
-
-  if (error) {
-    return (
-      <Card className="border-destructive">
-        <CardContent>Error: {error}</CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>Feature Title</CardHeader>
-      <CardContent>
-        {/* Content */}
-      </CardContent>
-    </Card>
-  );
-}
-```
-
-## Database Query Pattern
-
-```typescript
-// Use secure-db for user data (RLS enforced)
-import { db, users, checkIns } from '@/db/secure-db';
-import { eq, desc } from 'drizzle-orm';
-
-// Get user's own data (RLS automatically filters)
-async function getUserCheckIns(userId: string) {
-  return db
-    .select()
-    .from(checkIns)
-    .where(eq(checkIns.userId, userId))
-    .orderBy(desc(checkIns.createdAt))
-    .limit(30);
-}
-
-// For admin queries, use requireAdmin
-import { requireAdmin } from '@/db/secure-db';
-
-async function getAdminStats() {
-  const admin = await requireAdmin();
-  if (!admin) throw new Error('Admin required');
-
-  // Now can query across all users
-  return db.select({ count: count() }).from(users);
-}
-```
-
-## Design System
-
-### Color Palette (Therapeutic)
-
-```css
-/* From globals.css */
---navy: #1a365d;      /* Primary - trust, stability */
---teal: #319795;      /* Secondary - calm, healing */
---coral: #ed8936;     /* Accent - warmth, energy */
---cream: #fffaf0;     /* Background - comfort */
-```
-
-### Time-Based Themes
-
-```typescript
-function getTimeTheme(): 'dawn' | 'day' | 'dusk' | 'night' {
-  const hour = new Date().getHours();
-  if (hour >= 5 && hour < 9) return 'dawn';
-  if (hour >= 9 && hour < 17) return 'day';
-  if (hour >= 17 && hour < 21) return 'dusk';
-  return 'night';
-}
-```
-
-### Component Styling
-
-```typescript
-// Use Tailwind with design tokens
-<Button
-  className="bg-navy hover:bg-navy/90 text-white"
-  variant="default"
->
-  Primary Action
-</Button>
-
-<Card className="bg-cream border-teal/20">
-  <CardContent className="text-navy">
-    Therapeutic content
-  </CardContent>
-</Card>
-```
-
-## Testing Pattern
-
-```typescript
-// src/lib/__tests__/feature.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-
-describe('Feature', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('loads and displays data', async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ data: 'test' })
-    } as Response);
-
-    render(<FeatureComponent id="123" />);
-
-    await waitFor(() => {
-      expect(screen.getByText('test')).toBeInTheDocument();
-    });
-  });
-
-  it('handles errors gracefully', async () => {
-    vi.mocked(fetch).mockRejectedValueOnce(new Error('Network error'));
-
-    render(<FeatureComponent id="123" />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/error/i)).toBeInTheDocument();
-    });
-  });
-});
-```
-
-## Error Handling
-
-```typescript
-// Use structured error responses
-interface APIError {
-  error: string;
-  code?: string;
-  details?: unknown;
-}
-
-// In API routes
-return NextResponse.json<APIError>(
-  {
-    error: 'Validation failed',
-    code: 'VALIDATION_ERROR',
-    details: zodError.issues
-  },
-  { status: 400 }
-);
-
-// In components
-try {
-  await submitData();
-} catch (e) {
-  if (e instanceof APIError) {
-    toast.error(e.message);
-  } else {
-    toast.error('An unexpected error occurred');
-    console.error(e); // Log for debugging, not shown to user
-  }
-}
-```
-
-## Environment Variables
-
-Required variables (validated at startup):
-
-```bash
-# Authentication
-SESSION_SECRET=           # 32+ random characters
-
-# AI Integration
-ANTHROPIC_API_KEY=        # Claude API key
-
-# Database
-DATABASE_URL=             # SQLite path or connection string
-
-# Optional
-VAPID_PUBLIC_KEY=         # Push notifications
-VAPID_PRIVATE_KEY=
-```
-
-## Pre-Commit Checklist
-
-Before committing any changes:
-
-1. [ ] `npm run lint` passes
-2. [ ] `npm run test` passes
-3. [ ] `npm run feature:validate` passes
-4. [ ] Feature manifest updated (if applicable)
-5. [ ] No secrets in code
-6. [ ] HIPAA compliance maintained (audit logs)
-7. [ ] Accessibility considered (semantic HTML, ARIA)
-
-## Common Imports
-
-```typescript
-// Authentication
-import { getSession, requireAuth } from '@/lib/auth';
-
-// Database
-import { db } from '@/db/secure-db';
-import { eq, desc, and } from 'drizzle-orm';
-
-// Audit
-import { logPHIAccess, logSecurityEvent } from '@/lib/hipaa/audit';
-
-// Rate limiting
-import { createRateLimiter } from '@/lib/rate-limit';
-
-// Validation
-import { z } from 'zod';
-
-// UI Components
-import { Button } from '@/components/ui/Button';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
-import { Input } from '@/components/ui/Input';
-```
+**When to delegate:**
+- For mental health crisis detection: `crisis-response-protocol`
+- For inappropriate content handling: `recovery-community-moderator`
+- For AI conversation flows: `modern-drug-rehab-computer`
+- For deployment and infrastructure: Create DevOps-specific skill

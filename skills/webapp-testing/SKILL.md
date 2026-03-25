@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: webapp-testing
 description: "Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs. Activate on: Playwright, webapp testing, browser automation, E2E testing, UI testing. NOT for API-only testing without browser, unit tests, or mobile app testing."
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep

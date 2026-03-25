@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: ai-engineer
 description: Build production-ready LLM applications, advanced RAG systems, and intelligent agents. Implements vector search, multimodal AI, agent orchestration, and enterprise AI integrations. Use PROACTIVELY for LLM features, chatbots, AI agents, or AI-powered applications.
 allowed-tools: Read,Write,Edit,Glob,Grep,Bash,WebFetch,mcp__SequentialThinking__sequentialthinking
@@ -23,236 +24,182 @@ pairs-with:
 
 Expert in building production-ready LLM applications, from simple chatbots to complex multi-agent systems. Specializes in RAG architectures, vector databases, prompt management, and enterprise AI deployments.
 
-## Quick Start
+## Decision Points
 
+### RAG Component Selection
 ```
-User: "Build a customer support chatbot with our product documentation"
+Query Type Assessment:
+├── Simple FAQ/Knowledge Lookup
+│   ├── Document Count < 1000 → Chroma + text-embedding-3-small
+│   └── Document Count > 1000 → Pinecone + text-embedding-3-large
+├── Technical/Code Documentation  
+│   ├── Budget Constrained → bge-large + pgvector
+│   └── Performance Critical → voyage-2 + Weaviate
+└── Conversational/Multi-turn
+    ├── Memory Required → Agent pattern + context management
+    └── Stateless → Standard RAG pipeline
 
-AI Engineer:
-1. Design RAG architecture (chunking, embedding, retrieval)
-2. Set up vector database (Pinecone/Weaviate/Chroma)
-3. Implement retrieval pipeline with reranking
-4. Build conversation management with context
-5. Add guardrails and fallback handling
-6. Deploy with monitoring and observability
+Reranking Decision:
+├── Precision Critical (legal, medical) → Always use Cohere Rerank
+├── Latency < 200ms → Skip reranking, tune retrieval
+├── Budget Constrained → Cross-encoder (bge-reranker-large)
+└── Default → Cohere Rerank with top-10 → top-3
+
+Database Selection:
+├── Existing Postgres → pgvector extension
+├── Need Hybrid Search → Weaviate or Qdrant
+├── Managed Service → Pinecone
+└── Self-hosted/Local → Chroma or Qdrant
 ```
 
-**Result**: Production-ready AI chatbot in days, not weeks
+### Model Routing Strategy
+```
+Complexity Assessment:
+├── Keywords Only (FAQ) → Claude Haiku
+├── Single Document Reference → Claude Sonnet  
+├── Multi-document Synthesis → Claude Opus
+└── Code Generation → Claude Sonnet with tools
 
-## Core Competencies
+Token Budget Check:
+├── < 1K tokens → Any model
+├── 1K-4K tokens → Sonnet/GPT-4
+├── 4K-32K tokens → Claude Opus
+└── > 32K tokens → Chunk and summarize first
+```
 
-### 1. RAG System Design
-| Component | Implementation | Best Practices |
-|-----------|---------------|----------------|
-| **Chunking** | Semantic, token-based, hierarchical | 512-1024 tokens, overlap 10-20% |
-| **Embedding** | OpenAI, Cohere, local models | Match model to domain |
-| **Vector DB** | Pinecone, Weaviate, Chroma, Qdrant | Index by use case |
-| **Retrieval** | Dense, sparse, hybrid | Start hybrid, tune |
-| **Reranking** | Cross-encoder, Cohere Rerank | Always rerank top-k |
+### Agent vs RAG Decision
+```
+Task Classification:
+├── Static Knowledge Query → Pure RAG
+├── Need External APIs → Agent with tools
+├── Multi-step Reasoning → Agent with planning
+├── Real-time Data Required → Agent with live tools
+└── Simple Q&A → RAG with fallback to agent
+```
 
-### 2. LLM Application Patterns
-- Chat with memory and context management
-- Agentic workflows with tool use
-- Multi-model orchestration (router + specialists)
-- Structured output generation (JSON, XML)
-- Streaming responses with error handling
+## Failure Modes
 
-### 3. Production Operations
-- Token usage tracking and cost optimization
-- Latency monitoring and caching strategies
-- A/B testing for prompt versions
-- Fallback chains and graceful degradation
-- Security (prompt injection, PII handling)
+### **Semantic Mismatch Cascade**
+**Symptoms**: Good retrieval precision but poor answer relevance, users say "close but not quite right"
+**Detection Rule**: If semantic similarity > 0.8 but user satisfaction < 60%
+**Root Cause**: Query and document embeddings optimized for different semantic spaces
+**Fix**: Switch to domain-specific embedding model or implement query expansion with synonyms
 
-## Architecture Patterns
+### **Context Window Overflow**
+**Symptoms**: Responses become generic, model ignores specific retrieved context, inconsistent answers
+**Detection Rule**: If context utilization ratio < 30% and response generality score > 0.7
+**Root Cause**: Too many irrelevant chunks diluting relevant information
+**Fix**: Implement stricter relevance threshold (>0.8) and dynamic context selection
 
-### Basic RAG Pipeline
+### **Tool Hallucination Loop**
+**Symptoms**: Agent makes up API calls, references non-existent functions, infinite retry cycles
+**Detection Rule**: If tool call success rate < 50% or iteration count > max_iterations * 0.8
+**Root Cause**: Model trained on different tool schemas than implementation
+**Fix**: Add tool validation layer and explicit error handling in agent system prompt
 
+### **Embedding Drift Degradation**
+**Symptoms**: Gradual decline in retrieval quality over time, seasonal performance drops
+**Detection Rule**: If monthly average retrieval@5 drops > 10% from baseline
+**Root Cause**: Domain language evolves but embedding model remains static
+**Fix**: Implement embedding model retraining pipeline or switch to adaptive embeddings
+
+### **Response Latency Creep**
+**Symptoms**: P95 latency increases gradually, user complaints about slow responses
+**Detection Rule**: If P95 response time > 2x baseline for 7 consecutive days
+**Root Cause**: Vector index degradation, context size inflation, or model endpoint saturation
+**Fix**: Implement index optimization schedule, context pruning, and multi-model load balancing
+
+## Worked Examples
+
+### Example: Customer Support Chatbot Implementation
+
+**Initial Requirements**: "Build a chatbot that can answer questions about our 500-page product documentation"
+
+**Step 1: Architecture Decision**
+- Document count: 500 pages → Use Pinecone for scalability
+- Query type: Mixed FAQ + troubleshooting → Hybrid search needed
+- Latency requirement: < 3 seconds → Include reranking but optimize
+
+**Step 2: Implementation Walkthrough**
 ```typescript
-// Simple RAG implementation
-async function ragQuery(query: string): Promise<string> {
-  // 1. Embed the query
-  const queryEmbedding = await embed(query);
+// Novice approach - would use basic similarity search
+const chunks = await vectorDb.query(queryEmbedding, { topK: 5 });
 
-  // 2. Retrieve relevant chunks
-  const chunks = await vectorDb.query({
-    vector: queryEmbedding,
-    topK: 10,
-    includeMetadata: true
-  });
+// Expert approach - considers relevance thresholds
+const rawChunks = await vectorDb.query(queryEmbedding, { 
+  topK: 20, 
+  threshold: 0.7  // Ensure minimum relevance
+});
 
-  // 3. Rerank for relevance
-  const reranked = await reranker.rank(query, chunks);
-  const topChunks = reranked.slice(0, 5);
+// Expert adds reranking step novice would skip
+const reranked = await reranker.rank(query, rawChunks);
+const finalChunks = reranked.slice(0, 3);
 
-  // 4. Generate response with context
-  const response = await llm.chat({
-    system: SYSTEM_PROMPT,
-    messages: [
-      { role: 'user', content: buildPrompt(query, topChunks) }
-    ]
-  });
-
-  return response.content;
+// Expert includes fallback handling
+if (finalChunks.length === 0) {
+  return await fallbackToGeneralSupport(query);
 }
 ```
 
-### Agent Architecture
+**Step 3: Performance Optimization Discovery**
+- Initial P95 latency: 4.2 seconds (above requirement)
+- Analysis: 60% of time spent in reranking
+- **Trade-off Decision**: Switch from Cohere Rerank to local cross-encoder
+- Result: P95 latency → 2.1 seconds, slight quality drop (92% → 89% satisfaction)
+- **Expert Insight**: For support use case, speed > perfect accuracy
 
-```typescript
-// Agentic loop with tool use
-interface Agent {
-  systemPrompt: string;
-  tools: Tool[];
-  maxIterations: number;
-}
+**Step 4: Failure Scenario Handling**
+- Discovered 15% of queries were about features not in documentation
+- Novice: Would return "I don't know"
+- Expert: Added escalation detection and handoff to human agent
 
-async function runAgent(agent: Agent, task: string): Promise<string> {
-  const messages: Message[] = [];
-  let iterations = 0;
+**Final Architecture**: Pinecone + local reranker + agent escalation = 89% automation rate at 2.1s P95
 
-  while (iterations < agent.maxIterations) {
-    const response = await llm.chat({
-      system: agent.systemPrompt,
-      messages: [...messages, { role: 'user', content: task }],
-      tools: agent.tools
-    });
+## Quality Gates
 
-    if (!response.toolCalls) {
-      return response.content; // Final answer
-    }
+- [ ] Retrieval@5 accuracy > 85% on evaluation dataset
+- [ ] Average response latency < 3 seconds for P95
+- [ ] Context utilization ratio > 60% (model uses retrieved information)
+- [ ] Hallucination rate < 5% (responses not supported by retrieved context)
+- [ ] User satisfaction score > 80% over 30-day rolling window
+- [ ] Token cost per query < predefined budget threshold
+- [ ] System uptime > 99.9% excluding planned maintenance
+- [ ] PII detection rate > 95% (no personal info in responses)
+- [ ] Embedding model performance stable (no >10% monthly degradation)
+- [ ] Error handling covers all failure modes with graceful degradation
 
-    // Execute tools and continue
-    const toolResults = await executeTools(response.toolCalls);
-    messages.push({ role: 'assistant', content: response });
-    messages.push({ role: 'tool', content: toolResults });
-    iterations++;
-  }
+## Not-For Boundaries
 
-  throw new Error('Max iterations exceeded');
-}
-```
+**Do NOT use this skill for:**
 
-### Multi-Model Router
+**Prompt Engineering Tasks** → Use `prompt-engineer` instead
+- Optimizing prompt templates and instructions
+- A/B testing prompt variations
+- Chain-of-thought prompt design
 
-```typescript
-// Route queries to appropriate models
-const MODEL_ROUTER = {
-  simple: 'claude-3-haiku',     // Fast, cheap
-  moderate: 'claude-3-sonnet',   // Balanced
-  complex: 'claude-3-opus',      // Best quality
-};
+**ML Model Training/Fine-tuning** → Use `ml-engineer` instead  
+- Training custom embedding models
+- Fine-tuning LLMs on domain data
+- Model architecture research
 
-function routeQuery(query: string, context: any): ModelId {
-  // Classify complexity
-  if (isSimpleQuery(query)) return MODEL_ROUTER.simple;
-  if (requiresReasoning(query, context)) return MODEL_ROUTER.complex;
-  return MODEL_ROUTER.moderate;
-}
-```
+**Data Pipeline Engineering** → Use `data-pipeline-engineer` instead
+- ETL processes for training data
+- Data validation and cleaning workflows
+- Batch processing systems
 
-## Implementation Checklist
+**Infrastructure/DevOps** → Use `backend-architect` instead
+- Kubernetes deployment strategies
+- Database optimization and sharding
+- Load balancer configuration
 
-### RAG System
-- [ ] Document ingestion pipeline
-- [ ] Chunking strategy (semantic preferred)
-- [ ] Embedding model selection
-- [ ] Vector database setup
-- [ ] Retrieval with hybrid search
-- [ ] Reranking layer
-- [ ] Citation/source tracking
-- [ ] Evaluation metrics (relevance, faithfulness)
+**Analytics and Monitoring Setup** → Use `chatbot-analytics` instead
+- Conversation flow analysis
+- User behavior tracking
+- Performance dashboard creation
 
-### Production Readiness
-- [ ] Error handling and retries
-- [ ] Rate limiting
-- [ ] Token tracking
-- [ ] Cost monitoring
-- [ ] Latency metrics
-- [ ] Caching layer
-- [ ] Fallback responses
-- [ ] PII filtering
-- [ ] Prompt injection guards
-
-### Observability
-- [ ] Request logging
-- [ ] Response quality scoring
-- [ ] User feedback collection
-- [ ] A/B test framework
-- [ ] Drift detection
-- [ ] Alert thresholds
-
-## Anti-Patterns
-
-### Anti-Pattern: RAG Everything
-**What it looks like**: Using RAG for every query
-**Why wrong**: Adds latency, cost, and complexity when unnecessary
-**Instead**: Classify queries, use RAG only when context needed
-
-### Anti-Pattern: Chunking by Character
-**What it looks like**: `text.slice(0, 1000)` for chunks
-**Why wrong**: Breaks semantic meaning, poor retrieval
-**Instead**: Semantic chunking respecting document structure
-
-### Anti-Pattern: No Reranking
-**What it looks like**: Using raw vector similarity as final ranking
-**Why wrong**: Embedding similarity != relevance for query
-**Instead**: Always add cross-encoder reranking
-
-### Anti-Pattern: Unbounded Context
-**What it looks like**: Stuffing all retrieved chunks into prompt
-**Why wrong**: Dilutes relevance, wastes tokens, confuses model
-**Instead**: Top 3-5 chunks after reranking, dynamic selection
-
-### Anti-Pattern: No Guardrails
-**What it looks like**: Direct user input to LLM
-**Why wrong**: Prompt injection, toxic outputs, off-topic responses
-**Instead**: Input validation, output filtering, topic guardrails
-
-## Technology Stack
-
-### Vector Databases
-| Database | Best For | Notes |
-|----------|----------|-------|
-| **Pinecone** | Production, scale | Managed, fast |
-| **Weaviate** | Hybrid search | GraphQL, modules |
-| **Chroma** | Development, local | Embedded, simple |
-| **Qdrant** | Self-hosted, filters | Rust, performant |
-| **pgvector** | Existing Postgres | Easy integration |
-
-### LLM Frameworks
-| Framework | Best For | Notes |
-|-----------|----------|-------|
-| **LangChain** | Prototyping | Many integrations |
-| **LlamaIndex** | RAG focus | Document handling |
-| **Vercel AI SDK** | Streaming, React | Edge-ready |
-| **Anthropic SDK** | Direct API | Full control |
-
-### Embedding Models
-| Model | Dimensions | Notes |
-|-------|------------|-------|
-| **text-embedding-3-large** | 3072 | Best quality |
-| **text-embedding-3-small** | 1536 | Cost-effective |
-| **voyage-2** | 1024 | Code, technical |
-| **bge-large** | 1024 | Open source |
-
-## When to Use
-
-**Use for:**
-- Building chatbots and conversational AI
-- Implementing RAG systems
-- Creating AI agents with tools
-- Designing multi-model architectures
-- Production AI deployments
-
-**Do NOT use for:**
-- Prompt optimization (use prompt-engineer)
-- ML model training (use ml-engineer)
-- Data pipelines (use data-pipeline-engineer)
-- General backend (use backend-architect)
-
----
-
-**Core insight**: Production AI systems need more than good prompts—they need robust retrieval, intelligent routing, comprehensive monitoring, and graceful failure handling.
-
-**Use with**: prompt-engineer (optimization) | chatbot-analytics (monitoring) | backend-architect (infrastructure)
+**Delegate When:**
+- Task requires deep ML expertise → `ml-engineer`
+- Focus is on conversation design → `prompt-engineer`  
+- Need infrastructure scaling → `backend-architect`
+- Want usage analytics → `chatbot-analytics`
+- Building non-AI features → Relevant specialist skill

@@ -1,5 +1,19 @@
+---
+license: Apache-2.0
+name: human-centered-design-fundamentals
+description: 'name: human-centered-design-fundamentals'
+category: Design & Creative
+tags:
+  - human-centered-design
+  - ux
+  - user-research
+  - usability
+  - design-thinking
+---
+
 ```markdown
 ---
+license: Apache-2.0
 name: human-centered-design-fundamentals
 description: Apply cognitive psychology principles to design discoverable, understandable products through affordances, signifiers, feedback, and conceptual models. For physical and digital interfaces requiring human interaction. NOT for pure aesthetics, marketing, or AI-only systems.
 allowed-tools: Read

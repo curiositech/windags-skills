@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: seo-visibility-expert
 description: Comprehensive SEO, discoverability, and AI crawler optimization for web projects. Use for technical SEO audits, llms.txt/robots.txt setup, schema markup, social launch strategies (Product Hunt, HN, Reddit), and Answer Engine Optimization (AEO). Activate on 'SEO', 'discoverability', 'llms.txt', 'robots.txt', 'Product Hunt', 'launch strategy', 'get traffic', 'be found', 'search ranking'. NOT for paid advertising, PPC campaigns, or social media content creation (use marketing skills).
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch
-category: Business & Monetization
+category: Content & Marketing
 tags:
   - seo
-  - llms-txt
-  - discoverability
-  - product-hunt
-  - aeo
+  - visibility
+  - search-engines
+  - organic-traffic
+  - optimization
 pairs-with:
   - skill: claude-ecosystem-promoter
     reason: Promote with SEO backing
@@ -18,190 +19,148 @@ pairs-with:
 
 # SEO & Visibility Expert
 
-Get your web projects discovered by both traditional search engines AND AI systems.
+## DECISION POINTS
 
-## Quick Start
-
-1. **Create llms.txt** at site root → AI crawlers find your content
-2. **Add JSON-LD schema** → Rich snippets in search results
-3. **Verify robots.txt** → Allow good bots, block bad ones
-4. **Generate sitemap.xml** → Help crawlers index everything
-5. **Check Core Web Vitals** → PageSpeed Insights score &gt;90
-6. **Add Open Graph tags** → Beautiful social previews
-
-## When to Use
-
-**Use for:**
-- Technical SEO audits and fixes
-- llms.txt for AI crawlers
-- Schema.org/JSON-LD structured data
-- Launch strategies (Product Hunt, HN, Reddit)
-- Core Web Vitals optimization
-
-**NOT for:**
-- Paid advertising/PPC campaigns
-- Social media content creation
-- Email marketing campaigns
-
-## The Modern Discovery Stack
-
+### Traffic Diagnostic Tree
 ```
-┌─────────────────────────────────────────────┐
-│          AI ANSWER ENGINES                  │
-│  ChatGPT, Claude, Perplexity, Google AI     │
-│  → llms.txt, structured data, AEO           │
-├─────────────────────────────────────────────┤
-│          TRADITIONAL SEARCH                 │
-│  Google, Bing, DuckDuckGo                   │
-│  → Technical SEO, content, backlinks        │
-├─────────────────────────────────────────────┤
-│          SOCIAL DISCOVERY                   │
-│  Product Hunt, HN, Reddit, Twitter/X        │
-│  → Launch timing, community, narratives     │
-└─────────────────────────────────────────────┘
+Traffic stalled/low? → Check in this order:
+├── 1. Technical health
+│   ├── Core Web Vitals score <90? → Fix performance first
+│   ├── robots.txt blocking? → Check user-agents
+│   └── Schema markup missing? → Add JSON-LD
+├── 2. Content discoverability
+│   ├── No llms.txt? → AI can't reference your content
+│   ├── Missing Open Graph? → Poor social shares
+│   └── No sitemap? → Crawlers missing pages
+└── 3. Distribution channels
+    ├── New project? → Need social launch strategy
+    ├── Existing project? → Expand content marketing
+    └── B2B tool? → Focus on community presence
 ```
 
-## Technical SEO Essentials
-
-### Metadata Must-Haves
-
-```html
-<!-- Every page needs these -->
-<title>Primary Keyword | Brand Name</title>
-<meta name="description" content="150-160 chars with keywords">
-<link rel="canonical" href="https://yoursite.com/page">
-
-<!-- Open Graph for social -->
-<meta property="og:title" content="Title for social shares">
-<meta property="og:image" content="https://yoursite.com/og-image.png">
+### Launch Timing Decision Matrix
+```
+Ready to launch?
+├── Product Hunt
+│   ├── Tuesday-Thursday? → Proceed
+│   ├── Holiday week? → Wait
+│   └── Major tech news? → Reschedule
+├── Hacker News
+│   ├── 6-8am PST, Tue-Thu? → Post
+│   ├── Weekend? → Wait for weekday
+│   └── Technical audience? → Use "Show HN"
+└── Reddit
+    ├── Participated 90% vs promoted 10%? → Safe to promote
+    ├── New account? → Build karma first
+    └── Wrong subreddit rules? → Find better fit
 ```
 
-### URL Rules
-- Lowercase, hyphen-separated
-- Include primary keyword
-- Keep under 60 characters
-- No query parameters for content pages
-
-## AI Crawler Optimization (AEO)
-
-### llms.txt Quick Template
-
-```markdown
-# Your Site Name
-
-> Brief tagline describing what you do
-
-## Overview
-2-3 sentences for AI systems.
-
-## Key Features
-- Feature 1: Description
-- Feature 2: Description
-
-## Documentation
-- [Getting Started](/docs/getting-started)
-- [API Reference](/docs/api)
+### AI Crawler Strategy
+```
+Want AI to find your content?
+├── Training data inclusion
+│   ├── Want citations? → Allow GPTBot, Claude-Web
+│   └── Privacy concerns? → Block Google-Extended only
+├── Content optimization
+│   ├── Technical docs? → Detailed llms.txt with examples
+│   ├── Marketing site? → Brief llms.txt with features
+│   └── Blog? → Post summaries in llms.txt
 ```
 
-### robots.txt for AI Era
+## FAILURE MODES
 
-```
-# AI Crawlers - Allow them!
-User-agent: GPTBot
-Allow: /
+### 1. "Invisible Launch" Anti-Pattern
+**Detection:** Product posted, gets <50 total votes/comments across all platforms
+**Symptoms:** No pre-launch network, posted at wrong times, generic messaging
+**Fix:** Build relationships 4 weeks before launch, time posts strategically, craft platform-specific messaging
 
-User-agent: Claude-Web
-Allow: /
+### 2. "AI Blind Spot" Anti-Pattern  
+**Detection:** Zero mentions when searching your product in ChatGPT/Claude/Perplexity
+**Symptoms:** Missing llms.txt, AI crawlers blocked in robots.txt, no structured data
+**Fix:** Create llms.txt immediately, allow AI user-agents, add schema markup
 
-User-agent: PerplexityBot
-Allow: /
+### 3. "Performance Death Spiral" Anti-Pattern
+**Detection:** Core Web Vitals score <50, bounce rate >70%
+**Symptoms:** Slow loading, layout shifts, heavy JavaScript
+**Fix:** Optimize images first (biggest impact), minimize JS bundles, set explicit image dimensions
 
-# Sitemaps
-Sitemap: https://yoursite.com/sitemap.xml
-```
+### 4. "Social Media Ghost Town" Anti-Pattern
+**Detection:** Shared links show default browser title, no image preview
+**Symptoms:** Missing Open Graph tags, no og:image, generic descriptions
+**Fix:** Add complete Open Graph meta tags, create 1200×630 og:image, test with social debuggers
 
-**Decision tree:**
-- Want AI to reference your content? → Allow GPTBot, Claude-Web
-- Training data concerns? → Disallow Google-Extended
+### 5. "Keyword Stuffing Penalty" Anti-Pattern
+**Detection:** Rankings dropped after content update, unnatural reading flow
+**Symptoms:** Same keyword repeated 10+ times unnaturally, robotic prose
+**Fix:** Rewrite for humans first, use synonyms and related terms, maintain 1-2% keyword density max
 
-## Social Launch Quick Guide
+## WORKED EXAMPLES
 
-### Product Hunt
-- Launch at **12:01 AM PST** exactly
-- Best days: Tuesday, Wednesday, Thursday
-- Never ask for upvotes directly → "Would love your feedback!"
-- See `references/launch-checklists.md` for full checklist
+### Example 1: SaaS Tool Launch Recovery
+**Situation:** DevSync (code collaboration tool) launched 3 months ago, getting only 50 visitors/day
 
-### Hacker News
-- Post 6-8 AM PST, Tuesday-Thursday
-- Title: `Show HN: [Tool] – [Plain English description]`
-- Be technical, humble, genuine
-- Respond to every comment
+**Diagnostic Process:**
+1. **Technical check:** Core Web Vitals at 45 - LCP over 4 seconds
+2. **AI visibility:** No llms.txt, GPTBot blocked in robots.txt
+3. **Social presence:** No Product Hunt launch, minimal community engagement
 
-### Reddit
-- Participate before promoting (90/10 rule)
-- Find niche subreddits for your domain
-- r/SideProject, r/webdev, r/InternetIsBeautiful
+**Actions Taken:**
+1. **Performance first:** Optimized hero images, reduced from 2MB to 200KB → LCP down to 2.1s
+2. **AI optimization:** Added llms.txt with technical specs and use cases, allowed AI crawlers
+3. **Strategic launch:** Built relationships on Indie Hackers for 3 weeks, launched on Product Hunt Tuesday at 12:01 AM PST
 
-## Core Web Vitals Targets
+**Expert vs Novice:** 
+- **Novice would:** Try to fix everything at once, launch immediately without network
+- **Expert caught:** Performance blocks everything else - fix technical issues before promotion
 
-| Metric | Good | Needs Work | Poor |
-|--------|------|------------|------|
-| LCP (Largest Contentful Paint) | &lt;2.5s | 2.5-4s | &gt;4s |
-| INP (Interaction to Next Paint) | &lt;200ms | 200-500ms | &gt;500ms |
-| CLS (Cumulative Layout Shift) | &lt;0.1 | 0.1-0.25 | &gt;0.25 |
+**Results:** 2,500 visitors on launch day, #3 Product of the Day, 450% increase in trial signups
 
-**Quick fixes:** Optimize images (LCP), minimize JS (INP), set explicit dimensions (CLS)
+### Example 2: Technical Documentation SEO
+**Situation:** Open source library docs getting 90% traffic to homepage, other pages invisible
 
-## Anti-Patterns
+**Diagnostic Process:**
+1. **Content audit:** Individual doc pages missing schema markup
+2. **Structure analysis:** No clear information hierarchy for crawlers
+3. **AI discoverability:** llms.txt too generic, no specific examples
 
-### 1. "Build It and They Will Come"
-**Symptom:** Great product, zero traffic
-**Fix:** Spend 50% of time on marketing/distribution
+**Actions Taken:**
+1. **Schema implementation:** Added TechArticle schema to each doc page with code examples
+2. **llms.txt enhancement:** Included specific API endpoints, common use cases, code snippets
+3. **Internal linking:** Created clear hierarchy: Overview → Getting Started → Advanced Features
 
-### 2. Ignoring AI Crawlers
-**Symptom:** No llms.txt, blocking AI user agents
-**Fix:** Create llms.txt, allow AI crawlers in robots.txt
+**Results:** Individual doc pages now rank for long-tail queries, 300% increase in organic traffic to deep pages
 
-### 3. Keyword Stuffing
-**Symptom:** Unnatural keyword repetition
-**Fix:** Write for humans first, keywords naturally
+## QUALITY GATES
 
-### 4. Launch and Abandon
-**Symptom:** Big launch, then silence
-**Fix:** Build in public, regular updates, consistent presence
+SEO audit is complete when ALL of these are true:
 
-### 5. No Schema Markup
-**Symptom:** Plain search results, no rich snippets
-**Fix:** Add JSON-LD for your content type (see references)
+- [ ] Core Web Vitals score >90 on PageSpeed Insights (mobile and desktop)
+- [ ] llms.txt exists at site root with project overview and key features
+- [ ] robots.txt allows GPTBot, Claude-Web, and major search engines
+- [ ] Every page has unique title (<60 chars), description (<160 chars), and canonical URL
+- [ ] Primary content types have appropriate JSON-LD schema markup
+- [ ] Open Graph tags present with og:image (1200×630px) for social sharing
+- [ ] XML sitemap exists and submitted to Google Search Console
+- [ ] Internal linking structure allows crawling to all important pages
+- [ ] Mobile-responsive design confirmed on multiple devices
+- [ ] Site loads in <3 seconds on 3G connection
 
-### 6. Ignoring Mobile
-**Symptom:** Desktop-only testing
-**Fix:** Mobile-first indexing is default. Test on devices.
+## NOT-FOR BOUNDARIES
 
-## Measurement
+**Do NOT use this skill for:**
+- **Paid advertising campaigns** → Use `paid-marketing-specialist` instead
+- **Social media content creation** → Use `content-creator` instead  
+- **Email marketing campaigns** → Use `email-marketing-expert` instead
+- **Conversion rate optimization** → Use `conversion-optimization` instead
+- **Brand strategy and messaging** → Use `brand-strategist` instead
 
-**Free tools:**
-- Google Search Console - Search performance
-- PageSpeed Insights - Core Web Vitals
-- Schema Validator - Structured data testing
+**Delegate when:**
+- Client wants Google Ads setup → Hand off to paid marketing
+- Need social media post templates → Hand off to content creation
+- Require A/B testing landing pages → Hand off to conversion optimization
+- Want comprehensive brand guidelines → Hand off to brand strategy
 
-**Track these:**
-1. Organic search impressions/clicks
-2. Referral traffic from social launches
-3. Core Web Vitals scores
-4. AI citations (search your brand in ChatGPT/Claude)
-
-## Reference Files
-
-| File | Contents |
-|------|----------|
-| `references/llms-txt-examples.md` | Full llms.txt examples for SaaS, docs, OSS, blogs |
-| `references/schema-templates.md` | JSON-LD templates for all content types |
-| `references/launch-checklists.md` | Detailed checklists for PH, HN, Reddit |
-
----
-
-**Covers:** Technical SEO | AI Crawler Optimization | Social Launch Strategy | Core Web Vitals | Schema Markup
-
-**Use with:** content-marketer (content strategy) | web-design-expert (landing pages) | indie-monetization-strategist (conversion)
+**Gray areas requiring judgment:**
+- Landing page copy that mentions SEO benefits → Collaborate with copywriter
+- Technical blog posts for SEO → Collaborate with technical writer
+- Product positioning for search → Collaborate with brand strategist

@@ -1,4 +1,5 @@
 ---
+license: BSL-1.1
 name: dag-confidence-scorer
 description: Assigns confidence scores to agent outputs based on multiple factors including source quality, consistency, and reasoning depth. Produces calibrated confidence estimates. Activate on 'confidence score', 'how confident', 'certainty level', 'output confidence', 'reliability score'. NOT for validation (use dag-output-validator) or hallucination detection (use dag-hallucination-detector).
 allowed-tools:
@@ -7,7 +8,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-category: DAG Framework
+category: Agent & Orchestration
 tags:
   - dag
   - quality
@@ -25,480 +26,166 @@ pairs-with:
 
 You are a DAG Confidence Scorer, an expert at assigning calibrated confidence scores to agent outputs. You analyze multiple factors including reasoning depth, source quality, internal consistency, and uncertainty markers to produce reliable confidence estimates that inform downstream decisions.
 
-## Core Responsibilities
+## Decision Points
 
-### 1. Multi-Factor Confidence Assessment
-- Evaluate reasoning quality and depth
-- Assess source reliability
-- Check internal consistency
-- Analyze uncertainty markers
+### Primary Decision Tree: Confidence Scoring Strategy
 
-### 2. Confidence Calibration
-- Produce well-calibrated probability estimates
-- Adjust for known biases
-- Account for task complexity
+```
+Has agent output? → No: Request output first
+                 → Yes: ↓
 
-### 3. Confidence Decomposition
-- Break down overall confidence by factor
-- Identify weakest confidence areas
-- Provide actionable insights
+Task type identified? → Analysis: Use weights (reasoning:0.3, sources:0.2, consistency:0.2, completeness:0.2, uncertainty:0.1)
+                     → Research: Use weights (reasoning:0.2, sources:0.35, consistency:0.15, completeness:0.2, uncertainty:0.1)
+                     → Creative: Use weights (reasoning:0.15, sources:0.1, consistency:0.3, completeness:0.35, uncertainty:0.1)
+                     → Code: Use weights (reasoning:0.25, sources:0.15, consistency:0.3, completeness:0.25, uncertainty:0.05)
+                     → Unknown: Use analysis weights as default
 
-### 4. Threshold Management
-- Apply confidence thresholds for decisions
-- Flag outputs below thresholds
-- Recommend actions based on confidence
+Factor scores computed? → Any factor < 0.3: Flag as "Critical weakness - investigate immediately"
+                       → All factors 0.3-0.6: Proceed with standard calibration
+                       → Most factors > 0.7: Check for overconfidence bias
 
-## Confidence Architecture
-
-```typescript
-interface ConfidenceScore {
-  overall: number;           // 0-1 overall confidence
-  calibrated: number;        // 0-1 after calibration
-  factors: ConfidenceFactors;
-  breakdown: FactorBreakdown[];
-  thresholds: ThresholdResult;
-  metadata: ConfidenceMetadata;
-}
-
-interface ConfidenceFactors {
-  reasoning: number;         // Quality of reasoning
-  sources: number;           // Source reliability
-  consistency: number;       // Internal consistency
-  completeness: number;      // Coverage of requirements
-  uncertainty: number;       // Explicit uncertainty handling
-}
-
-interface FactorBreakdown {
-  factor: keyof ConfidenceFactors;
-  score: number;
-  weight: number;
-  contribution: number;
-  evidence: string[];
-}
-
-interface ThresholdResult {
-  passesMinimum: boolean;
-  minimumThreshold: number;
-  recommendedAction: 'accept' | 'review' | 'reject' | 'iterate';
-}
+Calibrated confidence calculated? → >0.85: Recommend "accept" 
+                                 → 0.65-0.85: Recommend "review"
+                                 → 0.5-0.65: Recommend "iterate"
+                                 → <0.5: Recommend "reject"
 ```
 
-## Factor Scoring
+### Weight Override Decision Points
 
-```typescript
-function scoreConfidenceFactors(
-  output: AgentOutput,
-  context: ScoringContext
-): ConfidenceFactors {
-  return {
-    reasoning: scoreReasoning(output),
-    sources: scoreSources(output, context),
-    consistency: scoreConsistency(output),
-    completeness: scoreCompleteness(output, context),
-    uncertainty: scoreUncertaintyHandling(output),
-  };
-}
+```
+Historical accuracy < 70%? → Yes: Reduce all factor scores by 0.1
+                          → No: Apply standard weights
 
-function scoreReasoning(output: AgentOutput): number {
-  let score = 0.5; // Baseline
+Task involves safety/security? → Yes: Increase sources weight to 0.4, reduce uncertainty tolerance
+                              → No: Use standard weights
 
-  // Check for structured reasoning
-  const hasStepByStep = /step\s*\d|first.*then.*finally/i.test(output.content);
-  if (hasStepByStep) score += 0.15;
+Agent explicitly states uncertainty? → Yes: Boost uncertainty factor score by 0.2
+                                    → No: Penalty of -0.1 to uncertainty factor
 
-  // Check for evidence/justification
-  const hasEvidence = /because|since|due to|evidence|shows that/i.test(output.content);
-  if (hasEvidence) score += 0.15;
-
-  // Check for consideration of alternatives
-  const considersAlternatives = /alternatively|however|on the other hand|could also/i.test(output.content);
-  if (considersAlternatives) score += 0.1;
-
-  // Check for explicit assumptions
-  const statesAssumptions = /assuming|given that|if we assume/i.test(output.content);
-  if (statesAssumptions) score += 0.1;
-
-  // Penalize for reasoning red flags
-  const hasLeapsInLogic = /obviously|clearly|simply|just/i.test(output.content);
-  if (hasLeapsInLogic) score -= 0.1;
-
-  return Math.max(0, Math.min(1, score));
-}
-
-function scoreSources(
-  output: AgentOutput,
-  context: ScoringContext
-): number {
-  let score = 0.5;
-
-  // Check for citations
-  const citations = output.content.match(/\[[\d\w]+\]|\(\d{4}\)|according to/gi) || [];
-  score += Math.min(0.2, citations.length * 0.05);
-
-  // Check for verifiable sources
-  const urls = output.content.match(/https?:\/\/[^\s]+/g) || [];
-  const trustedDomains = ['github.com', 'docs.', 'official', '.gov', '.edu'];
-  const trustedUrls = urls.filter(url =>
-    trustedDomains.some(domain => url.includes(domain))
-  );
-  score += Math.min(0.2, trustedUrls.length * 0.1);
-
-  // Check if sources were used from context
-  if (context.providedSources && context.providedSources.length > 0) {
-    const sourcesUsed = context.providedSources.filter(source =>
-      output.content.toLowerCase().includes(source.toLowerCase())
-    );
-    score += (sourcesUsed.length / context.providedSources.length) * 0.2;
-  }
-
-  // Penalize unsourced claims
-  const strongClaims = output.content.match(/always|never|all|none|every|definitely/gi) || [];
-  score -= Math.min(0.2, strongClaims.length * 0.05);
-
-  return Math.max(0, Math.min(1, score));
-}
-
-function scoreConsistency(output: AgentOutput): number {
-  let score = 0.8; // Start high, penalize inconsistencies
-
-  // Check for self-contradictions
-  const contradictionMarkers = [
-    /but.*contrary/i,
-    /however.*this contradicts/i,
-    /wait.*actually/i,
-  ];
-
-  for (const marker of contradictionMarkers) {
-    if (marker.test(output.content)) {
-      score -= 0.15;
-    }
-  }
-
-  // Check for consistent terminology
-  // (simplified - would use NLP in production)
-  const terms = extractKeyTerms(output.content);
-  const termVariants = detectTermVariants(terms);
-  if (termVariants.length > 0) {
-    score -= termVariants.length * 0.05;
-  }
-
-  // Check for consistent formatting
-  const formats = detectFormatInconsistencies(output.content);
-  score -= formats.length * 0.02;
-
-  return Math.max(0, Math.min(1, score));
-}
-
-function scoreCompleteness(
-  output: AgentOutput,
-  context: ScoringContext
-): number {
-  let score = 0.5;
-
-  // Check coverage of required topics
-  if (context.requiredTopics) {
-    const covered = context.requiredTopics.filter(topic =>
-      output.content.toLowerCase().includes(topic.toLowerCase())
-    );
-    score += (covered.length / context.requiredTopics.length) * 0.4;
-  }
-
-  // Check for conclusion/summary
-  const hasConclusion = /in conclusion|to summarize|in summary|therefore/i.test(output.content);
-  if (hasConclusion) score += 0.1;
-
-  // Check word count relative to expectation
-  const wordCount = output.content.split(/\s+/).length;
-  if (context.expectedWordCount) {
-    const ratio = wordCount / context.expectedWordCount;
-    if (ratio >= 0.8 && ratio <= 1.2) {
-      score += 0.1;
-    } else if (ratio < 0.5 || ratio > 2) {
-      score -= 0.1;
-    }
-  }
-
-  return Math.max(0, Math.min(1, score));
-}
-
-function scoreUncertaintyHandling(output: AgentOutput): number {
-  let score = 0.5;
-
-  // Reward explicit uncertainty
-  const uncertaintyMarkers = [
-    /I'm not (entirely )?sure/i,
-    /might|may|could|possibly/i,
-    /approximately|around|roughly/i,
-    /uncertain|unclear/i,
-    /this is my (best )?estimate/i,
-  ];
-
-  let uncertaintyCount = 0;
-  for (const marker of uncertaintyMarkers) {
-    if (marker.test(output.content)) {
-      uncertaintyCount++;
-    }
-  }
-
-  // Some uncertainty is good (calibrated)
-  if (uncertaintyCount >= 1 && uncertaintyCount <= 3) {
-    score += 0.2;
-  } else if (uncertaintyCount > 5) {
-    // Too much uncertainty is concerning
-    score -= 0.1;
-  }
-
-  // Reward confidence qualifiers
-  const confidenceMarkers = /confidence:\s*(\d+)%|(\d+)%\s*confident/i;
-  if (confidenceMarkers.test(output.content)) {
-    score += 0.15;
-  }
-
-  // Reward edge case acknowledgment
-  const edgeCases = /edge case|exception|special case|corner case/i;
-  if (edgeCases.test(output.content)) {
-    score += 0.1;
-  }
-
-  return Math.max(0, Math.min(1, score));
-}
+Multiple conflicting sources? → Yes: Reduce sources factor by 0.3, increase consistency weight
+                             → No: Standard source scoring
 ```
 
-## Confidence Calculation
+## Failure Modes
 
-```typescript
-interface FactorWeights {
-  reasoning: number;
-  sources: number;
-  consistency: number;
-  completeness: number;
-  uncertainty: number;
-}
+### 1. Overconfidence Inflation
+**Detection Rule**: If overall confidence > 0.8 but fewer than 3 sources cited AND no uncertainty markers present
+**Symptoms**: High confidence scores on weak evidence, missing doubt indicators
+**Fix**: Apply 0.2 penalty to overall score, increase calibration bias correction to 0.15
 
-function calculateOverallConfidence(
-  factors: ConfidenceFactors,
-  weights: FactorWeights
-): number {
-  const entries = Object.entries(factors) as [keyof ConfidenceFactors, number][];
+### 2. Factor Tunnel Vision  
+**Detection Rule**: If any single factor contributes >50% to final score OR factors vary by >0.6 range
+**Symptoms**: One dominant factor masks weaknesses, unbalanced assessment
+**Fix**: Rebalance weights to cap any factor at 35% contribution, flag imbalanced scores
 
-  let weightedSum = 0;
-  let totalWeight = 0;
+### 3. Threshold Gaming
+**Detection Rule**: If confidence hovers exactly at threshold boundaries (±0.02) across multiple outputs
+**Symptoms**: Scores cluster at 0.65, 0.85 decision points, artificial precision
+**Fix**: Add ±0.05 confidence intervals, require explicit justification for boundary scores
 
-  for (const [factor, score] of entries) {
-    const weight = weights[factor];
-    weightedSum += score * weight;
-    totalWeight += weight;
-  }
+### 4. Calibration Drift
+**Detection Rule**: If predicted confidence differs from actual accuracy by >0.15 over 10+ samples
+**Symptoms**: Systematic over/under-confidence, poor real-world correlation
+**Fix**: Retrain calibration parameters, adjust bias correction, validate on held-out set
 
-  return weightedSum / totalWeight;
-}
+### 5. Context Blindness
+**Detection Rule**: If same content gets vastly different scores (>0.3 difference) when context changes
+**Symptoms**: Identical reasoning scored differently, missing contextual factors
+**Fix**: Explicit context encoding, task-specific calibration, document context dependencies
 
-function getDefaultWeights(taskType: string): FactorWeights {
-  const presets: Record<string, FactorWeights> = {
-    analysis: {
-      reasoning: 0.3,
-      sources: 0.2,
-      consistency: 0.2,
-      completeness: 0.2,
-      uncertainty: 0.1,
-    },
-    research: {
-      reasoning: 0.2,
-      sources: 0.35,
-      consistency: 0.15,
-      completeness: 0.2,
-      uncertainty: 0.1,
-    },
-    creative: {
-      reasoning: 0.15,
-      sources: 0.1,
-      consistency: 0.3,
-      completeness: 0.35,
-      uncertainty: 0.1,
-    },
-    code: {
-      reasoning: 0.25,
-      sources: 0.15,
-      consistency: 0.3,
-      completeness: 0.25,
-      uncertainty: 0.05,
-    },
-  };
+## Worked Examples
 
-  return presets[taskType] ?? presets.analysis;
-}
+### Example 1: Research Analysis (Confidence: 0.73 → Calibrated: 0.68)
+
+**Input**: "Based on 3 academic papers, machine learning models show 85% accuracy on this task. However, dataset sizes vary significantly (100-10k samples) which may affect generalizability. The Chen et al. study used cross-validation while others did not."
+
+**Scoring Process**:
+```
+1. Factor Analysis:
+   - Reasoning: 0.75 (structured, acknowledges limitations)
+   - Sources: 0.85 (3 academic papers, specific citations)
+   - Consistency: 0.8 (no contradictions)
+   - Completeness: 0.65 (missing methodology details)
+   - Uncertainty: 0.7 (acknowledges dataset variation)
+
+2. Weight Application (Research task):
+   Overall = (0.75×0.2) + (0.85×0.35) + (0.8×0.15) + (0.65×0.2) + (0.7×0.1) = 0.73
+
+3. Calibration:
+   - Model bias: -0.05 (known overconfidence)
+   - Task difficulty: Moderate (-0.02)
+   - Final: 0.73 × 0.95 × 0.98 = 0.68
+
+4. Decision: 0.68 → "review" (above 0.65 threshold)
 ```
 
-## Confidence Calibration
+**Novice Miss**: Would score sources higher without checking citation quality
+**Expert Catch**: Notices uneven methodology across studies, adjusts accordingly
 
-```typescript
-interface CalibrationParams {
-  historicalAccuracy: number;  // How accurate past confidence was
-  taskDifficulty: number;      // Task complexity factor
-  modelBias: number;           // Known overconfidence bias
-}
+### Example 2: Code Implementation (Confidence: 0.45 → Calibrated: 0.41)
 
-function calibrateConfidence(
-  rawConfidence: number,
-  params: CalibrationParams
-): number {
-  // Apply Platt scaling-like calibration
-  // Adjust for known overconfidence bias
-  let calibrated = rawConfidence;
+**Input**: "Here's the function: `def process(data): return data.sort()`. This should work for most cases."
 
-  // Reduce overconfidence (LLMs tend to be overconfident)
-  calibrated *= (1 - params.modelBias);
+**Scoring Process**:
+```
+1. Factor Analysis:
+   - Reasoning: 0.3 (minimal explanation)
+   - Sources: 0.2 (no documentation references)  
+   - Consistency: 0.6 (simple, consistent)
+   - Completeness: 0.3 (missing error handling, edge cases)
+   - Uncertainty: 0.4 ("most cases" shows some awareness)
 
-  // Adjust based on historical accuracy
-  if (params.historicalAccuracy < 0.8) {
-    calibrated *= params.historicalAccuracy;
-  }
+2. Weight Application (Code task):
+   Overall = (0.3×0.25) + (0.2×0.15) + (0.6×0.3) + (0.3×0.25) + (0.4×0.05) = 0.45
 
-  // Adjust for task difficulty
-  const difficultyMultiplier = 1 - (params.taskDifficulty * 0.2);
-  calibrated *= difficultyMultiplier;
-
-  // Ensure bounds
-  return Math.max(0.05, Math.min(0.95, calibrated));
-}
+3. Decision: 0.45 → "reject" (below 0.5 threshold)
 ```
 
-## Threshold Decisions
+**Critical Issue**: Multiple factors below 0.3 threshold triggers investigation flag
 
-```typescript
-interface ThresholdConfig {
-  accept: number;      // Above this: auto-accept
-  review: number;      // Above this: human review
-  reject: number;      // Below this: auto-reject
-  iterate: number;     // Below this: require iteration
-}
+### Example 3: Creative Writing (Confidence: 0.82 → Calibrated: 0.78)
 
-const DEFAULT_THRESHOLDS: ThresholdConfig = {
-  accept: 0.85,
-  review: 0.65,
-  reject: 0.3,
-  iterate: 0.5,
-};
+**Input**: "The protagonist's journey mirrors classic hero mythology while subverting gender expectations. Each chapter builds tension through parallel storylines that converge in Act III, creating dramatic irony. The ending provides closure while leaving room for interpretation."
 
-function determineAction(
-  confidence: number,
-  thresholds: ThresholdConfig = DEFAULT_THRESHOLDS
-): ThresholdResult {
-  let action: ThresholdResult['recommendedAction'];
+**Scoring Process**:
+```
+1. Factor Analysis:
+   - Reasoning: 0.7 (good structure analysis)
+   - Sources: 0.6 (implicit literary references)
+   - Consistency: 0.9 (coherent narrative analysis)
+   - Completeness: 0.95 (covers all story elements)
+   - Uncertainty: 0.5 (confident but appropriate)
 
-  if (confidence >= thresholds.accept) {
-    action = 'accept';
-  } else if (confidence >= thresholds.review) {
-    action = 'review';
-  } else if (confidence >= thresholds.iterate) {
-    action = 'iterate';
-  } else {
-    action = 'reject';
-  }
+2. Weight Application (Creative task):
+   Overall = (0.7×0.15) + (0.6×0.1) + (0.9×0.3) + (0.95×0.35) + (0.5×0.1) = 0.82
 
-  return {
-    passesMinimum: confidence >= thresholds.reject,
-    minimumThreshold: thresholds.reject,
-    recommendedAction: action,
-  };
-}
+3. Decision: 0.78 → "review" (below 0.85 auto-accept)
 ```
 
-## Confidence Report
+## Quality Gates
 
-```yaml
-confidenceReport:
-  nodeId: research-analyst
-  outputId: analysis-2024-01-15
-  scoredAt: "2024-01-15T10:30:00Z"
+- [ ] All 5 confidence factors scored (reasoning, sources, consistency, completeness, uncertainty)
+- [ ] Task type identified and appropriate weights applied
+- [ ] Raw confidence calculated using weighted factor scores
+- [ ] Calibration applied with bias correction and historical accuracy
+- [ ] Threshold decision determined (accept/review/iterate/reject)  
+- [ ] Factor breakdown shows contribution percentages sum to 100%
+- [ ] Any factor scoring <0.3 has been flagged for investigation
+- [ ] Confidence interval bounds calculated (±0.05 of point estimate)
+- [ ] Weakest factors identified with specific improvement suggestions
+- [ ] Output includes metadata: timestamp, model version, calibration parameters used
 
-  scores:
-    overall: 0.72
-    calibrated: 0.65
+## NOT-FOR Boundaries
 
-  factors:
-    reasoning:
-      score: 0.75
-      weight: 0.25
-      contribution: 0.19
-      evidence:
-        - "Step-by-step analysis present"
-        - "Evidence cited for claims"
-        - "Missing consideration of alternatives"
+**This skill is NOT for**:
+- **Output validation**: Use `dag-output-validator` for correctness checking
+- **Hallucination detection**: Use `dag-hallucination-detector` for factual accuracy
+- **Content quality assessment**: Use `dag-quality-assessor` for writing quality
+- **Performance benchmarking**: Use `dag-performance-evaluator` for speed/efficiency
+- **Binary pass/fail decisions**: This produces probabilistic confidence, not binary judgments
 
-    sources:
-      score: 0.80
-      weight: 0.30
-      contribution: 0.24
-      evidence:
-        - "3 trusted sources cited"
-        - "Official documentation referenced"
-        - "1 unsourced strong claim detected"
-
-    consistency:
-      score: 0.85
-      weight: 0.15
-      contribution: 0.13
-      evidence:
-        - "No contradictions detected"
-        - "Consistent terminology"
-
-    completeness:
-      score: 0.60
-      weight: 0.20
-      contribution: 0.12
-      evidence:
-        - "4/6 required topics covered"
-        - "No conclusion section"
-
-    uncertainty:
-      score: 0.55
-      weight: 0.10
-      contribution: 0.06
-      evidence:
-        - "Limited uncertainty markers"
-        - "No explicit confidence statement"
-
-  calibration:
-    raw: 0.72
-    calibrated: 0.65
-    adjustments:
-      - factor: modelBias
-        value: -0.05
-        reason: "Known overconfidence in analysis tasks"
-      - factor: taskDifficulty
-        value: -0.02
-        reason: "Moderate complexity task"
-
-  thresholds:
-    passesMinimum: true
-    minimumThreshold: 0.30
-    recommendedAction: review
-
-  weakestFactors:
-    - factor: uncertainty
-      score: 0.55
-      suggestion: "Add explicit confidence levels to claims"
-    - factor: completeness
-      score: 0.60
-      suggestion: "Cover remaining topics: security, scalability"
-```
-
-## Integration Points
-
-- **Input**: Validated outputs from `dag-output-validator`
-- **Downstream**: `dag-hallucination-detector` for low confidence
-- **Decisions**: `dag-iteration-detector` uses confidence thresholds
-- **Learning**: `dag-pattern-learner` tracks calibration accuracy
-
-## Best Practices
-
-1. **Calibrate Regularly**: Update calibration with outcome data
-2. **Task-Specific Weights**: Different tasks need different emphasis
-3. **Transparent Breakdown**: Show what drives confidence
-4. **Conservative Defaults**: Start with lower thresholds
-5. **Track Accuracy**: Compare predictions to outcomes
-
----
-
-Calibrated confidence. Multi-factor scoring. Informed decisions.
+**Delegate to other skills when**:
+- Asked to "validate this output" → Use `dag-output-validator` 
+- Asked to "check if this is accurate" → Use `dag-hallucination-detector`
+- Asked to "is this good enough?" → Use `dag-quality-assessor`
+- Asked to "should we ship this?" → Combine confidence score with `dag-output-validator`

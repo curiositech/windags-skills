@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: wedding-immortalist
 description: Transform thousands of wedding photos and hours of footage into an immersive 3D Gaussian Splatting experience with theatre mode replay, face-clustered guest roster, and AI-curated best photos per person. Expert in 3DGS pipelines, face clustering, aesthetic scoring, and adaptive design matching the couple's wedding theme (disco, rustic, modern, LGBTQ+ celebrations). Activate on "wedding photos", "wedding video", "3D wedding", "Gaussian Splatting wedding", "wedding memory", "wedding immortalize", "face clustering wedding", "best wedding photos". NOT for general photo editing (use native-app-designer), non-wedding 3DGS (use drone-inspection-specialist), or event planning (not a wedding planner).
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob,WebFetch
-category: AI & Machine Learning
+category: Lifestyle & Personal
 tags:
   - wedding
-  - 3dgs
-  - gaussian-splatting
-  - face-clustering
-  - memories
+  - memorial
+  - preservation
+  - photography
+  - storytelling
 pairs-with:
   - skill: photo-content-recognition-curation-expert
     reason: Curate wedding photos
@@ -20,403 +21,206 @@ pairs-with:
 
 Transform wedding photos and video into an eternal, immersive 3D experience. Create living memories that let couples and guests relive the magic forever.
 
-## When to Use This Skill
+## DECISION POINTS
 
-**Use for:**
-- Processing thousands of wedding photos into 3DGS scenes
-- Creating theatre-mode experiences where ceremony/reception moments play in-place
-- Building face-clustered guest rosters with best-photo selection
-- Matching design aesthetics to wedding themes (disco, rustic, beach, modern, queer celebrations)
-- AI-curated photo selection per guest with aesthetic scoring
-
-**NOT for:**
-- General photo editing → use native-app-designer
-- Non-wedding 3DGS → use drone-inspection-specialist
-- Event planning → not a wedding planner
-- Video editing without 3D reconstruction
-
-## Core Pipeline
-
+### 1. Multi-Space Merge Strategy
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    WEDDING IMMORTALIST PIPELINE                  │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1. INGEST                2. RECONSTRUCT        3. CLUSTER       │
-│  ├─ Photos (1000s)        ├─ COLMAP SfM         ├─ Face detect   │
-│  ├─ Video (hours)         ├─ 3DGS training      ├─ Embeddings    │
-│  └─ Audio/speeches        └─ Scene merge        └─ Identity link │
-│                                                                  │
-│  4. CURATE                5. DESIGN             6. PRESENT       │
-│  ├─ Aesthetic score       ├─ Theme extract      ├─ Web viewer    │
-│  ├─ Per-person best       ├─ Color palette      ├─ Theatre mode  │
-│  └─ Moment detect         └─ Typography         └─ Guest roster  │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+Input: Multiple venue spaces detected (ceremony, reception, cocktail hour)
+├── < 500 photos per space
+│   └── Train unified scene (risk: quality loss, benefit: seamless navigation)
+├── 500-1500 photos per space  
+│   └── Train per-space with portal transitions (RECOMMENDED)
+├── > 1500 photos per space
+│   └── Split large spaces into sub-regions to avoid memory overflow
+└── Mixed lighting conditions?
+    ├── Yes → Separate indoor/outdoor scenes
+    └── No → Can merge with lighting adaptation
 ```
 
-## Theme-Adaptive Design
-
-### Theme Detection & Matching
-
-Every wedding has a unique aesthetic. Extract and honor it:
-
-| Theme Type | Color Palette | Typography | UI Elements |
-|------------|---------------|------------|-------------|
-| **70s Disco** | Gold, orange, burnt sienna, deep purple | Groovy script, bold sans | Mirror balls, starbursts, warm gradients |
-| **Rustic/Barn** | Earth tones, sage, cream, wood | Serif, hand-lettered | Burlap textures, wildflower accents |
-| **Beach/Coastal** | Ocean blues, sand, coral, seafoam | Light sans, script | Shell motifs, wave patterns |
-| **Modern Minimal** | Black, white, metallics | Clean geometric sans | Sharp lines, negative space |
-| **Queer Joy** | Rainbow spectrums, bold colors | Expressive, varied | Pride elements, celebration maximalism |
-| **Cultural Fusion** | Per tradition | Traditional + modern | Cultural motifs, heritage patterns |
-
-### Extracting Theme from Photos
-
-```python
-# Theme extraction signals
-THEME_SIGNALS = {
-    'color_palette': 'Dominant colors from venue, florals, attire',
-    'lighting_mood': 'Warm/cool, natural/dramatic, string lights/chandeliers',
-    'decor_elements': 'Rustic/modern/vintage/eclectic',
-    'attire_style': 'Traditional/non-traditional, formal/casual',
-    'cultural_markers': 'Religious symbols, cultural traditions',
-    'era_aesthetic': '70s disco, 20s gatsby, etc.'
-}
+### 2. Face Clustering Threshold Selection
+```
+Input: Face embedding similarity scores across all detected faces
+├── Photo count < 1000
+│   └── Conservative threshold (0.4): Prefer precision over recall
+├── Photo count 1000-5000
+│   └── Balanced threshold (0.3): Standard wedding size
+├── Photo count > 5000
+│   └── Aggressive threshold (0.25): Large weddings need looser matching
+└── Professional + phone photos mixed?
+    ├── Yes → Increase threshold by 0.05 (lighting/quality variance)
+    └── No → Use base threshold
 ```
 
-## 3D Gaussian Splatting Pipeline
-
-### Photo/Video Ingestion
-
+### 3. Theme Signal Conflict Resolution
 ```
-Optimal Input Strategy:
-├── Video: Extract 2-3 fps (80% overlap minimum)
-├── Photos: Include ALL photographer shots
-├── Phone photos: Guest uploads (georeferenced bonus)
-└── Coverage: Ceremony + reception + all spaces
-
-Quality Thresholds:
-├── Minimum images per space: 50-100
-├── Overlap requirement: 60-80%
-├── Blur rejection: Laplacian variance < 100 = skip
-└── Exposure: Reject severe over/underexposure
+Input: Competing aesthetic signals detected
+├── Venue theme ≠ Decor theme
+│   ├── Venue rustic, decor modern → Weight decor 70%, venue 30%
+│   └── Venue formal, decor casual → Weight venue 60%, decor 40%
+├── Multiple cultural traditions
+│   └── Create fusion palette prioritizing couple's primary heritage
+├── Seasonal vs. chosen colors
+│   ├── Spring wedding with fall colors → Honor chosen colors
+│   └── Christmas wedding ignoring season → Blend seasonal + chosen
+└── Guest attire contradicts theme
+    └── Ignore guest attire, focus on venue + intentional decor
 ```
 
-### COLMAP Structure from Motion
-
-```bash
-# Feature extraction
-colmap feature_extractor \
-  --database_path database.db \
-  --image_path images/ \
-  --ImageReader.single_camera 0 \
-  --SiftExtraction.max_image_size 3200
-
-# Exhaustive matching for comprehensive coverage
-colmap exhaustive_matcher \
-  --database_path database.db \
-  --SiftMatching.guided_matching 1
-
-# Sparse reconstruction
-colmap mapper \
-  --database_path database.db \
-  --image_path images/ \
-  --output_path sparse/
-
-# Dense reconstruction (optional, for mesh)
-colmap image_undistorter ...
-colmap patch_match_stereo ...
+### 4. Video Frame Extraction Rate
+```
+Input: Wedding video files with metadata
+├── Handheld/phone video (high motion blur)
+│   └── Extract 1 fps to reduce blur frames
+├── Professional video (smooth)
+│   └── Extract 2-3 fps for optimal overlap
+├── Drone footage
+│   └── Extract 1 fps (smooth motion, redundant frames)
+├── Ceremony (mostly static)
+│   └── Extract 1 fps, boost for processional/recessional
+└── Reception/dancing (high motion)
+    └── Extract 3 fps to capture movement variety
 ```
 
-### 3DGS Training
-
-```python
-# Wedding-optimized 3DGS settings
-WEDDING_3DGS_CONFIG = {
-    'iterations': 50_000,          # High quality for permanent archive
-    'densify_from_iter': 500,
-    'densify_until_iter': 15_000,
-    'densification_interval': 100,
-    'opacity_reset_interval': 3000,
-    'sh_degree': 3,                # Full spherical harmonics for lighting
-    'percent_dense': 0.01,
-    'densify_grad_threshold': 0.0002,
-}
-
-# Multi-space merge strategy
-SPACES = ['ceremony', 'cocktail_hour', 'reception', 'photo_booth', 'dance_floor']
-# Train each separately, then create unified navigation
+### 5. Space Skip Threshold Decision
+```
+Input: Reconstructed space quality metrics
+├── < 50 images AND reconstruction error > 5.0 pixels
+│   └── Skip space: insufficient coverage, warn user
+├── 50-100 images AND error > 3.0 pixels
+│   └── Include with quality warning, mark as "preview quality"
+├── > 100 images AND error > 2.0 pixels
+│   └── Retrain with adjusted parameters, likely lighting issues
+└── Blurry photos > 40% of space images
+    └── Skip space, request better photos from user
 ```
 
-## Face Clustering System
+## FAILURE MODES
 
-### Pipeline
+### 1. COLMAP Divergence Cascade
+**Symptom**: Sparse reconstruction fails completely, no 3D points generated
+**Detection Rule**: If COLMAP outputs < 100 3D points for > 200 input images
+**Diagnosis**: Feature matching failure due to repetitive textures (white walls, flowers) or extreme lighting changes
+**Fix**: 
+- Re-extract features with lower max_image_size (1600px)
+- Switch to sequential matcher instead of exhaustive
+- Filter images by Laplacian variance > 150 to remove blur
 
-```
-┌────────────────────────────────────────────────────────┐
-│               FACE CLUSTERING PIPELINE                  │
-├────────────────────────────────────────────────────────┤
-│  1. Detection (RetinaFace/MTCNN)                       │
-│     └─ All faces in all photos                         │
-│  2. Alignment (5-point landmark)                       │
-│     └─ Standardize for embedding                       │
-│  3. Embedding (ArcFace/AdaFace)                        │
-│     └─ 512-dim identity vector per face                │
-│  4. Clustering (HDBSCAN)                               │
-│     └─ Group by identity, handle edge cases            │
-│  5. Identity Linking                                   │
-│     └─ Match to couple, wedding party, family, guests  │
-│  6. Best Photo Selection                               │
-│     └─ Aesthetic scoring per cluster                   │
-└────────────────────────────────────────────────────────┘
-```
+### 2. Face-Cluster False Merge Explosion  
+**Symptom**: Single cluster contains 3+ distinct people, especially bridesmaids in similar makeup
+**Detection Rule**: If cluster size > 30 photos AND intra-cluster cosine distance variance > 0.15
+**Diagnosis**: Similar makeup, lighting, or formal poses confusing embeddings
+**Fix**:
+- Reduce clustering threshold by 0.05
+- Apply makeup-invariant embedding model (AdaFace instead of ArcFace)
+- Manual split using user confirmation of cluster samples
 
-### Clustering Parameters
+### 3. Theme Signal Chaos
+**Symptom**: UI colors clash horribly, typography doesn't match aesthetic
+**Detection Rule**: If extracted color palette has > 8 dominant colors OR no single color > 15% dominance
+**Diagnosis**: Too many competing signals from mixed lighting, decorations, clothing
+**Fix**:
+- Focus extraction on venue + decor photos only, ignore people
+- Apply k-means clustering to consolidate palette to 4-5 colors
+- Fallback to safe neutral palette with couple's stated preferences
 
-```python
-CLUSTERING_CONFIG = {
-    'min_cluster_size': 3,         # At least 3 photos to form identity
-    'min_samples': 2,
-    'metric': 'cosine',
-    'cluster_selection_epsilon': 0.3,
-    'cluster_selection_method': 'eom',
-}
+### 4. Memory Overflow Death Spiral
+**Symptom**: 3DGS training crashes, viewer freezes on load
+**Detection Rule**: If trained .ply file > 2GB OR browser memory usage > 8GB
+**Diagnosis**: Too many Gaussian points from over-densification or merged scenes
+**Fix**:
+- Split scene into smaller spatial regions
+- Reduce densify_grad_threshold from 0.0002 to 0.0005
+- Implement LOD (level-of-detail) rendering with quality presets
 
-# Identity priority for naming
-IDENTITY_PRIORITY = [
-    'couple_1', 'couple_2',        # The married couple
-    'wedding_party',               # Bridesmaids, groomspeople
-    'parents',                     # Parents of the couple
-    'grandparents',
-    'siblings',
-    'extended_family',
-    'friends',
-    'vendors',                     # Photographer, DJ, etc.
-]
-```
+### 5. Guest Photo Desert
+**Symptom**: Many face clusters have only 1-2 poor-quality photos
+**Detection Rule**: If > 30% of clusters have < 3 photos OR average aesthetic score < 0.4
+**Diagnosis**: Insufficient photo coverage or professional photographer focused only on couple
+**Fix**:
+- Request guest phone photos to fill gaps
+- Lower aesthetic threshold for rare-appearance guests
+- Generate "best available" galleries with quality disclaimers
 
-### Identity Linking Workflow
+## WORKED EXAMPLES
 
-1. **Couple identification**: User tags couple in 2-3 photos
-2. **Wedding party**: User identifies key people
-3. **Auto-propagation**: Embeddings match across all photos
-4. **Guest matching**: Optional guest list import for name assignment
-5. **Manual corrections**: UI for fixing mismatches
+### Example 1: Large Disco Wedding (500 guests, 3000 photos)
+**Scenario**: 1970s theme revival, disco balls, gold/orange/purple decor, mixed lighting (strobes + warm), professional + 50 guest phones
 
-## Aesthetic Scoring
+**Step-by-step walkthrough**:
 
-### Per-Photo Quality Metrics
+1. **Initial Assessment**: 3000 photos, detect 4 spaces (ceremony, cocktail, reception, photo booth)
+   - Decision Point 1 triggered: > 500 photos per space → train separately
+   - Space distribution: ceremony (800), cocktail (400), reception (1500), photo booth (300)
 
-```python
-AESTHETIC_FEATURES = {
-    # Technical quality
-    'sharpness': 'Laplacian variance, MTF analysis',
-    'exposure': 'Histogram analysis, dynamic range',
-    'noise': 'High-ISO detection, grain analysis',
+2. **Theme Extraction**: 
+   - Color analysis finds: gold (22%), burnt orange (18%), deep purple (15%), brown (12%)
+   - Era signals: disco ball reflections, wide lapels in photos, platform shoes
+   - Typography match: groovy script + bold sans serif
+   - Decision Point 3: Theme signals align → proceed with disco aesthetic
 
-    # Composition
-    'rule_of_thirds': 'Subject placement scoring',
-    'symmetry': 'For venue/group shots',
-    'framing': 'Negative space, balance',
+3. **Face Clustering**:
+   - 2847 faces detected across all photos
+   - Decision Point 2: Large wedding + mixed photo sources → threshold 0.25 + 0.05 = 0.3
+   - Result: 287 unique identities (realistic for 500-guest wedding)
 
-    # Face-specific
-    'expression': 'Smile detection, eye openness',
-    'blink_detection': 'Eyes closed penalty',
-    'gaze_direction': 'Looking at camera vs. candid',
-    'face_occlusion': 'Nothing blocking the face',
-    'face_lighting': 'Even illumination, no harsh shadows',
+4. **3DGS Training**:
+   - Decision Point 4: Professional video → extract at 2 fps
+   - Ceremony space training completes successfully
+   - Reception space hits Decision Point 5: > 1500 images triggers sub-region split
+   - Split reception into: dance floor, dining area, bar area
 
-    # Emotional
-    'genuine_smile': 'Duchenne marker detection',
-    'moment_quality': 'Laughter, tears, embraces',
-}
-```
+5. **Quality Gates Check**:
+   - ✓ All spaces reconstructed with < 2.0 pixel error
+   - ✓ Face clusters manually verified for couple + wedding party
+   - ✓ Theatre mode markers placed at 12 key moments
+   - ✓ UI theme matches gold/orange/purple palette
+   - ✓ Guest galleries generated for 287 identities
 
-### Best Photo Selection Per Person
+**Expert catches vs. Novice misses**:
+- **Expert**: Notices strobing lights will confuse COLMAP, filters those frames before processing
+- **Novice**: Includes all frames, gets reconstruction failure, doesn't understand why
+- **Expert**: Recognizes disco theme needs bold, groovy typography—not elegant script
+- **Novice**: Applies generic wedding fonts, loses the personality
 
-```python
-def select_best_photos(cluster_photos, n=5):
-    """Select top N photos for a person across all their appearances."""
+### Example 2: Intimate Rustic Ceremony (50 guests, 400 photos)
+**Scenario**: Barn venue, earth tones, string lights, sage/cream decor, single professional photographer
 
-    scores = []
-    for photo in cluster_photos:
-        score = (
-            0.25 * technical_quality(photo) +
-            0.25 * composition_score(photo) +
-            0.30 * expression_quality(photo) +
-            0.20 * context_diversity(photo, scores)  # Avoid all similar shots
-        )
-        scores.append((photo, score))
+**Key decision differences**:
+- Small photo count triggers Decision Point 1: unified scene approach
+- Conservative face clustering (0.4 threshold) due to limited photos per person
+- Earth-tone palette extraction straightforward (no conflicts)
+- Single lighting condition simplifies reconstruction
 
-    # Select top N with diversity constraint
-    return diverse_top_n(scores, n, diversity_threshold=0.7)
-```
+**Trade-off analysis**:
+- **Benefit**: Seamless navigation, no portal breaks
+- **Risk**: Lower overall quality due to unified training
+- **Mitigation**: Accept risk for small venue—user experience more important
 
-## Theatre Mode
+## QUALITY GATES
 
-### Moment Detection & Playback
+- [ ] All venue spaces reconstructed with COLMAP error < 3.0 pixels
+- [ ] Face clustering achieves > 95% precision on couple + wedding party (verified manually)
+- [ ] Theatre mode includes minimum 8 key moments with video/audio sync
+- [ ] Color palette extraction yields cohesive 4-6 colors matching wedding aesthetic
+- [ ] Best photo selection provides minimum 3 high-quality images per guest (where possible)
+- [ ] Web viewer loads all scenes within 15 seconds on standard connection
+- [ ] Guest roster correctly identifies minimum 90% of wedding party members
+- [ ] UI theme visually matches extracted wedding aesthetic (validated by user)
+- [ ] 3DGS file sizes total < 5GB for reasonable hosting/sharing
+- [ ] All key moments playback smoothly without audio desync > 100ms
 
-```
-KEY MOMENTS (auto-detected + user-tagged):
-├── Ceremony
-│   ├── Processional
-│   ├── Vows exchange
-│   ├── Ring ceremony
-│   ├── First kiss
-│   └── Recessional
-├── Reception
-│   ├── Grand entrance
-│   ├── First dance
-│   ├── Parent dances
-│   ├── Toasts/speeches
-│   ├── Cake cutting
-│   └── Bouquet/garter
-├── Party
-│   ├── Dance floor highlights
-│   └── Exit/sendoff
-└── Candids
-    ├── Emotional moments (tears, laughter)
-    └── Spontaneous joy
-```
+## NOT-FOR BOUNDARIES
 
-### In-Scene Video Projection
+**This skill should NOT be used for:**
+- **General photo editing** → Use `native-app-designer` instead for basic editing, filters, adjustments
+- **Non-wedding 3DGS projects** → Use `drone-inspection-specialist` for architectural/industrial 3D scanning
+- **Wedding planning or vendor coordination** → This is not a wedding planner, only processes existing photos/video
+- **Real-time event streaming** → Use dedicated streaming solutions for live broadcast
+- **Professional photography instruction** → Use photography education skills for technique training
+- **Video editing without 3D reconstruction** → Use standard video editing skills for traditional editing needs
 
-```
-Theatre Mode Rendering:
-1. User navigates 3DGS scene freely
-2. Approaches "moment marker" (glowing orb/frame)
-3. Video/slideshow plays IN the 3D space
-   ├── On walls where projector was
-   ├── Floating frames in dance floor area
-   └── Photo booth backdrop location
-4. Spatial audio for speeches/music
-5. User can pause, scrub, exit to continue exploring
-```
-
-## Web Viewer Architecture
-
-```javascript
-// Wedding Immortalist Viewer Components
-const VIEWER_FEATURES = {
-  // 3DGS Navigation
-  gaussianSplatting: {
-    renderer: 'three-gaussian-splat',
-    navigation: 'orbit + first-person',
-    qualityLevels: ['preview', 'standard', 'maximum'],
-  },
-
-  // Theatre Mode
-  theatreMode: {
-    momentMarkers: true,
-    videoInScene: true,
-    spatialAudio: true,
-    transitionEffects: 'theme-matched',
-  },
-
-  // Guest Roster
-  guestRoster: {
-    faceGrid: 'clustered by identity',
-    photoGallery: 'per-person best shots',
-    searchByName: true,
-    shareableLinks: 'per-guest galleries',
-  },
-
-  // Theme
-  theming: {
-    colorPalette: 'extracted from wedding',
-    typography: 'theme-matched',
-    uiElements: 'aesthetic-consistent',
-  },
-};
-```
-
-## Anti-Patterns
-
-### "All Frames, All the Time"
-**Wrong**: Extracting every video frame for 3DGS.
-**Why**: Redundant data, 10x slower processing, no quality improvement.
-**Right**: 2-3 fps extraction with motion-based keyframe selection.
-
-### "One Giant Scene"
-**Wrong**: Training single 3DGS for entire venue.
-**Why**: Memory explosion, quality degradation, impossible on consumer hardware.
-**Right**: Train per-space, create unified navigation with seamless transitions.
-
-### "Default Clustering Threshold"
-**Wrong**: Using default HDBSCAN settings.
-**Why**: Wedding photos have varying lighting, makeup, angles—need tuning.
-**Right**: Tune per-wedding based on photo count and quality variance.
-
-### "Ignoring Theme"
-**Wrong**: Generic white/gray viewer UI for disco wedding.
-**Why**: Destroys the personality and joy of the event.
-**Right**: Extract and honor the couple's aesthetic choices.
-
-### "Photographer Only"
-**Wrong**: Using only professional photos.
-**Why**: Misses candid moments, guest perspectives, coverage gaps.
-**Right**: Merge professional + guest photos for complete coverage.
-
-## Guest Experience Features
-
-### Shareable Guest Galleries
-
-```
-Per-Guest Experience:
-├── Personalized link: yourwedding.com/guests/aunt-martha
-├── Their best photos (AI-curated)
-├── Photos with the couple
-├── Group photos they appear in
-├── Download options (full-res)
-└── "Add to my memories" for their own archives
-```
-
-### Collaborative Enhancement
-
-```
-Guest Contribution Portal:
-├── Upload their own photos
-├── Tag themselves in unidentified clusters
-├── Correct misidentifications
-├── Add names to unknown guests
-└── Submit video moments they captured
-```
-
-## Output Deliverables
-
-```
-wedding-immortalist-output/
-├── 3dgs-scenes/
-│   ├── ceremony/
-│   ├── cocktail/
-│   ├── reception/
-│   └── unified-navigation.json
-├── guest-roster/
-│   ├── face-clusters/
-│   ├── identity-mapping.json
-│   └── per-person-galleries/
-├── theatre-mode/
-│   ├── moment-markers.json
-│   ├── video-segments/
-│   └── spatial-audio/
-├── web-viewer/
-│   ├── index.html
-│   ├── theme-config.json
-│   └── assets/
-└── exports/
-    ├── full-resolution-photos/
-    ├── guest-gallery-zips/
-    └── video-compilations/
-```
-
-## Integration Points
-
-- **drone-inspection-specialist**: 3DGS techniques, COLMAP pipeline
-- **collage-layout-expert**: Photo arrangement, aesthetic composition
-- **color-theory-palette-harmony-expert**: Theme color extraction
-- **clip-aware-embeddings**: Photo-text matching for search
-- **photo-composition-critic**: Aesthetic quality scoring
-
----
-
-**Core Philosophy**: A wedding happens once. The memories should live forever. This skill transforms ephemeral moments into an eternal, explorable experience that honors the couple's unique celebration—whether it's a disco dance party, a rustic barn gathering, or two grooms celebrating their love with chosen family.
+**Delegate to other skills when:**
+- User wants basic photo slideshow → `collage-layout-expert`
+- Need color palette advice before wedding → `color-theory-palette-harmony-expert` 
+- Want to improve individual photos → `photo-composition-critic`
+- Need facial recognition for security → `face-detection-specialist`

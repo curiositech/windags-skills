@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: design-system-generator
 description: Generates production-ready design tokens from natural language descriptions. Outputs Tailwind configs, CSS custom properties, and DTCG W3C tokens from 24 trends + 31 AI-ready styles with 2800+ component examples.
 allowed-tools: Read,Write,Bash,Glob
@@ -24,355 +25,204 @@ pairs-with:
 
 # Design System Generator
 
-Transform natural language descriptions into production-ready design tokens. Powered by a comprehensive catalog:
-- **24 design trends** from gallery-sources.json
-- **31 AI-ready styles** from DesignPrompts (with mode/typography metadata)
-- **2,800+ component examples** from 21st.dev (130 buttons, 73 heroes, 79 cards, etc.)
-- **7 color palettes** with WCAG-compliant combinations
-- **8 typography systems** with font pairings
+Transform natural language descriptions into production-ready design tokens. Powered by 24 design trends, 31 AI-ready styles, and 2,800+ component examples.
 
-## Quick Start
+## DECISION POINTS
 
-**Minimal example - generate a complete design system:**
+### 1. Confidence Threshold Rules
+```
+If trend match confidence >= 80%:
+  → Generate immediately with primary trend
 
+If confidence 60-79%:
+  → Show top 2 matches, ask user to choose
+  → Example: "Swiss-modern (65%) vs. Hyperminimalism (62%) - which feels right?"
+
+If confidence < 60%:
+  → Use vibe-matcher skill first for emotional clarity
+  → Re-run trend matching with vibe context
+```
+
+### 2. Multi-Trend Disambiguation
+```
+If 2+ trends score within 10% of each other:
+  ├─ Business/professional context?
+  │   → Prefer: swiss-modern, hyperminimalism, dark-mode
+  ├─ Creative/agency context?
+  │   → Prefer: neobrutalism, maximalism, experimental-navigation
+  ├─ Tech/developer context?
+  │   → Prefer: terminal-aesthetic, glassmorphism, web3-crypto
+  └─ Consumer app context?
+      → Prefer: claymorphism, botanical-organic, gamified-design
+```
+
+### 3. Output Format Selection
+```
+If user mentions specific framework:
+  ├─ "Next.js", "React", "Vite" → generate-tailwind.ts
+  ├─ "Vue", "Angular", "vanilla" → generate-css-vars.ts
+  └─ "Figma", "Style Dictionary" → generate-tokens.ts (DTCG)
+
+If no framework mentioned:
+  → Ask: "What's your tech stack?" or generate all three formats
+```
+
+### 4. Accessibility Requirements
+```
+If trend has accessibility warnings (glassmorphism, claymorphism):
+  → Generate standard tokens first
+  → Run contrast checker
+  → If violations found:
+      ├─ Adjust color values to meet WCAG AA
+      ├─ Document overrides in comments
+      └─ Warn user about visual changes
+```
+
+### 5. Scope Determination
+```
+If user mentions theming:
+  ├─ "dark mode" → Generate with --scope=.dark
+  ├─ "multiple brands" → Generate with --scope=[data-theme="name"]
+  └─ "component library" → Use :root scope (default)
+
+If existing design system mentioned:
+  → Generate with theme.extend structure only
+```
+
+## FAILURE MODES
+
+### 1. **Wrong Color Direction** (Vibrant when user wanted muted)
+**Detection**: User says "too bright", "too colorful", "more subtle"
+**Symptoms**: High saturation values, neon/electric colors in conservative context
+**Fix**: Re-run with lower-energy trend (swiss-modern instead of neobrutalism)
 ```bash
-# Step 1: Match description to trend
-npx ts-node scripts/match-trend.ts "clean dashboard for developers"
-# → Primary: swiss-modern (confidence: 85%)
+# Wrong
+npx ts-node generate-tailwind.ts neobrutalism  # Generates #FF5252, #00E676
 
-# Step 2: Generate tokens in your preferred format
-npx ts-node scripts/generate-tailwind.ts swiss-modern > tailwind.config.ts
-npx ts-node scripts/generate-css-vars.ts swiss-modern > tokens.css
-npx ts-node scripts/generate-tokens.ts swiss-modern > tokens.json
+# Fixed  
+npx ts-node generate-tailwind.ts swiss-modern  # Generates #374151, #6B7280
 ```
 
-**Key principle**: Match first, then generate. The trend matcher ensures consistent output across all formats.
-
-## Core Mission
-
-Bridge the gap between "I want a modern tech startup look" and production-ready design tokens by:
-1. Matching natural language to cataloged design trends
-2. Generating tokens in industry-standard formats
-3. Ensuring accessibility compliance in generated palettes
-
-## When to Use
-
-✅ Use when:
-- Starting a new project and need a design foundation
-- User describes desired aesthetic but needs actual token files
-- Migrating from arbitrary colors to systematic design tokens
-- Need consistent Tailwind + CSS vars from same source of truth
-
-❌ Do NOT use when:
-- User already has a complete design system (just help them use it)
-- Need emotional/conceptual exploration (use vibe-matcher first)
-- Need component code, not just tokens (use web-design-expert)
-- Tweaking single values (just make the edit)
-
-## Workflow
-
-### Step 1: Match Description to Trend
-
+### 2. **Compilation Chaos** (Generated tokens break build)
+**Detection**: Tailwind purge warnings, CSS custom property undefined errors
+**Symptoms**: Missing quotes in font names, invalid CSS values, circular references
+**Fix**: Validate output before deployment
 ```bash
-npx ts-node scripts/match-trend.ts "bold indie game landing page"
+# Check Tailwind compilation
+npx tailwindcss -i ./src/input.css -o ./dist/output.css --watch
+
+# Check CSS syntax
+npx stylelint tokens.css
 ```
 
-Output:
-```json
-{
-  "query": "bold indie game landing page",
-  "primary": {
-    "id": "neobrutalism",
-    "name": "Neobrutalism",
-    "score": 3.5,
-    "matchedKeywords": ["bold", "indie", "creative"]
-  },
-  "secondary": {
-    "id": "maximalism",
-    "name": "Maximalism",
-    "score": 2.0
-  },
-  "confidence": 0.85
-}
+### 3. **Contrast Violation** (Accessibility failure in production)
+**Detection**: Lighthouse audit < 90, WAVE tool errors
+**Symptoms**: Text invisible on backgrounds, pale borders, low-contrast buttons
+**Fix**: Run contrast audit before finalizing
+```bash
+# Audit generated tokens
+npx ts-node scripts/check-contrast.ts swiss-modern
+# → Warning: text-gray-400 on bg-white = 2.1:1 (needs 4.5:1)
 ```
 
-### Step 2: Generate Tokens
-
-Choose your output format based on project needs:
-
-| Format | Command | Best For |
-|--------|---------|----------|
-| Tailwind | `generate-tailwind.ts` | Next.js, Vite + Tailwind projects |
-| CSS Variables | `generate-css-vars.ts` | Vanilla CSS, framework-agnostic |
-| DTCG JSON | `generate-tokens.ts` | Figma integration, Style Dictionary |
-
-### Step 3: Integrate
-
-**Tailwind** - merge with existing config:
-```typescript
-import generatedConfig from './tokens/tailwind.config';
-import { Config } from 'tailwindcss';
-
-const config: Config = {
-  // ...your config
-  theme: {
-    extend: {
-      ...generatedConfig.theme.extend,
-    },
-  },
-};
+### 4. **Semantic Mismatch** (Token names don't match visual result)
+**Detection**: Developer confusion, "primary" color isn't prominent
+**Symptoms**: brutal-red is actually orange, glass-white is gray
+**Fix**: Check trend mapping accuracy
+```bash
+# Verify semantic alignment
+npx ts-node scripts/preview-tokens.ts neobrutalism
+# Opens browser with all colors labeled
 ```
 
-**CSS Variables** - import in global styles:
+### 5. **Scope Pollution** (CSS variables leak across themes)
+**Detection**: Theme switching doesn't work, colors persist incorrectly
+**Symptoms**: Dark mode shows light colors, component themes interfere
+**Fix**: Use explicit scoping
 ```css
-@import './tokens.css';
+/* Wrong - leaks to global */
+:root { --color-primary: #FF0000; }
 
-.button {
-  background: var(--color-primary);
-  box-shadow: var(--shadow-md);
-}
+/* Fixed - scoped properly */
+[data-theme="brand-a"] { --color-primary: #FF0000; }
+[data-theme="brand-b"] { --color-primary: #00FF00; }
 ```
 
-## Available Trends (24 total)
+## WORKED EXAMPLES
 
-### High-Fidelity (Full token sets)
+### Scenario: SaaS Dashboard for Developer Tools
 
-| Trend ID | Style | Best For |
-|----------|-------|----------|
-| `neobrutalism` | Bold borders, hard shadows, vibrant colors | Indie products, creative agencies |
-| `glassmorphism` | Frosted glass, blur effects, translucent | iOS apps, modern dashboards |
-| `swiss-modern` | Clean grids, neutral sans-serif, high contrast | SaaS, developer tools, enterprise |
-| `terminal-aesthetic` | Monospace, phosphor greens, CLI-inspired | Developer tools, hacker aesthetic |
-| `web3-crypto` | Gradients, glows, futuristic | Fintech, blockchain, NFT |
-| `claymorphism` | Soft 3D, rounded corners, pastel | Consumer apps, friendly products |
+**Input**: "Clean dashboard for developers, needs to feel professional but not boring"
 
-### Standard (Core tokens only)
+**Step 1: Trend Matching**
+```bash
+npx ts-node scripts/match-trend.ts "clean dashboard for developers professional"
+```
+Result: swiss-modern (78%), terminal-aesthetic (45%)
 
-`neumorphism`, `hyperminimalism`, `dark-mode`, `maximalism`, `3d-immersive`,
-`motion-design`, `bold-typography`, `vibrant-colors`, `gamified-design`,
-`retrofuturism`, `collage`, `sustainable-design`, `botanical-organic`,
-`art-deco-revival`, `experimental-navigation`, `scroll-driven-animations`
+**Decision**: 78% confidence is good, but "not boring" suggests terminal-aesthetic could add personality. Check both.
 
-> See `references/trend-mapping.md` for complete keyword mappings.
+**Step 2: Preview Both Options**
+- Swiss-modern: #374151 grays, Helvetica fonts, subtle shadows
+- Terminal-aesthetic: #00E676 greens, monospace, sharp edges
 
-## Output Format Details
+**Expert insight**: For developer tools, terminal-aesthetic creates better brand differentiation while maintaining professionalism.
 
-### Tailwind Config
+**Step 3: Generate Tailwind Config**
+```bash
+npx ts-node generate-tailwind.ts terminal-aesthetic > tailwind.tokens.ts
+```
 
-Generates complete `theme.extend` object with:
-- Semantic color names (e.g., `brutal-red`, `glass-white`)
-- Custom shadows matching trend style
-- Border radius appropriate for trend
-- Animation keyframes where applicable
-
+**Step 4: Quality Check**
 ```typescript
-// Example: neobrutalism output
-{
-  theme: {
-    extend: {
-      colors: {
-        'brutal-red': '#FF5252',
-        'brutal-cream': '#FEF3C7',
-      },
-      boxShadow: {
-        'brutal': '4px 4px 0 0 #000000',
-        'brutal-hover': '6px 6px 0 0 #000000',
-      },
-    },
-  },
+// Generated output includes:
+colors: {
+  'terminal-green': '#00E676',
+  'terminal-dark': '#0D1117', 
+  'terminal-gray': '#21262D'
 }
 ```
 
-### CSS Custom Properties
+**Step 5: Accessibility Verification**
+- terminal-green on terminal-dark = 7.2:1 ✅ (exceeds AAA)
+- All text combinations pass WCAG AA
 
-Generates `:root` declaration (or custom scope):
+**Result**: Professional developer aesthetic with personality, fully accessible.
 
-```css
-:root {
-  /* Colors */
-  --color-primary-red: #FF5252;
-  --color-border: #000000;
+## QUALITY GATES
 
-  /* Typography */
-  --font-display: "Archivo Black", sans-serif;
+Pre-deployment checklist for generated tokens:
 
-  /* Shadows */
-  --shadow-md: 4px 4px 0 0 var(--color-shadow);
-}
-```
+- [ ] **WCAG Contrast**: All text/background combinations ≥ 4.5:1 (AA) or ≥ 3:1 for large text
+- [ ] **Tailwind Compilation**: `npx tailwindcss` builds without warnings or errors  
+- [ ] **CSS Validation**: Custom properties have valid syntax (no missing semicolons, quotes)
+- [ ] **Browser Compatibility**: Tokens render correctly in Chrome, Firefox, Safari latest versions
+- [ ] **Semantic Accuracy**: Color names match visual appearance (red looks red, not orange)
+- [ ] **Component Coverage**: Generated tokens support primary UI components (buttons, inputs, cards)
+- [ ] **Theme Isolation**: Multiple themes don't interfere (test theme switching if applicable)
+- [ ] **Font Loading**: Generated font families are available or have fallbacks
+- [ ] **Performance**: CSS file size < 50KB, no unused custom properties
+- [ ] **Documentation**: Token purpose and usage examples are clear to implementers
 
-**Custom scopes for theming:**
-```bash
-npx ts-node generate-css-vars.ts neobrutalism --scope=.dark
-npx ts-node generate-css-vars.ts neobrutalism --scope=[data-theme="brutal"]
-```
+## NOT-FOR BOUNDARIES
 
-### DTCG W3C Tokens
+❌ **DO NOT use for**:
+- **Color exploration/mood boarding** → Use `vibe-matcher` skill instead
+- **Existing design system refinement** → Use `design-system-documenter` for optimization
+- **Component code generation** → Use `component-template-generator` with these tokens
+- **Brand identity creation** → Use `color-theory-palette-harmony-expert` for strategic color work
+- **Single token adjustments** → Just edit the values directly
+- **Complex animation systems** → Use `web-design-expert` for motion design
+- **Marketing site aesthetics** → This generates systematic tokens, not one-off visual styles
 
-Industry-standard JSON format for design tool integration:
+✅ **Perfect for**:
+- New project foundation setup
+- Converting design descriptions to code
+- Standardizing ad-hoc color usage
+- Cross-format token consistency (Tailwind + CSS vars + DTCG)
 
-```json
-{
-  "$schema": "https://design-tokens.github.io/community-group/format/draft-2024.json",
-  "color": {
-    "primary": {
-      "$value": "#FF5252",
-      "$type": "color",
-      "$description": "Attention-grabbing primary"
-    }
-  }
-}
-```
-
-> See `references/output-formats.md` for complete format documentation.
-
-## Handling Ambiguity
-
-When confidence < 60% or multiple trends score similarly:
-
-### Option 1: Ask for clarification
-```
-Match results show both "swiss-modern" (45%) and "hyperminimalism" (42%).
-
-Swiss-modern: Grid-based, professional, Helvetica-style typography
-Hyperminimalism: Zen-like calm, extreme whitespace, essential elements only
-
-Which direction resonates more with your brand?
-```
-
-### Option 2: Use vibe-matcher first
-```bash
-# Get emotional clarity
-/vibe-matcher "I want it to feel calm but still professional"
-
-# Then generate with matched trend
-npx ts-node scripts/generate-tailwind.ts hyperminimalism
-```
-
-### Option 3: Blend manually
-Generate both and selectively merge:
-```bash
-npx ts-node generate-css-vars.ts swiss-modern > swiss.css
-npx ts-node generate-css-vars.ts hyperminimalism > hyper.css
-# Manually combine preferred tokens from each
-```
-
-## Accessibility
-
-All generated tokens are evaluated for WCAG 2.1 compliance:
-
-| Trend | Accessibility | Notes |
-|-------|---------------|-------|
-| swiss-modern | ✅ AA+ | High contrast, readable typography |
-| neobrutalism | ✅ AA+ | Extreme contrast, large text |
-| terminal-aesthetic | ✅ AAA | High contrast phosphor colors |
-| glassmorphism | ⚠️ Needs attention | Blur can reduce contrast |
-| claymorphism | ⚠️ Needs attention | Soft shadows may not meet contrast |
-
-> See `references/accessibility.md` for remediation strategies.
-
-## Common Patterns
-
-### Pattern: Dark/Light Theme Pair
-
-```bash
-# Generate both themes
-npx ts-node generate-css-vars.ts swiss-modern --scope=:root
-npx ts-node generate-css-vars.ts swiss-modern --scope=.dark
-
-# Combine in single file
-cat light.css dark.css > themes.css
-```
-
-### Pattern: Component Library Bootstrap
-
-```bash
-# 1. Generate tokens
-npx ts-node generate-tailwind.ts neobrutalism > tailwind.tokens.ts
-
-# 2. Merge into tailwind.config.ts
-# 3. Build components using semantic token names:
-# className="bg-brutal-cream border-3 border-brutal-black shadow-brutal"
-```
-
-### Pattern: Design System Documentation
-
-Generate all three formats for comprehensive docs:
-```bash
-mkdir -p docs/tokens
-npx ts-node generate-tokens.ts neobrutalism > docs/tokens/tokens.json
-npx ts-node generate-css-vars.ts neobrutalism > docs/tokens/variables.css
-npx ts-node generate-tailwind.ts neobrutalism > docs/tokens/tailwind.ts
-```
-
-## Troubleshooting
-
-### Issue: "Unknown trend" error
-**Cause**: Trend ID doesn't match catalog
-**Fix**: Run `match-trend.ts` first to get valid trend ID, or check available trends list above
-
-### Issue: Low confidence match
-**Cause**: Description too vague or conflicting keywords
-**Fix**: Use vibe-matcher for emotional clarity first, or provide more specific keywords
-
-### Issue: Generated colors fail contrast
-**Cause**: Some trends prioritize aesthetics over accessibility
-**Fix**: See `references/accessibility.md` for per-trend remediation strategies
-
-### Issue: Tailwind classes not working
-**Cause**: Config not properly merged
-**Fix**: Ensure generated config is spread into `theme.extend`, not replacing entire theme
-
-## Token Categories
-
-All formats include these categories:
-
-| Category | Tokens Included |
-|----------|-----------------|
-| **Colors** | Primary, secondary, accent, neutrals, semantic (border, shadow, text) |
-| **Typography** | Font families (display, body), sizes (xs-5xl), weights, line heights |
-| **Spacing** | Scale from 0 to 24 (0.25rem increments) |
-| **Border Radius** | Trend-specific (0 for brutal, large for clay) |
-| **Shadows** | Size variants (sm, md, lg), interaction states (hover, active) |
-| **Effects** | Blur (glass), transitions, borders |
-
-## Data Source
-
-Tokens are generated from `website/design-catalog/gallery-sources.json`:
-- 24 design trends with status (rising/mainstream/emerging)
-- CSS pattern signatures for each trend
-- Color palettes (vibrant, vintage, dopamine, terminal, web3, etc.)
-- Typography systems (display + body font pairings)
-- 2,800+ component examples from 21st.dev, FreeFrontend, DesignPrompts
-
-### Component Counts (21st.dev)
-
-Use these counts to prioritize token coverage:
-
-| Category | Count | Token Priority |
-|----------|-------|----------------|
-| Buttons | 130 | High (variants, states) |
-| Inputs | 102 | High (validation states) |
-| Cards | 79 | High (shadow, border) |
-| Heroes | 73 | Medium (gradients, animation) |
-| Selects | 62 | Medium (dropdown styling) |
-| Sliders | 45 | Medium (track, thumb) |
-| Accordions | 40 | Low (uses base tokens) |
-| CTAs | 34 | High (emphasis colors) |
-| Backgrounds | 33 | Medium (patterns, effects) |
-| Nav Menus | 11 | Medium (hierarchy) |
-
-## See Also
-
-### Core References
-- `references/trend-mapping.md` - Complete keyword-to-trend mappings
-- `references/output-formats.md` - Format specifications and examples
-- `references/accessibility.md` - WCAG compliance by trend
-
-### Extended References
-- `references/design-prompts-styles.md` - 31 AI-ready styles with mode/typography
-- `references/advanced-css-techniques.md` - Scroll-driven animations, :has(), 3D transforms
-
-### Related Skills
-- component-template-generator - Generate components using these tokens
-- design-system-documenter - Document tokens for team adoption
+**Delegation Rules**:
+- If user needs emotional/conceptual clarity → `vibe-matcher` first, then return here
+- If user has existing system → `design-system-documenter` for analysis
+- If user needs components, not tokens → `component-template-generator` with generated tokens
+- If user needs color strategy → `color-theory-palette-harmony-expert` for theory, then return here

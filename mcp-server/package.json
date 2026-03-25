@@ -1,0 +1,50 @@
+{
+  "name": "@workgroup-ai/mcp-server",
+  "version": "0.1.0",
+  "description": "WinDAGs MCP server — skill catalog search, prediction history, and DAG services",
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "windags-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --target node18 --clean --external @modelcontextprotocol/sdk --external @workgroup-ai/core --external zod",
+    "dev": "tsup src/index.ts --format esm --target node18 --watch --external @modelcontextprotocol/sdk --external @workgroup-ai/core --external zod",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.0",
+    "@workgroup-ai/core": "workspace:*",
+    "wink-bm25-text-search": "^3.1.2",
+    "wink-nlp-utils": "^2.1.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "BUSL-1.1",
+  "author": "Erich Owens",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/erichowens/workgroup-ai.git",
+    "directory": "packages/mcp-server"
+  },
+  "keywords": [
+    "mcp",
+    "windags",
+    "dag",
+    "workflow",
+    "ai",
+    "tools"
+  ]
+}

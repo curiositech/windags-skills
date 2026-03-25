@@ -1,300 +1,184 @@
 ---
+license: Apache-2.0
 name: design-critic
 description: Aesthetic assessment and design scoring across 6 dimensions. Use for UI critique, design review, visual quality assessment, remix suggestions. Activate on "design critique", "aesthetic review", "UI assessment", "visual quality", "design score", "remix this design". NOT for implementation (use frontend-developer), accessibility-only audits (use color-contrast-auditor), or brand identity creation.
 allowed-tools: Read,Glob,Grep,WebFetch,WebSearch
+category: Design & Creative
+tags:
+  - design-critique
+  - feedback
+  - review
+  - aesthetics
+  - ux
 ---
 
 # Design Critic
 
-AI partner with trained aesthetic taste for assessing, scoring, and remixing design implementations. Inspired by RL VisualQuality-R1's chain-of-thought reasoning for visual assessment.
+AI partner with trained aesthetic taste for assessing, scoring, and remixing design implementations across 6 dimensions with weighted scoring.
 
-## When to Use
+## Decision Points
 
-✅ **Use for**:
-- Reviewing UI/UX implementations for aesthetic quality
-- Scoring designs on accessibility, harmony, typography, layout
-- Getting remix suggestions to improve existing designs
-- Comparing design alternatives objectively
-- Pre-launch design quality gates
+### Priority Triage by Overall Score
+```
+If score < 60:
+  ├─ Start with Accessibility (20% weight, highest impact)
+  ├─ Quick wins: contrast, focus states, touch targets
+  └─ Then tackle Layout fundamentals
 
-❌ **NOT for**:
-- Writing CSS/HTML code (use `frontend-developer`)
-- Pure accessibility audits (use `color-contrast-auditor`)
-- Creating brand guidelines from scratch
-- Icon/illustration creation
-- Motion design choreography
+If score 60-79:
+  ├─ Focus on Visual Hierarchy first
+  │  ├─ Typography scaling issues?
+  │  │  └─ Apply 1.25-1.5 ratio system
+  │  └─ Layout weight imbalance?
+  │     └─ Redistribute whitespace
+  └─ Then address Color Harmony
 
-## 6-Dimension Scoring System
-
-Score each dimension 0-100:
-
-| Dimension | Weight | What It Measures |
-|-----------|--------|------------------|
-| **Accessibility** | 20% | WCAG contrast, touch targets, semantic HTML, focus states |
-| **Color Harmony** | 15% | Palette cohesion, temperature balance, saturation consistency |
-| **Typography** | 15% | Hierarchy clarity, readability, font pairing quality |
-| **Layout** | 20% | Visual balance, grid adherence, whitespace distribution |
-| **Modernity** | 15% | Current trend alignment, avoiding dated patterns |
-| **Usability** | 15% | Clear affordances, intuitive flow, cognitive load |
-
-**Overall Score** = Weighted average of all dimensions
-
-### Score Interpretation
-
-| Range | Rating | Meaning |
-|-------|--------|---------|
-| 90-100 | Exceptional | Portfolio-worthy, best-in-class |
-| 80-89 | Excellent | Production-ready, minor polish opportunities |
-| 70-79 | Good | Solid foundation, some improvements needed |
-| 60-69 | Fair | Functional but needs design attention |
-| Below 60 | Needs Work | Significant design issues to address |
-
-## Assessment Workflow
-
-### Step 1: First Impression (200ms Test)
-
-Ask: "What does this feel like in the first 200ms?"
-- Professional or amateur?
-- Trustworthy or sketchy?
-- Modern or dated?
-- Clear or cluttered?
-
-### Step 2: Visual Scanning Path
-
-Trace where the eye goes:
-1. Where does it land first?
-2. Where does it go next?
-3. Is there a clear hierarchy?
-4. Are CTAs findable within 3 seconds?
-
-### Step 3: Dimensional Analysis
-
-For each of the 6 dimensions:
-1. Apply scoring criteria
-2. Note specific strengths
-3. Note specific issues
-4. Calculate dimension score
-
-### Step 4: Synthesize
-
-- Calculate weighted overall score
-- Identify top 3 strengths
-- Identify top 3 improvement opportunities
-- Generate remix suggestions
-
-## Assessment Output Format
-
-```markdown
-## Design Assessment: [Component/Page Name]
-
-### Overall Score: XX/100 ([Rating])
-
-| Dimension | Score | Key Finding |
-|-----------|-------|-------------|
-| Accessibility | XX | [One-line summary] |
-| Color Harmony | XX | [One-line summary] |
-| Typography | XX | [One-line summary] |
-| Layout | XX | [One-line summary] |
-| Modernity | XX | [One-line summary] |
-| Usability | XX | [One-line summary] |
-
-### Chain-of-Thought Analysis
-
-1. **First Impression (200ms)**: [Gut reaction]
-2. **Visual Scanning**: [Eye path description]
-3. **Hierarchy Analysis**: [What dominates, what's lost]
-4. **Interaction Audit**: [Affordances, touch targets, feedback]
-
-### Strengths
-1. [Specific strength with evidence]
-2. [Specific strength with evidence]
-3. [Specific strength with evidence]
-
-### Improvement Opportunities
-
-#### Quick Win (5 min)
-[Change] → [Expected impact]
-
-#### Medium Effort (30 min)
-[Change] → [Expected impact]
-
-#### High Impact (2+ hours)
-[Change] → [Expected impact]
-
-### Remix Suggestions
-
-[2-3 specific, actionable design alternatives]
+If score 80+:
+  ├─ Polish Modernity elements
+  │  ├─ Current trend adoption without chasing
+  │  └─ Micro-interaction improvements
+  └─ Optimize Usability edge cases
 ```
 
-## Scoring Criteria by Dimension
+### Dimension Scoring Logic
+```
+For each dimension:
+If obvious failures present:
+  ├─ Score 40-60 range
+  └─ Flag as primary improvement target
 
-### Accessibility (20%)
+If meets basic standards:
+  ├─ Score 65-75 range
+  └─ Look for polish opportunities
 
-| Score | Criteria |
-|-------|----------|
-| 90+ | WCAG AAA, excellent focus states, proper ARIA, skip links |
-| 80-89 | WCAG AA, visible focus, semantic HTML, good color contrast |
-| 70-79 | WCAG AA minimum, basic focus states, some semantic issues |
-| 60-69 | Contrast issues, missing focus states, accessibility afterthought |
-| <60 | Failing WCAG AA, inaccessible to screen readers |
+If exceeds expectations:
+  ├─ Score 80+ range
+  └─ Use as strength to highlight
+```
 
-**Key checks**:
-- Text contrast ≥ 4.5:1 (AA) or ≥ 7:1 (AAA)
-- Large text contrast ≥ 3:1
-- Touch targets ≥ 44x44px
-- Focus visible on all interactive elements
-- No information conveyed by color alone
+### Trade-off Resolution
+```
+When Accessibility vs Aesthetics conflict:
+├─ Always prioritize WCAG AA minimum
+├─ Find aesthetic solution within constraints
+└─ Document why aesthetic choice was rejected
 
-### Color Harmony (15%)
+When Modernity vs Usability conflict:
+├─ Test with user mental models
+├─ Choose familiar pattern if trend confuses
+└─ Hybrid approach: familiar function, modern form
+```
 
-| Score | Criteria |
-|-------|----------|
-| 90+ | Sophisticated palette, intentional relationships, emotional resonance |
-| 80-89 | Cohesive palette, good accent usage, balanced saturation |
-| 70-79 | Functional palette, some discord notes, safe choices |
-| 60-69 | Palette feels random, competing colors, no clear system |
-| <60 | Clashing colors, no color logic, jarring combinations |
+## Failure Modes
 
-**Harmony types to assess**:
-- Complementary (high energy)
-- Analogous (harmonious, calm)
-- Triadic (vibrant, balanced)
-- Split-complementary (nuanced contrast)
+### "Aesthetic Tunnel Vision"
+**Symptom**: Scoring visual appeal high while ignoring usability failures
+**Diagnosis**: Not following accessibility-first assessment order
+**Fix**: Always run WCAG contrast checker before aesthetic scoring
+**Detection Rule**: If Aesthetic scores 80+ but Accessibility <70, you've hit this
 
-### Typography (15%)
+### "Trend Overdose" 
+**Symptom**: Recommending glassmorphism, bento grids, and neobrutalism together
+**Diagnosis**: Treating trends as additive rather than selective
+**Fix**: Pick max 1-2 trend elements that serve the content purpose
+**Detection Rule**: If suggesting 3+ current trends simultaneously, stop and refocus
 
-| Score | Criteria |
-|-------|----------|
-| 90+ | Perfect hierarchy, excellent pairing, optimal line length |
-| 80-89 | Clear hierarchy, good readability, intentional scale |
-| 70-79 | Adequate hierarchy, some sizing issues, passable pairing |
-| 60-69 | Weak hierarchy, poor line-height, questionable font choices |
-| <60 | No visible hierarchy, unreadable body text, font chaos |
+### "Hierarchy Blindness"
+**Symptom**: All typography sizes within 2px of each other getting scored as "good hierarchy"
+**Diagnosis**: Not testing 3-second scan path
+**Fix**: Verify 1.25+ size ratios between hierarchy levels
+**Detection Rule**: If largest/smallest text ratio <1.5x, hierarchy fails
 
-**Key checks**:
-- Line length: 45-75 characters optimal
-- Line height: 1.4-1.6 for body text
-- Clear size jumps (1.25-1.618 ratio)
-- Max 2-3 font families
-- Weight differentiation for hierarchy
+### "Perfect Score Inflation"
+**Symptom**: Giving 90+ scores to designs with obvious improvement opportunities
+**Diagnosis**: Comparing against low standards instead of best-in-class
+**Fix**: Compare against portfolio-worthy examples (Apple, Linear, Stripe)
+**Detection Rule**: If giving 90+ without 3 specific excellence justifications, recalibrate
 
-### Layout (20%)
+### "Generic Feedback Loop"
+**Symptom**: Same improvement suggestions across different design contexts
+**Diagnosis**: Not analyzing the specific visual scanning path and user intent
+**Fix**: Trace actual eye movement and identify context-specific friction
+**Detection Rule**: If using identical remix suggestions for different projects, personalize analysis
 
-| Score | Criteria |
-|-------|----------|
-| 90+ | Golden ratio adherence, perfect visual balance, intentional tension |
-| 80-89 | Strong grid, good whitespace, balanced composition |
-| 70-79 | Functional grid, adequate spacing, some balance issues |
-| 60-69 | Weak grid adherence, cramped or sparse, visual weight imbalance |
-| <60 | No apparent grid, chaotic spacing, no visual logic |
+## Worked Examples
 
-**Key checks**:
-- Consistent spacing system (4px/8px base)
-- Clear content hierarchy through positioning
-- Appropriate use of whitespace (breathing room)
-- Alignment on invisible grid lines
-- Visual weight distribution
+### Example 1: E-commerce Product Page Critique
 
-### Modernity (15%)
+**Initial Scores**: Overall 67/100
+- Accessibility: 55 (failing contrast, tiny touch targets)
+- Layout: 70 (functional grid, cramped spacing)  
+- Typography: 80 (clear hierarchy, good fonts)
+- Modernity: 65 (safe choices, no current trends)
 
-| Score | Criteria |
-|-------|----------|
-| 90+ | Cutting-edge but timeless, trend-aware without trend-chasing |
-| 80-89 | Contemporary, follows 2024+ patterns, fresh feeling |
-| 70-79 | Current enough, some dated elements, safe choices |
-| 60-69 | Feels 2-3 years old, outdated patterns visible |
-| <60 | Clearly dated, 5+ year old design language |
+**Decision Process**:
+1. **Score <70** → Start with Accessibility
+2. **Contrast check**: Price text #999 on #fff = 2.85:1 (FAIL)
+3. **Touch targets**: "Add to Cart" button 36x28px (FAIL)
+4. **Quick win identified**: Fix these basics first
 
-**Current trends (2024-2026)**:
-- Bento grids
-- Glassmorphism (used sparingly)
-- Neobrutalism accents
-- Variable fonts
-- Micro-interactions
-- Dark mode first
-- Asymmetric layouts
+**Expert vs Novice**:
+- **Novice** would suggest trendy animations or glassmorphism overlay
+- **Expert** catches that users can't even read the price clearly
 
-**Dated patterns to flag**:
-- Hamburger menus on desktop
-- Carousel sliders as primary content
-- Skeuomorphic shadows
-- Busy gradients
-- Stock photo overuse
+**Remix Priority**:
+1. **5min fix**: Change price to #767676 (4.54:1 contrast)
+2. **5min fix**: Expand CTA to 44x44px minimum
+3. **30min**: Add 8px spacing system for breathing room
+4. **Later**: Consider subtle modern touches once fundamentals solid
 
-### Usability (15%)
+### Example 2: SaaS Dashboard Conflicting Scores
 
-| Score | Criteria |
-|-------|----------|
-| 90+ | Intuitive flow, zero confusion, delightful micro-interactions |
-| 80-89 | Clear affordances, logical grouping, good feedback |
-| 70-79 | Functional UX, some confusion points, adequate feedback |
-| 60-69 | Unclear CTAs, buried actions, weak feedback |
-| <60 | Confusing flow, hidden actions, no affordances |
+**Initial Scores**: Overall 74/100
+- Accessibility: 85 (excellent focus states, WCAG AA)
+- Typography: 60 (weak hierarchy, font soup)
+- Layout: 80 (clean grid, good whitespace)
+- Modernity: 70 (contemporary but safe)
 
-**Key checks**:
-- Primary CTA immediately visible
-- Logical information architecture
-- Clear feedback on interactions
-- Predictable behavior
-- Appropriate cognitive load
+**Trade-off Decision**:
+Dashboard has 4 different fonts creating visual chaos, but client wants "distinctive typography." Accessibility is solid, so focus on Typography dimension.
 
-## Common Anti-Patterns
+**Resolution Process**:
+1. **Keep** the distinctive display font for headers only
+2. **Consolidate** body text to single sans-serif
+3. **Use weight/size** for hierarchy instead of font switching
+4. **Result**: Maintains visual interest while gaining clarity
 
-### Anti-Pattern: Aesthetic Over Function
+**Why This Works**: Typography weight (20% × improvement from 60→85) gives bigger score impact than minor modernity tweaks.
 
-**Novice thinking**: "This looks cool, ship it"
+## Quality Gates
 
-**Reality**: Beautiful but unusable designs fail. 3.5:1 contrast "looks better" but fails WCAG. Tiny touch targets look elegant but frustrate users.
+### Assessment Complete Checklist
+- [ ] All 6 dimensions scored with specific evidence cited
+- [ ] Overall weighted score calculated correctly (not just average)
+- [ ] 3-second visual scan path described with entry point and flow
+- [ ] At least one WCAG contrast check performed and documented
+- [ ] Comparison made to best-in-class example in same category
+- [ ] Top 3 strengths identified with specific supporting details
+- [ ] Improvement opportunities ranked by effort/impact ratio
+- [ ] Remix suggestions include implementation hints (CSS properties, spacing values)
+- [ ] Trade-offs between dimensions explicitly acknowledged
+- [ ] Score rationale would be defendable to original designer
 
-**Correct approach**: Accessibility first, then aesthetics. You can have both.
+### Scoring Accuracy Gates
+- [ ] No dimension scores >90 without exceptional justification
+- [ ] Accessibility score reflects actual WCAG testing, not assumptions
+- [ ] Modernity assessment references specific 2024+ vs dated patterns
+- [ ] Typography score accounts for line-length and hierarchy ratios
+- [ ] Layout score includes whitespace distribution analysis
 
-### Anti-Pattern: Trend Chasing
+## NOT-FOR Boundaries
 
-**Novice thinking**: "Glassmorphism is hot, use it everywhere"
+**Don't use design-critic for**:
+- Writing actual CSS/HTML implementation → Use `frontend-developer`
+- Pure accessibility audits without aesthetic assessment → Use `color-contrast-auditor`  
+- Creating brand identity guidelines from scratch → Use `brand-strategist`
+- Detailed user research or usability testing → Use `ux-researcher`
+- Motion design and animation choreography → Use `motion-designer`
+- Icon design or illustration creation → Use `visual-designer`
+- Content strategy or copywriting review → Use `content-strategist`
 
-**Reality**: Trends are context-dependent. Glassmorphism fails on low-contrast backgrounds. Neobrutalism alienates corporate audiences.
-
-**Correct approach**: Choose trends that serve the content and audience. Trends are spices, not the meal.
-
-### Anti-Pattern: Font Soup
-
-**Novice thinking**: "More fonts = more interesting"
-
-**Reality**: 4+ fonts = visual chaos. Even 3 fonts requires mastery to pull off.
-
-**Correct approach**: 1-2 fonts max. Use weight/size for hierarchy, not different typefaces.
-
-### Anti-Pattern: Ignoring the Fold
-
-**Novice thinking**: "Users scroll, put anything above the fold"
-
-**Reality**: Above-the-fold content determines if users engage. 80% of attention goes to above-fold content.
-
-**Correct approach**: Hero must communicate value proposition in 3 seconds. Most important CTA above fold.
-
-## Remix Strategies
-
-When suggesting remixes, draw from these improvement patterns:
-
-| Issue | Remix Strategy |
-|-------|----------------|
-| Low contrast | Use WCAG-verified pairs from design catalog |
-| Cluttered layout | Apply 8px spacing system, remove 30% of elements |
-| Dated aesthetic | Suggest trend from same family (e.g., neumorphism → glassmorphism) |
-| Poor hierarchy | Apply typography scale with 1.25-1.5 ratio |
-| Weak CTA | Increase size 150%, add visual weight, isolation |
-| Color discord | Suggest analogous palette, reduce saturation variance |
-
-## Pairs With
-
-- **web-design-expert**: After critique, use for implementation
-- **color-contrast-auditor**: For deep accessibility analysis
-- **typography-expert**: For detailed type system work
-- **frontend-developer**: To implement remix suggestions
-
-## References
-
-See `/references/` for detailed guides:
-- `assessment-rubric.md` - Full scoring criteria with examples
-- `trend-timeline.md` - What's current vs. dated and when it changed
-- `remix-patterns.md` - Common improvements with before/after examples
+**Delegate when**:
+- Client asks "how do I code this?" → `frontend-developer`
+- Request is "make this accessible" without design scoring → `color-contrast-auditor`
+- Need involves user interviews or A/B testing → `ux-researcher`

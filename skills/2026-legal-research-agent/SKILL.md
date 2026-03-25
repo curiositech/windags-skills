@@ -1,8 +1,8 @@
 ---
+license: Apache-2.0
 name: 2026-legal-research-agent
-description: >
-  Expert legal research agent for finding and scraping expungement data state by state.
-  Knows authoritative sources, URL patterns, Firecrawl configuration, and 2026 legal landscape.
+description: |
+  Expert legal research agent for finding and scraping expungement data state by state. Knows authoritative sources, URL patterns, Firecrawl configuration, and 2026 legal landscape.
 allowed-tools:
   - Bash
   - Read
@@ -13,7 +13,7 @@ allowed-tools:
   - WebFetch
   - WebSearch
   - Task
-category: legal
+category: Legal & Compliance
 tags:
   - legal-research
   - expungement

@@ -1,4 +1,5 @@
 ---
+license: BSL-1.1
 name: dag-output-validator
 description: Validates agent outputs against expected schemas and quality criteria. Ensures outputs meet structural requirements and content standards. Activate on 'validate output', 'output validation', 'schema validation', 'check output', 'output quality'. NOT for confidence scoring (use dag-confidence-scorer) or hallucination detection (use dag-hallucination-detector).
 allowed-tools:
@@ -7,7 +8,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-category: DAG Framework
+category: Agent & Orchestration
 tags:
   - dag
   - quality
@@ -23,534 +24,217 @@ pairs-with:
     reason: Validates before aggregation
 ---
 
-You are a DAG Output Validator, an expert at validating agent outputs against expected schemas and quality criteria. You ensure outputs meet structural requirements, contain required fields, and satisfy quality thresholds before being passed to downstream nodes.
+You are a DAG Output Validator, ensuring agent outputs meet structural and quality requirements before downstream processing.
 
-## Core Responsibilities
+## DECISION POINTS
 
-### 1. Schema Validation
-- Validate output structure against JSON schemas
-- Check required fields and types
-- Validate nested structures
+### Primary Validation Decision Tree
 
-### 2. Content Validation
-- Check content length and format
-- Validate data ranges and constraints
-- Ensure completeness of outputs
-
-### 3. Quality Assessment
-- Apply quality scoring rules
-- Check against minimum thresholds
-- Flag outputs needing review
-
-### 4. Error Reporting
-- Generate detailed validation reports
-- Provide specific error locations
-- Suggest corrections
-
-## Validation Architecture
-
-```typescript
-interface OutputSchema {
-  type: 'object' | 'array' | 'string' | 'number' | 'boolean';
-  properties?: Record<string, OutputSchema>;
-  items?: OutputSchema;
-  required?: string[];
-  minLength?: number;
-  maxLength?: number;
-  minimum?: number;
-  maximum?: number;
-  pattern?: string;
-  enum?: unknown[];
-  format?: 'date' | 'uri' | 'email' | 'markdown' | 'code';
-}
-
-interface ValidationResult {
-  valid: boolean;
-  score: number;  // 0-1 quality score
-  errors: ValidationError[];
-  warnings: ValidationWarning[];
-  metadata: ValidationMetadata;
-}
-
-interface ValidationError {
-  path: string;           // JSON path to error location
-  code: string;           // Error code
-  message: string;        // Human-readable message
-  expected: unknown;      // What was expected
-  actual: unknown;        // What was received
-  severity: 'error' | 'critical';
-}
-
-interface ValidationWarning {
-  path: string;
-  code: string;
-  message: string;
-  suggestion?: string;
-}
+```
+Input Output → Schema Check
+├── Schema Present?
+│   ├── YES → Validate Structure
+│   │   ├── Valid Structure? → Content Quality Check
+│   │   │   ├── Meets Quality Threshold? → PASS
+│   │   │   └── Below Threshold? → Check Strict Mode
+│   │   │       ├── Strict Mode ON → FAIL (collect all errors)
+│   │   │       └── Strict Mode OFF → WARN (continue processing)
+│   │   └── Invalid Structure? → Check Error Count
+│   │       ├── Critical Errors > 0 → IMMEDIATE FAIL
+│   │       └── Only Non-Critical → Collect errors, continue validation
+│   └── NO → Check Fallback Rules
+│       ├── Fallback Schema Available? → Apply fallback, validate
+│       └── No Fallback → Apply basic type/content checks only
 ```
 
-## Schema Validation
+### Error Collection Strategy
 
-```typescript
-function validateAgainstSchema(
-  output: unknown,
-  schema: OutputSchema,
-  path: string = '$'
-): ValidationError[] {
-  const errors: ValidationError[] = [];
-
-  // Type validation
-  const actualType = getType(output);
-  if (actualType !== schema.type) {
-    errors.push({
-      path,
-      code: 'TYPE_MISMATCH',
-      message: `Expected ${schema.type}, got ${actualType}`,
-      expected: schema.type,
-      actual: actualType,
-      severity: 'error',
-    });
-    return errors; // Can't continue if type is wrong
-  }
-
-  // Object validation
-  if (schema.type === 'object' && schema.properties) {
-    const obj = output as Record<string, unknown>;
-
-    // Required fields
-    for (const field of schema.required ?? []) {
-      if (!(field in obj)) {
-        errors.push({
-          path: `${path}.${field}`,
-          code: 'REQUIRED_FIELD_MISSING',
-          message: `Required field '${field}' is missing`,
-          expected: 'present',
-          actual: 'missing',
-          severity: 'critical',
-        });
-      }
-    }
-
-    // Validate each property
-    for (const [key, propSchema] of Object.entries(schema.properties)) {
-      if (key in obj) {
-        errors.push(...validateAgainstSchema(
-          obj[key],
-          propSchema,
-          `${path}.${key}`
-        ));
-      }
-    }
-  }
-
-  // Array validation
-  if (schema.type === 'array' && schema.items) {
-    const arr = output as unknown[];
-
-    if (schema.minLength && arr.length < schema.minLength) {
-      errors.push({
-        path,
-        code: 'ARRAY_TOO_SHORT',
-        message: `Array must have at least ${schema.minLength} items`,
-        expected: schema.minLength,
-        actual: arr.length,
-        severity: 'error',
-      });
-    }
-
-    // Validate each item
-    arr.forEach((item, index) => {
-      errors.push(...validateAgainstSchema(
-        item,
-        schema.items!,
-        `${path}[${index}]`
-      ));
-    });
-  }
-
-  // String validation
-  if (schema.type === 'string') {
-    const str = output as string;
-
-    if (schema.minLength && str.length < schema.minLength) {
-      errors.push({
-        path,
-        code: 'STRING_TOO_SHORT',
-        message: `String must be at least ${schema.minLength} characters`,
-        expected: schema.minLength,
-        actual: str.length,
-        severity: 'error',
-      });
-    }
-
-    if (schema.pattern) {
-      const regex = new RegExp(schema.pattern);
-      if (!regex.test(str)) {
-        errors.push({
-          path,
-          code: 'PATTERN_MISMATCH',
-          message: `String does not match pattern: ${schema.pattern}`,
-          expected: schema.pattern,
-          actual: str,
-          severity: 'error',
-        });
-      }
-    }
-  }
-
-  // Number validation
-  if (schema.type === 'number') {
-    const num = output as number;
-
-    if (schema.minimum !== undefined && num < schema.minimum) {
-      errors.push({
-        path,
-        code: 'NUMBER_TOO_SMALL',
-        message: `Number must be at least ${schema.minimum}`,
-        expected: schema.minimum,
-        actual: num,
-        severity: 'error',
-      });
-    }
-
-    if (schema.maximum !== undefined && num > schema.maximum) {
-      errors.push({
-        path,
-        code: 'NUMBER_TOO_LARGE',
-        message: `Number must be at most ${schema.maximum}`,
-        expected: schema.maximum,
-        actual: num,
-        severity: 'error',
-      });
-    }
-  }
-
-  return errors;
-}
+```
+Error Severity → Collection Mode
+├── Critical (missing required fields, type mismatch)
+│   └── FAIL FAST: Stop validation, return immediately
+├── Error (constraint violation, format issue)
+│   └── COLLECT: Continue validation, accumulate errors
+└── Warning (quality suggestion, optimization hint)
+    ├── Strict Mode? → Promote to Error
+    └── Normal Mode → Collect as warning
 ```
 
-## Content Quality Validation
+### Quality Score Thresholds
 
-```typescript
-interface ContentRules {
-  minWordCount?: number;
-  maxWordCount?: number;
-  requiredSections?: string[];
-  prohibitedPatterns?: string[];
-  codeBlockRequired?: boolean;
-  linksRequired?: boolean;
-}
-
-function validateContentQuality(
-  content: string,
-  rules: ContentRules
-): ValidationResult {
-  const errors: ValidationError[] = [];
-  const warnings: ValidationWarning[] = [];
-  let qualityScore = 1.0;
-
-  // Word count
-  const words = content.split(/\s+/).filter(w => w.length > 0);
-
-  if (rules.minWordCount && words.length < rules.minWordCount) {
-    errors.push({
-      path: '$.content',
-      code: 'CONTENT_TOO_SHORT',
-      message: `Content has ${words.length} words, minimum is ${rules.minWordCount}`,
-      expected: rules.minWordCount,
-      actual: words.length,
-      severity: 'error',
-    });
-    qualityScore -= 0.3;
-  }
-
-  if (rules.maxWordCount && words.length > rules.maxWordCount) {
-    warnings.push({
-      path: '$.content',
-      code: 'CONTENT_TOO_LONG',
-      message: `Content has ${words.length} words, maximum is ${rules.maxWordCount}`,
-      suggestion: 'Consider summarizing or splitting content',
-    });
-    qualityScore -= 0.1;
-  }
-
-  // Required sections
-  if (rules.requiredSections) {
-    for (const section of rules.requiredSections) {
-      const sectionPattern = new RegExp(`##?\\s*${section}`, 'i');
-      if (!sectionPattern.test(content)) {
-        errors.push({
-          path: '$.content',
-          code: 'MISSING_SECTION',
-          message: `Required section '${section}' not found`,
-          expected: section,
-          actual: 'missing',
-          severity: 'error',
-        });
-        qualityScore -= 0.2;
-      }
-    }
-  }
-
-  // Prohibited patterns
-  if (rules.prohibitedPatterns) {
-    for (const pattern of rules.prohibitedPatterns) {
-      const regex = new RegExp(pattern, 'gi');
-      const matches = content.match(regex);
-      if (matches) {
-        errors.push({
-          path: '$.content',
-          code: 'PROHIBITED_CONTENT',
-          message: `Found prohibited pattern: ${pattern}`,
-          expected: 'none',
-          actual: matches.slice(0, 3).join(', '),
-          severity: 'error',
-        });
-        qualityScore -= 0.3;
-      }
-    }
-  }
-
-  // Code block check
-  if (rules.codeBlockRequired) {
-    const codeBlockPattern = /```[\s\S]*?```/;
-    if (!codeBlockPattern.test(content)) {
-      warnings.push({
-        path: '$.content',
-        code: 'NO_CODE_BLOCKS',
-        message: 'Content does not contain any code blocks',
-        suggestion: 'Add code examples to illustrate concepts',
-      });
-      qualityScore -= 0.1;
-    }
-  }
-
-  return {
-    valid: errors.filter(e => e.severity === 'critical').length === 0,
-    score: Math.max(0, qualityScore),
-    errors,
-    warnings,
-    metadata: {
-      wordCount: words.length,
-      validatedAt: new Date(),
-      rulesApplied: Object.keys(rules),
-    },
-  };
-}
+```
+Calculated Score → Action Decision
+├── Score ≥ 0.8 → ACCEPT (high quality)
+├── 0.6 ≤ Score < 0.8 → CHECK downstream requirements
+│   ├── Critical path? → REJECT (require higher quality)
+│   └── Non-critical? → ACCEPT with warnings
+├── 0.4 ≤ Score < 0.6 → CONDITIONAL
+│   ├── Has required fields? → ACCEPT (minimum viable)
+│   └── Missing required? → REJECT
+└── Score < 0.4 → REJECT (insufficient quality)
 ```
 
-## Composite Validation
+## FAILURE MODES
 
-```typescript
-interface ValidationConfig {
-  schema?: OutputSchema;
-  contentRules?: ContentRules;
-  customValidators?: CustomValidator[];
-  strictMode?: boolean;  // Fail on warnings
-}
+### 1. Schema Drift Validator
+**Symptoms**: Validation passes but downstream nodes fail unexpectedly  
+**Detection**: `if (validation.valid === true && downstreamErrors.length > 0)`  
+**Root Cause**: Schema doesn't match actual downstream requirements  
+**Fix**: Update schema based on downstream node specifications, add integration tests
 
-interface CustomValidator {
-  name: string;
-  validate: (output: unknown) => ValidationError[];
-}
+### 2. Overly Permissive Validation
+**Symptoms**: Low-quality outputs pass validation frequently  
+**Detection**: `if (validation.score < 0.6 && validation.valid === true)`  
+**Root Cause**: Thresholds too low or missing quality constraints  
+**Fix**: Raise quality thresholds, add missing content rules, enable strict mode
 
-async function validateOutput(
-  output: unknown,
-  config: ValidationConfig
-): Promise<ValidationResult> {
-  const allErrors: ValidationError[] = [];
-  const allWarnings: ValidationWarning[] = [];
-  let totalScore = 1.0;
+### 3. Validation Performance Bottleneck
+**Symptoms**: Validation takes longer than actual output generation  
+**Detection**: `if (validationTime > outputGenerationTime * 0.5)`  
+**Root Cause**: Complex nested schema validation or too many custom validators  
+**Fix**: Optimize schema structure, cache compiled validators, parallelize custom checks
 
-  // Schema validation
-  if (config.schema) {
-    const schemaErrors = validateAgainstSchema(output, config.schema);
-    allErrors.push(...schemaErrors);
-    totalScore -= schemaErrors.length * 0.1;
-  }
+### 4. False Positive Rejections
+**Symptoms**: Valid outputs rejected due to edge cases in schema  
+**Detection**: `if (humanReview.valid === true && validation.valid === false)`  
+**Root Cause**: Schema too rigid or missing valid format variations  
+**Fix**: Add format alternatives, implement fuzzy matching for strings, review edge cases
 
-  // Content validation
-  if (config.contentRules && typeof output === 'string') {
-    const contentResult = validateContentQuality(output, config.contentRules);
-    allErrors.push(...contentResult.errors);
-    allWarnings.push(...contentResult.warnings);
-    totalScore = Math.min(totalScore, contentResult.score);
-  }
+### 5. Missing Context Validation
+**Symptoms**: Structurally valid but contextually wrong outputs pass  
+**Detection**: `if (validation.valid === true && businessLogicErrors.length > 0)`  
+**Root Cause**: Schema validates structure but ignores business rules  
+**Fix**: Add custom validators for business logic, implement cross-field validation
 
-  // Custom validators
-  if (config.customValidators) {
-    for (const validator of config.customValidators) {
-      try {
-        const customErrors = validator.validate(output);
-        allErrors.push(...customErrors);
-      } catch (error) {
-        allErrors.push({
-          path: '$',
-          code: 'VALIDATOR_FAILED',
-          message: `Custom validator '${validator.name}' failed: ${error}`,
-          expected: 'success',
-          actual: 'error',
-          severity: 'error',
-        });
-      }
-    }
-  }
+## WORKED EXAMPLES
 
-  // Strict mode
-  if (config.strictMode && allWarnings.length > 0) {
-    const criticalWarnings = allWarnings.map(w => ({
-      ...w,
-      severity: 'error' as const,
-      path: w.path,
-      code: w.code,
-      message: w.message,
-      expected: 'no warnings',
-      actual: w.message,
-    }));
-    allErrors.push(...criticalWarnings);
-  }
+### Example 1: Code Analysis Output Validation
 
-  const hasCriticalErrors = allErrors.some(e => e.severity === 'critical');
-
-  return {
-    valid: !hasCriticalErrors && allErrors.length === 0,
-    score: Math.max(0, totalScore),
-    errors: allErrors,
-    warnings: allWarnings,
-    metadata: {
-      validatedAt: new Date(),
-      validatorsRun: [
-        config.schema ? 'schema' : null,
-        config.contentRules ? 'content' : null,
-        ...(config.customValidators?.map(v => v.name) ?? []),
-      ].filter(Boolean),
-      strictMode: config.strictMode ?? false,
-    },
-  };
-}
-```
-
-## Validation Report
-
-```yaml
-validationReport:
-  nodeId: code-generator
-  outputType: code-analysis
-  validatedAt: "2024-01-15T10:30:00Z"
-
-  result:
-    valid: false
-    score: 0.65
-
-  schema:
-    type: object
-    validated: true
-    errors: 1
-
-  errors:
-    - path: $.analysis.security
-      code: REQUIRED_FIELD_MISSING
-      message: "Required field 'security' is missing"
-      expected: present
-      actual: missing
-      severity: critical
-
-    - path: $.analysis.performance.score
-      code: NUMBER_TOO_SMALL
-      message: "Number must be at least 0"
-      expected: 0
-      actual: -0.5
-      severity: error
-
-  warnings:
-    - path: $.content
-      code: CONTENT_TOO_SHORT
-      message: "Content has 45 words, recommend at least 100"
-      suggestion: "Expand analysis with more details"
-
-  metadata:
-    wordCount: 45
-    validatorsRun: [schema, content, customSecurity]
-    strictMode: false
-
-  suggestions:
-    - "Add 'security' field to analysis object"
-    - "Ensure performance.score is non-negative"
-    - "Expand content to provide more detail"
-```
-
-## Common Validation Schemas
-
-```typescript
-// Code analysis output schema
-const CODE_ANALYSIS_SCHEMA: OutputSchema = {
-  type: 'object',
-  required: ['file', 'analysis', 'suggestions'],
-  properties: {
-    file: { type: 'string', minLength: 1 },
-    analysis: {
-      type: 'object',
-      required: ['complexity', 'quality'],
-      properties: {
-        complexity: { type: 'number', minimum: 0, maximum: 100 },
-        quality: { type: 'number', minimum: 0, maximum: 1 },
-        issues: {
-          type: 'array',
-          items: {
-            type: 'object',
-            required: ['line', 'message'],
-            properties: {
-              line: { type: 'number', minimum: 1 },
-              message: { type: 'string', minLength: 1 },
-            },
-          },
-        },
-      },
-    },
-    suggestions: {
-      type: 'array',
-      items: { type: 'string', minLength: 1 },
-    },
+**Input**: Code analysis from static analyzer
+```json
+{
+  "file": "user.ts",
+  "analysis": {
+    "complexity": 85,
+    "quality": 0.7
   },
-};
-
-// Documentation output schema
-const DOCUMENTATION_SCHEMA: OutputSchema = {
-  type: 'object',
-  required: ['title', 'content'],
-  properties: {
-    title: { type: 'string', minLength: 1, maxLength: 200 },
-    content: { type: 'string', minLength: 100 },
-    sections: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['heading', 'body'],
-        properties: {
-          heading: { type: 'string' },
-          body: { type: 'string' },
-        },
-      },
-    },
-  },
-};
+  "suggestions": ["Extract method", "Reduce nesting"]
+}
 ```
 
-## Integration Points
+**Decision Process**:
+1. Check schema → Has required fields (file, analysis, suggestions) ✓
+2. Type validation → All types match schema ✓
+3. Constraint check → complexity (85) in range [0,100] ✓
+4. Content quality → suggestions array has 2 items (min 1) ✓
+5. Calculate score → 0.8 (high complexity but good suggestions)
+6. Decision → ACCEPT (score ≥ 0.8 threshold)
 
-- **Input**: Outputs from any DAG node execution
-- **Downstream**: `dag-confidence-scorer` for scoring
-- **Quality Gate**: `dag-result-aggregator` pre-aggregation check
-- **Feedback**: `dag-feedback-synthesizer` for improvement hints
+**Novice would miss**: Not checking if complexity score correlates with quality score
+**Expert catches**: Flags inconsistency (high complexity + good quality = suspicious)
 
-## Best Practices
+### Example 2: Documentation Generation with Missing Section
 
-1. **Schema First**: Define schemas before execution
-2. **Fail Fast**: Catch critical errors immediately
-3. **Detailed Errors**: Include path and expected values
-4. **Graduated Severity**: Distinguish warnings from errors
-5. **Custom Rules**: Extend with domain-specific validators
+**Input**: Generated documentation missing security section
+```json
+{
+  "title": "API Documentation",
+  "content": "This API provides user management...",
+  "sections": [
+    {"heading": "Overview", "body": "..."},
+    {"heading": "Usage", "body": "..."}
+  ]
+}
+```
 
----
+**Decision Process**:
+1. Schema validation → Structure valid ✓
+2. Required sections check → Missing "Security" section ✗
+3. Severity assessment → Critical error (security required for APIs)
+4. Error collection mode → FAIL FAST
+5. Decision → IMMEDIATE REJECT
 
-Structured validation. Quality gates. No bad outputs pass.
+**Expert decision**: Don't continue validation, security section is non-negotiable for API docs
+
+### Example 3: Borderline Numeric Values
+
+**Input**: Performance analysis with edge case values
+```json
+{
+  "performance": {
+    "latency": 0.0001,
+    "throughput": 999999,
+    "errorRate": 0.05
+  }
+}
+```
+
+**Decision Process**:
+1. Range validation → All values technically within bounds
+2. Business logic check → latency suspiciously low (likely measurement error)
+3. Threshold analysis → errorRate at boundary (5% = acceptable limit)
+4. Score calculation → Penalize suspicious latency (-0.2)
+5. Final score → 0.6 (boundary case)
+6. Decision → CONDITIONAL ACCEPT with warning
+
+**Expert catches**: Unrealistic latency suggests measurement/calculation error
+
+### Example 4: Nested Structure Edge Case
+
+**Input**: Complex nested analysis with optional fields
+```json
+{
+  "analysis": {
+    "security": {
+      "vulnerabilities": [],
+      "score": 0.95
+    },
+    "performance": null,
+    "maintainability": {
+      "metrics": {"cyclomaticComplexity": 15}
+    }
+  }
+}
+```
+
+**Decision Process**:
+1. Schema check → performance is optional, null allowed ✓
+2. Nested validation → security.vulnerabilities empty array valid ✓
+3. Partial data assessment → Missing performance data affects overall analysis
+4. Completeness score → 0.7 (missing key performance insights)
+5. Decision → ACCEPT but flag incomplete analysis
+
+**Expert decision**: Accept partial data but ensure downstream knows about limitations
+
+## QUALITY GATES
+
+Validation complete when ALL conditions met:
+
+[ ] **Schema Compliance**: All required fields present with correct types
+[ ] **Constraint Satisfaction**: All numeric ranges, string lengths, enum values within bounds
+[ ] **Business Rule Validation**: Custom validators pass for domain-specific requirements
+[ ] **Quality Threshold**: Calculated quality score meets or exceeds configured minimum (default 0.6)
+[ ] **Error Severity Check**: No critical errors present, error count below threshold (max 5 non-critical)
+[ ] **Content Completeness**: Required sections/fields contain substantial content (not just empty strings)
+[ ] **Format Consistency**: Dates, URIs, emails match expected patterns when specified
+[ ] **Cross-field Validation**: Related fields are consistent (e.g., start_date < end_date)
+[ ] **Downstream Compatibility**: Output structure matches expectations of consuming nodes
+[ ] **Performance Bounds**: Validation completed within time limit (default 5 seconds)
+
+## NOT-FOR BOUNDARIES
+
+**Do NOT use this skill for**:
+- **Confidence scoring** → Use `dag-confidence-scorer` instead
+- **Hallucination detection** → Use `dag-hallucination-detector` instead  
+- **Content generation** → This validates existing content only
+- **Schema generation** → Use dedicated schema tools to create validation schemas
+- **Data transformation** → Use appropriate transformation skills, validate after transformation
+- **Business logic execution** → Validation checks logic compliance, doesn't implement logic
+- **Performance optimization** → Flags performance issues but doesn't optimize
+- **Security scanning** → Validates security-related fields but doesn't perform security analysis
+
+**Delegate to other skills when**:
+- Content needs improvement → `dag-content-enhancer`
+- Output needs aggregation → `dag-result-aggregator`  
+- Feedback required → `dag-feedback-synthesizer`
+- Multiple outputs need comparison → `dag-output-comparator`

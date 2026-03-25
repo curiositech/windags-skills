@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: vaporwave-glassomorphic-ui-designer
 description: Vaporwave + glassomorphic UI designer for photo/memory apps. Masters SwiftUI Material effects, neon pastels, frosted glass blur, retro-futuristic design. Expert in 2025 UI trends (glassmorphism, neubrutalism, Y2K), iOS HIG, dark mode, accessibility, Metal shaders. Activate on 'vaporwave', 'glassmorphism', 'SwiftUI design', 'frosted glass', 'neon aesthetic', 'retro-futuristic', 'Y2K design'. NOT for backend/API (use backend-architect), Windows 3.1 retro (use windows-3-1-web-designer), generic web (use web-design-expert), non-photo apps (use native-app-designer).
 allowed-tools: Read,Write,Edit,mcp__magic__21st_magic_component_builder,mcp__magic__21st_magic_component_refiner,mcp__magic__21st_magic_component_inspiration,mcp__stability-ai__stability-ai-generate-image,mcp__firecrawl__firecrawl_search,WebFetch
@@ -18,180 +19,188 @@ pairs-with:
 
 # Vaporwave & Glassomorphic UI Designer
 
-Elite UI/UX designer specializing in **vaporwave-inspired and glassomorphic aesthetics** for photo and memory applications—where nostalgia meets futurism.
+Elite UI/UX designer specializing in **vaporwave-inspired and glassomorphic aesthetics** for photo and memory applications.
 
-## When to Use This Skill
+## Decision Points
 
-✅ **Use for:**
-- iOS/Mac photo and memory applications
-- Vaporwave-themed UI with neon pastels
-- Glassmorphic components (frosted glass cards, panels)
-- Retro-futuristic and Y2K revival aesthetics
-- Metal shader effects for unique visuals
-- Photo app empty states, onboarding, celebrations
-- Combining glass effects with vaporwave gradients
+### Visual Effect Decision Tree
 
-❌ **Do NOT use for:**
-- Backend API logic → use **backend-architect**
-- Authentic Windows 3.1 retro → use **windows-3-1-web-designer**
-- Generic web design → use **web-design-expert**
-- Non-photo app native UI → use **native-app-designer**
-- Design system tokens only → use **design-system-creator**
-
-## MCP Integrations
-
-### Available MCPs
-
-| MCP | Purpose |
-|-----|---------|
-| **21st Century Dev** | Component inspiration, building, and refinement |
-| **Stability AI** | Generate design mockups and assets |
-| **Firecrawl** | Research 2025 UI trends and patterns |
-| **WebFetch** | Access Apple HIG documentation |
-
-### Design Discovery Workflow
 ```
-1. Query 21st.dev: "glassmorphic modal with blur"
-2. Study modern trends (blur levels, gradients, timings)
-3. Adapt for vaporwave (neon pastels, scan lines, glow)
-4. Build custom: mix patterns, add shaders, signature animations
+Photo content density assessment:
+├── High photo density (grid, carousel)
+│   ├── Use .ultraThinMaterial only
+│   ├── Minimal neon accents (1-2 colors)
+│   └── Subtle animations (150-300ms)
+├── Medium photo density (detail view)
+│   ├── Use .thinMaterial for toolbars
+│   ├── Moderate neon (2-3 colors)
+│   └── Smooth transitions (300ms)
+└── Low/no photos (empty states, onboarding)
+    ├── Use .regularMaterial freely
+    ├── Full vaporwave palette (4+ colors)
+    └── Dramatic animations (500-1000ms)
+
+User context assessment:
+├── First-time user
+│   ├── Warm pastels (sunset gradient)
+│   ├── Bouncy springs (0.5 response, 0.5 damping)
+│   └── Celebration animations
+├── Power user
+│   ├── Cooler tones (cyber ocean)
+│   ├── Snappy springs (0.3 response, 0.7 damping)
+│   └── Subtle feedback
+└── Nostalgic browsing
+    ├── Soft pastels (pastel candy)
+    ├── Slow animations (0.8 response, 0.6 damping)
+    └── Dreamy transitions
+
+Accessibility compliance:
+├── If reduceTransparency enabled
+│   ├── Replace materials with solid colors
+│   └── Maintain 4.5:1 contrast ratio
+├── If reduceMotion enabled
+│   ├── Replace springs with linear
+│   └── Duration < 200ms
+└── If prefersCrossFadeTransitions
+    ├── Use opacity changes only
+    └── No transform animations
 ```
 
-## Core Philosophy
+## Failure Modes
 
-> **"Make it feel like a dreamlike memory itself."** - Design Principle for Photo Apps
+### 1. Over-Blur Syndrome
+**Symptoms:** UI feels muddy, text unreadable, photos lose impact
+**Detection:** If blur radius > 20pt OR contrast ratio < 3:1
+**Fix:** Reduce blur by 25%, add subtle border, use thicker material
 
-1. **Evoke Emotion** - Nostalgia, joy, wonder through color and motion
-2. **Respect Content** - Photos are the hero, UI supports not competes
-3. **Enable Flow** - Frictionless creation, experimentation, sharing
-4. **Delight Constantly** - Micro-interactions, surprises, polish
-5. **Perform Flawlessly** - 60fps animations, instant feedback, GPU-optimized
+### 2. Neon Overload
+**Symptoms:** Eye strain, competing with photo content, accessibility failures
+**Detection:** If > 3 neon colors visible simultaneously OR brightness > 80%
+**Fix:** Limit to 2 accent colors max, reduce saturation by 20%, use gradients sparingly
 
-## Glassmorphism Essentials
+### 3. Spring Bounce Chaos
+**Symptoms:** Motion sickness, sluggish feel, conflicting animations
+**Detection:** If spring response > 0.8 OR multiple overlapping animations
+**Fix:** Standardize to 3 spring presets, stagger animation starts by 50ms
 
-**The 2025 Standard for Photo Apps:**
-- Semi-transparent backgrounds with blur (frosted glass appearance)
-- Subtle borders with multi-layer depth
-- Photos visible through translucent UI (content-aware)
-- Excellent accessibility vs. neumorphism's low contrast
+### 4. Material Hierarchy Collapse
+**Symptoms:** UI elements blend together, no visual depth, poor usability
+**Detection:** If adjacent elements use same material thickness
+**Fix:** Follow strict hierarchy: critical=thick, floating=ultraThin, ensure 2-step difference
 
-### Material Hierarchy (SwiftUI)
+### 5. Performance Lag Trap
+**Symptoms:** Dropped frames, thermal throttling, battery drain
+**Detection:** If frame rate < 55fps OR custom shaders without LOD
+**Fix:** Use system materials first, cache complex renders, implement detail reduction
+
+## Worked Examples
+
+### Example 1: Photo Grid Empty State
+
+**Scenario:** First launch of photo memories app, no content yet
+
+**Decision Process:**
+1. Photo density = zero → full vaporwave aesthetic allowed
+2. User context = first-time → warm pastels for welcome feeling
+3. Goal = encourage action → prominent CTA with celebration vibes
+
+**Implementation:**
 ```swift
-.background(.ultraThinMaterial)    // Floating panels (most transparent)
-.background(.thinMaterial)         // Toolbars
-.background(.regularMaterial)      // Sheets, modals
-.background(.thickMaterial)        // Backgrounds
-.background(.ultraThickMaterial)   // Critical UI (most opaque)
-```
-
-**Selection criteria:** Critical UI = thicker, foreground = thinner, text-heavy = thicker
-
-## Vaporwave Color System
-
-### Primary Neon Pastels
-| Color | Hex | Swift |
-|-------|-----|-------|
-| Pink | #FFAFEF | `Color(red: 1.0, green: 0.71, blue: 0.95)` |
-| Blue | #7DE0FF | `Color(red: 0.49, green: 0.87, blue: 1.0)` |
-| Purple | #B595FF | `Color(red: 0.71, green: 0.58, blue: 1.0)` |
-| Mint | #ABFFE3 | `Color(red: 0.67, green: 1.0, blue: 0.89)` |
-| Hot Pink | #FF3BAE | `Color(red: 1.0, green: 0.23, blue: 0.68)` |
-| Cyan | #00EDFF | `Color(red: 0.0, green: 0.93, blue: 1.0)` |
-
-### Gradient Presets
-- **Sunset Dream**: Pink → Orange → Purple
-- **Cyber Ocean**: Blue → Cyan → Mint
-- **Twilight Zone**: Purple → Blue → Pink
-- **Pastel Candy**: Mint → Blue → Pink (soft)
-
-## Typography Guidelines
-
-```swift
-// Headers: Bold, wide tracking (80s computer feel)
-.font(.system(size: 32, weight: .black, design: .rounded).width(.expanded))
-
-// Body: Clean, readable
-.font(.system(size: 16, weight: .medium, design: .rounded))
-
-// Captions: Terminal aesthetic
-.font(.system(size: 12, weight: .regular, design: .monospaced))
-```
-
-## Animation Timing
-
-| Category | Duration | Use Case |
-|----------|----------|----------|
-| Immediate | 0-100ms | Button press, tap feedback |
-| Quick | 150-300ms | Navigation, page changes |
-| Deliberate | 300-500ms | Onboarding, reveals |
-| Dramatic | 500-1000ms | Celebrations, achievements |
-
-### Spring Physics Presets
-```swift
-.spring(response: 0.3, dampingFraction: 0.7)  // Snappy
-.spring(response: 0.5, dampingFraction: 0.5)  // Bouncy
-.spring(response: 0.6, dampingFraction: 0.8)  // Smooth
-.spring(response: 0.8, dampingFraction: 0.6)  // Dramatic
-```
-
-## Expertise in Action
-
-When designing UI for photo/memory apps:
-
-1. **Assess User Emotional State**
-   - First collage? → Warm palette (sunset dream)
-   - Power user? → Clean glass panels
-   - Nostalgic browsing? → Softer vaporwave, slower animations
-
-2. **Choose Visual Strategy**
-   - Heavy photo content → Minimal UI, glass panels
-   - Empty states / onboarding → Full vaporwave, expressive
-   - Settings / technical → Clean glass, less decoration
-
-3. **Implement Responsibly**
-   - Always support dark mode
-   - Test with accessibility settings (reduce transparency)
-   - Use system materials (better performance)
-   - Animate at 60fps or don't animate
-
-4. **Balance Aesthetics with Usability**
-   - Glass is beautiful but ensure text is readable (WCAG AA)
-   - Vaporwave colors are fun but don't distract from photos
-   - Animations delight but respect reduced motion
-
-5. **Optimize for Platform**
-   - Use Metal for custom effects
-   - Leverage SwiftUI's Material system
-   - Lazy load images in grids
-   - Cache rendered glass panels
-
-## Accessibility Considerations
-
-```swift
-// Respect reduce transparency preference
-@Environment(\.accessibilityReduceTransparency) var reduceTransparency
-
-// Respect reduce motion preference
-@Environment(\.accessibilityReduceMotion) var reduceMotion
-
-// Provide solid fallbacks when needed
-if reduceTransparency {
-    RoundedRectangle(cornerRadius: 16)
-        .fill(Color(.systemBackground).opacity(0.95))
-} else {
-    RoundedRectangle(cornerRadius: 16)
-        .fill(.ultraThinMaterial)
+VStack(spacing: 32) {
+    // Hero illustration with glass backdrop
+    ZStack {
+        Circle()
+            .fill(.regularMaterial)
+            .frame(width: 200, height: 200)
+            .overlay(
+                Image(systemName: "photo.stack.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(.vaporwavePink)
+            )
+    }
+    
+    // Encouraging copy with gradient text
+    Text("Your memories await")
+        .font(.largeTitle.weight(.bold))
+        .foregroundStyle(
+            LinearGradient(
+                colors: [.vaporwavePink, .vaporwavePurple],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+    
+    // Primary CTA with bouncy interaction
+    Button("Start Your Collection") { }
+        .buttonStyle(BouncyNeonButton())
+        .spring(response: 0.5, dampingFraction: 0.6)
 }
 ```
 
----
+**What novice misses:** Would use cold blues, harsh shadows, system button
+**What expert catches:** Warm welcome colors, soft materials, encouraging micro-copy
 
-**Technical references for deep dives:**
-- `/references/glassmorphism-patterns.md` - SwiftUI glass cards, materials, adaptive components
-- `/references/vaporwave-aesthetic.md` - Color palettes, typography, visual elements, themes
-- `/references/animations-interactions.md` - Button styles, staggered animations, glow effects
-- `/references/metal-shaders.md` - Custom Metal shaders for vaporwave grid, holographic, neon glow
+### Example 2: Photo Detail Overlay
 
----
+**Scenario:** User viewing photo with metadata overlay
 
-*Make it dreamlike. Make it delightful. Make it theirs.*
+**Decision Process:**
+1. Photo density = high (full-screen photo) → minimal glass interference
+2. Information hierarchy = metadata secondary → subtle backdrop only
+3. Interaction = temporary → smooth show/hide transitions
+
+**Implementation:**
+```swift
+ZStack(alignment: .bottom) {
+    // Full-screen photo (hero content)
+    AsyncImage(url: photoURL)
+        .aspectRatio(contentMode: .fill)
+    
+    // Subtle metadata overlay
+    VStack(alignment: .leading) {
+        Text(photo.title)
+            .font(.headline.weight(.semibold))
+        Text(photo.date.formatted())
+            .font(.caption)
+            .opacity(0.8)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding(20)
+    .background(.ultraThinMaterial)
+    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .padding(.horizontal, 16)
+}
+```
+
+**What novice misses:** Would use thick material blocking photo, bright text competing
+**What expert catches:** Ultra-thin material preserves photo beauty, gentle text hierarchy
+
+## Quality Gates
+
+- [ ] All text maintains 4.5:1 contrast ratio against glass backgrounds
+- [ ] Animations run at 60fps on target devices (iPhone 13+)
+- [ ] No more than 2 neon accent colors visible simultaneously
+- [ ] Glass material hierarchy follows strict 5-level system (ultraThin → ultraThick)
+- [ ] All interactive elements have haptic feedback and 44pt minimum touch target
+- [ ] Reduce transparency preference respected with solid fallbacks
+- [ ] Reduce motion preference respected with < 200ms linear alternatives
+- [ ] Photo content remains the visual hero (UI elements don't compete)
+- [ ] Memory usage stays under 50MB for complex glass overlays
+- [ ] Custom shaders include performance LOD scaling
+
+## NOT-FOR Boundaries
+
+**Do NOT use this skill for:**
+- Backend API design → use `backend-architect` instead
+- Authentic retro Windows 3.1 aesthetics → use `windows-3-1-web-designer` instead
+- Generic web layouts without photo focus → use `web-design-expert` instead
+- Non-photo mobile apps (productivity, finance) → use `native-app-designer` instead
+- Pure design system tokens without implementation → use `design-system-creator` instead
+- Android Material Design compliance → use `android-material-designer` instead
+- Desktop applications (Windows/Linux) → use `desktop-app-designer` instead
+
+**Delegate when:**
+- User requests Windows native styling → handoff to desktop specialist
+- Project requires cross-platform web consistency → handoff to web designer
+- Focus shifts to data architecture → handoff to backend architect
+- Client wants traditional iOS design language → handoff to native app designer

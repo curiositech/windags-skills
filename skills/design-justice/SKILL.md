@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: design-justice
 description: Digital equity and trauma-informed design for marginalized populations. Activate on "accessibility", "offline-first", "trauma-informed", "reentry", "recovery population", "shared device", "unstable phone", "digital equity", "design justice", "low-literacy", "intermittent access". NOT for general UX, marketing optimization, or enterprise SaaS design.
 allowed-tools: Read,Write,Edit,Glob,Grep
-category: Lifestyle & Personal
+category: Design & Creative
 tags:
-  - accessibility
-  - trauma-informed
+  - design-justice
   - equity
-  - civic-tech
-  - offline-first
+  - inclusive-design
+  - community
+  - ethics
 ---
 
 # Design Justice: Equity-Centered Digital Design
