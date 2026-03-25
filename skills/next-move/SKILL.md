@@ -120,6 +120,39 @@ IF confidence < 0.6:
   → Halt gate should have fired (failsafe check)
 ```
 
+### 6. Present Prediction + AskUserQuestion (MANDATORY)
+
+After synthesizing the PredictedDAG, present it using the markdown format (banner, wave table, risks, verdict), then **always call AskUserQuestion**. Do not just print "Accept / Modify / Reject" as text — use the actual tool so the user gets interactive options.
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "How does this plan look?",
+    header: "Next Move",
+    options: [
+      {
+        label: "Accept",
+        description: "Start executing Wave 0 immediately."
+      },
+      {
+        label: "Modify",
+        description: "Mostly good — I want to adjust some nodes."
+      },
+      {
+        label: "Reject",
+        description: "Not what I need. I'll explain what I want."
+      }
+    ],
+    multiSelect: false,
+  }]
+})
+```
+
+When the user responds:
+- **Accept** → proceed to Step 7 (execute)
+- **Modify** → ask what to change, adjust, re-present briefly, then execute
+- **Reject** → ask what they want, re-run pipeline with their input as user hint
+
 ## Failure Modes
 
 ### 1. Agent Timeout Cascade
