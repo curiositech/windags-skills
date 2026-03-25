@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: skill-logger
 description: Logs and scores skill usage quality, tracking output effectiveness, user satisfaction signals, and improvement opportunities. Expert in skill analytics, quality metrics, feedback loops, and continuous improvement. Activate on "skill logging", "skill quality", "skill analytics", "skill scoring", "skill performance", "skill metrics", "track skill usage", "skill improvement". NOT for creating skills (use agent-creator), skill documentation (use skill-coach), or runtime debugging (use debugger skills).
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob
@@ -20,475 +21,197 @@ pairs-with:
 
 Track, measure, and improve skill quality through systematic logging and scoring.
 
-## When to Use This Skill
+## Decision Points
 
-**Use for:**
-- Setting up skill usage logging
-- Defining quality metrics for skill outputs
-- Analyzing skill performance over time
-- Identifying skills that need improvement
-- Building feedback loops for skill enhancement
-- A/B testing skill variations
-
-**NOT for:**
-- Creating new skills → use agent-creator
-- Skill documentation → use skill-coach
-- Runtime debugging → use appropriate debugger skills
-- General logging/monitoring → use devops-automator
-
-## Core Logging Architecture
+### Skill Category → Logging Signals Priority
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                    SKILL LOGGING PIPELINE                       │
-├────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  1. CAPTURE          2. ANALYZE           3. SCORE              │
-│  ├─ Invocation       ├─ Output parse      ├─ Quality metrics    │
-│  ├─ Input context    ├─ Token usage       ├─ User satisfaction  │
-│  ├─ Output           ├─ Tool calls        ├─ Goal completion    │
-│  └─ Timing           └─ Error patterns    └─ Efficiency         │
-│                                                                 │
-│  4. AGGREGATE        5. ALERT             6. IMPROVE            │
-│  ├─ Per-skill stats  ├─ Quality drops     ├─ Identify patterns  │
-│  ├─ Trend analysis   ├─ Error spikes      ├─ Suggest changes    │
-│  └─ Comparisons      └─ Underuse          └─ Track experiments  │
-│                                                                 │
-└────────────────────────────────────────────────────────────────┘
+Skill Category Analysis:
+├─ Code Generation Skills
+│  ├─ IF output type = "code" → Priority: syntax_correctness, test_pass_rate, user_edits
+│  ├─ IF includes tool calls → Track: tool_success_rate, retry_count
+│  └─ ELSE → Standard completion signals
+│
+├─ Analysis/Advisory Skills  
+│  ├─ IF output is recommendations → Priority: follow_up_rate, acceptance_rate
+│  ├─ IF research-heavy → Track: source_quality, comprehensiveness
+│  └─ ELSE → Focus on user_satisfaction, edit_ratio
+│
+├─ Creative/Content Skills
+│  ├─ IF artistic output → Priority: user_acceptance, revision_requests
+│  ├─ IF writing/documentation → Track: readability_score, user_edits
+│  └─ ELSE → Standard quality metrics
+│
+└─ Meta/System Skills
+   ├─ IF affects other skills → Priority: downstream_impact, system_health
+   ├─ IF automation focused → Track: execution_success, error_recovery
+   └─ ELSE → Completion rate, efficiency metrics
 ```
 
-## What to Log
+### Quality Signal Collection Strategy
 
-### Invocation Data
-
-```json
-{
-  "invocation_id": "uuid",
-  "timestamp": "ISO8601",
-  "skill_name": "wedding-immortalist",
-  "skill_version": "1.2.0",
-
-  "input": {
-    "user_query": "Create a 3D model from my wedding photos",
-    "context_tokens": 1500,
-    "files_referenced": ["photos/", "config.json"]
-  },
-
-  "execution": {
-    "duration_ms": 45000,
-    "tool_calls": [
-      {"tool": "Bash", "count": 5},
-      {"tool": "Write", "count": 3}
-    ],
-    "tokens_used": {
-      "input": 8500,
-      "output": 3200
-    },
-    "errors": []
-  },
-
-  "output": {
-    "type": "code_generation",
-    "artifacts_created": ["pipeline.py", "config.yaml"],
-    "response_length": 3200
-  }
-}
+```
+Signal Availability Decision Tree:
+├─ Real-time signals available?
+│  ├─ YES → Collect: completion_rate, token_efficiency, tool_success
+│  └─ NO → Skip to delayed collection
+│
+├─ User interaction possible?
+│  ├─ YES → Request: thumbs_up/down, edit_ratio measurement
+│  └─ NO → Infer from: retry_requests, follow_up_questions
+│
+├─ Output testable?
+│  ├─ Code → Run: syntax_check, basic_execution
+│  ├─ Data → Validate: format_compliance, completeness
+│  └─ Text → Check: length_appropriateness, structure
+│
+└─ Delayed validation available?
+   ├─ YES → Schedule: outcome_tracking, revert_detection
+   └─ NO → Mark as: immediate_signals_only
 ```
 
-### Quality Signals
+### Scoring Model Selection
 
-```python
-QUALITY_SIGNALS = {
-    # Implicit signals (automated)
-    'completion': 'Did the skill complete without errors?',
-    'token_efficiency': 'Output quality per token used',
-    'tool_success_rate': 'Tool calls that succeeded',
-    'retry_count': 'How many retries needed?',
-
-    # Explicit signals (user feedback)
-    'user_edit_ratio': 'How much did user modify output?',
-    'user_accepted': 'Did user accept/use the output?',
-    'follow_up_needed': 'Did user need to ask for fixes?',
-    'explicit_rating': 'Thumbs up/down if available',
-
-    # Outcome signals (delayed)
-    'code_ran_successfully': 'Did generated code work?',
-    'tests_passed': 'Did it pass tests?',
-    'reverted': 'Was the output later reverted?',
-}
+```
+Based on skill usage context:
+IF high_stakes_usage (production, important decisions):
+   → Use strict scoring: require 90+ for "good", weight errors heavily
+   
+ELIF experimental_usage (testing, learning):
+   → Use lenient scoring: 70+ acceptable, focus on learning signals
+   
+ELIF routine_usage (daily workflow):
+   → Use balanced scoring: standard thresholds, efficiency emphasis
+   
+ELSE (unknown context):
+   → Default to balanced scoring with conservative error handling
 ```
 
-## Scoring Framework
+## Failure Modes
 
-### Multi-Dimensional Quality Score
+### Token Inflation Anti-Pattern
+**Symptoms**: Skill produces unnecessarily verbose outputs, token usage 2x+ expected baseline
+**Detection**: `IF tokens_output > baseline_tokens * 2.0 AND user_edit_ratio > 0.6`
+**Diagnosis**: Skill optimizing for completeness over conciseness
+**Fix**: Add explicit length constraints, example-based training on concise outputs
 
-```python
-def calculate_skill_score(invocation_log):
-    """Score a skill invocation 0-100."""
+### Metric Drift Anti-Pattern  
+**Symptoms**: Skill quality scores trending downward without apparent cause changes
+**Detection**: `IF quality_trend_7d < -5 AND no_skill_changes AND stable_usage_pattern`
+**Diagnosis**: External factors (user expectations, data changes) affecting relative performance
+**Fix**: Recalibrate baselines, investigate environmental changes, update scoring criteria
 
-    scores = {
-        # Completion (25%)
-        'completion': (
-            25 if invocation_log['errors'] == [] else
-            15 if invocation_log['recovered'] else
-            0
-        ),
+### Feedback Lag Anti-Pattern
+**Symptoms**: Quality scores don't reflect actual user satisfaction, delayed negative signals
+**Detection**: `IF immediate_score > 80 AND delayed_satisfaction < 50 AND lag > 24hrs`
+**Diagnosis**: Relying too heavily on completion metrics vs. outcome metrics
+**Fix**: Implement delayed signal collection, weight outcome signals higher, add follow-up tracking
 
-        # Efficiency (20%)
-        'efficiency': min(20, 20 * (
-            BASELINE_TOKENS / invocation_log['tokens_used']
-        )),
+### Grade Inflation Anti-Pattern
+**Symptoms**: Most skills scoring 85+ but users reporting quality issues
+**Detection**: `IF avg_skill_score > 85 AND user_complaints > baseline AND edit_ratio > 0.4`
+**Diagnosis**: Scoring criteria too lenient, missing key quality dimensions
+**Fix**: Tighten scoring thresholds, add user satisfaction weight, implement comparative scoring
 
-        # Output Quality (30%)
-        'quality': (
-            30 if invocation_log['user_accepted'] else
-            20 if invocation_log['user_edit_ratio'] < 0.2 else
-            10 if invocation_log['user_edit_ratio'] < 0.5 else
-            0
-        ),
+### Signal Noise Anti-Pattern
+**Symptoms**: Quality scores fluctuating wildly, no clear improvement signal
+**Detection**: `IF score_variance > 20 AND no_clear_trend AND random_pattern`
+**Diagnosis**: Collecting too many weak signals, insufficient signal filtering
+**Fix**: Focus on top 3-5 signals per skill category, implement signal confidence weighting
 
-        # User Satisfaction (25%)
-        'satisfaction': (
-            25 if invocation_log['explicit_rating'] == 'positive' else
-            15 if invocation_log['no_follow_up'] else
-            5 if invocation_log['follow_up_resolved'] else
-            0
-        ),
-    }
+## Worked Examples
 
-    return sum(scores.values())
-```
+### End-to-End: Code Generation Quality Regression
 
-### Score Interpretation
+**Scenario**: The `api-architect` skill's quality score dropped from 89 to 67 over 3 days.
 
-| Score Range | Quality Level | Action |
-|-------------|---------------|--------|
-| 90-100 | Excellent | Document as exemplar |
-| 75-89 | Good | Monitor for consistency |
-| 50-74 | Acceptable | Review for improvements |
-| 25-49 | Poor | Prioritize fixes |
-| 0-24 | Failing | Immediate intervention |
-
-## Log Storage Schema
-
-### SQLite Schema (Local)
-
-```sql
-CREATE TABLE skill_invocations (
-    id TEXT PRIMARY KEY,
-    skill_name TEXT NOT NULL,
-    skill_version TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-
-    -- Input
-    user_query TEXT,
-    context_tokens INTEGER,
-
-    -- Execution
-    duration_ms INTEGER,
-    tokens_input INTEGER,
-    tokens_output INTEGER,
-    tool_calls_json TEXT,
-    errors_json TEXT,
-
-    -- Output
-    output_type TEXT,
-    artifacts_json TEXT,
-    response_length INTEGER,
-
-    -- Quality signals
-    user_accepted BOOLEAN,
-    user_edit_ratio REAL,
-    follow_up_needed BOOLEAN,
-    explicit_rating TEXT,
-
-    -- Computed
-    quality_score REAL,
-
-    INDEX idx_skill_name (skill_name),
-    INDEX idx_timestamp (timestamp),
-    INDEX idx_quality (quality_score)
-);
-
-CREATE TABLE skill_aggregates (
-    skill_name TEXT,
-    period TEXT,  -- 'daily', 'weekly', 'monthly'
-    period_start DATE,
-
-    invocation_count INTEGER,
-    avg_quality_score REAL,
-    error_rate REAL,
-    avg_tokens_used INTEGER,
-    avg_duration_ms INTEGER,
-
-    PRIMARY KEY (skill_name, period, period_start)
-);
-```
-
-### JSON Log Format (Portable)
-
-```json
-{
-  "logs_version": "1.0",
-  "skill_name": "wedding-immortalist",
-  "entries": [
-    {
-      "id": "uuid",
-      "timestamp": "2025-01-15T14:30:00Z",
-      "input": {...},
-      "execution": {...},
-      "output": {...},
-      "quality": {
-        "signals": {...},
-        "score": 85,
-        "computed_at": "2025-01-15T14:35:00Z"
-      }
-    }
-  ]
-}
-```
-
-## Analytics Queries
-
-### Skill Performance Dashboard
-
-```sql
--- Overall skill rankings
-SELECT
-    skill_name,
-    COUNT(*) as uses,
-    AVG(quality_score) as avg_quality,
-    AVG(tokens_output) as avg_tokens,
-    SUM(CASE WHEN errors_json != '[]' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as error_rate
-FROM skill_invocations
-WHERE timestamp > datetime('now', '-30 days')
-GROUP BY skill_name
-ORDER BY avg_quality DESC;
-
--- Quality trend (weekly)
-SELECT
-    skill_name,
-    strftime('%Y-%W', timestamp) as week,
-    AVG(quality_score) as avg_quality,
-    COUNT(*) as uses
-FROM skill_invocations
-GROUP BY skill_name, week
-ORDER BY skill_name, week;
-
--- Problem detection
-SELECT skill_name, COUNT(*) as failures
-FROM skill_invocations
-WHERE quality_score < 50
+**Step 1 - Detect Regression**
+```bash
+# Query recent performance
+SELECT skill_name, AVG(quality_score) as avg_score, COUNT(*) as uses
+FROM skill_invocations 
+WHERE skill_name = 'api-architect' 
   AND timestamp > datetime('now', '-7 days')
-GROUP BY skill_name
-HAVING failures >= 3
-ORDER BY failures DESC;
+GROUP BY DATE(timestamp)
+ORDER BY timestamp DESC;
+
+# Result shows: 89→78→71→67 trend with stable usage (12-15 daily uses)
 ```
 
-### Improvement Opportunities
+**Step 2 - Diagnose Cause**
+```sql
+-- Check error patterns
+SELECT errors_json, COUNT(*) 
+FROM skill_invocations 
+WHERE skill_name = 'api-architect' 
+  AND quality_score < 70
+  AND timestamp > datetime('now', '-3 days');
 
+-- Result: 8 instances of "Missing import statements" error
+-- This is NEW - wasn't appearing before
+```
+
+**Step 3 - Analyze Specific Failures**
 ```python
-def identify_improvement_opportunities(skill_name, logs):
-    """Analyze logs to suggest skill improvements."""
-
-    opportunities = []
-
-    # Pattern 1: Common follow-up questions
-    follow_ups = extract_follow_up_patterns(logs)
-    if follow_ups:
-        opportunities.append({
-            'type': 'missing_capability',
-            'description': f'Users frequently ask: {follow_ups[0]}',
-            'suggestion': 'Add guidance for this common need'
-        })
-
-    # Pattern 2: High edit ratio in specific output types
-    edit_patterns = analyze_edit_patterns(logs)
-    if edit_patterns['code'] > 0.4:
-        opportunities.append({
-            'type': 'code_quality',
-            'description': 'Users frequently edit generated code',
-            'suggestion': 'Review code examples and templates'
-        })
-
-    # Pattern 3: Repeated errors
-    error_patterns = cluster_errors(logs)
-    for error_type, count in error_patterns:
-        if count >= 3:
-            opportunities.append({
-                'type': 'recurring_error',
-                'description': f'{error_type} occurred {count} times',
-                'suggestion': 'Add error handling or documentation'
-            })
-
-    return opportunities
+# Examine failed invocations
+failed_cases = get_low_score_invocations('api-architect', days=3)
+for case in failed_cases:
+    if 'import' in case.errors:
+        # Pattern: Generated code missing required imports
+        # User edit ratio: 0.7 (high - users adding imports)
+        # Tool success rate: normal (tools work, output incomplete)
 ```
 
-## Implementation Guide
+**Step 4 - Root Cause**
+The skill was recently updated to use a more concise code style, but the import detection logic wasn't updated to handle the new patterns.
 
-### Basic Logger Hook
-
+**Step 5 - Fix Implementation**
 ```python
-# hooks/skill_logger.py
-import json
-import sqlite3
-from datetime import datetime
-from pathlib import Path
+# Add import detection rule to skill
+IMPORT_PATTERNS = [
+    r'from \w+',
+    r'import \w+',
+    r'require\(',
+    r'#include'
+]
 
-LOG_DB = Path.home() / '.claude' / 'skill_logs.db'
-
-def log_skill_invocation(
-    skill_name: str,
-    user_query: str,
-    output: str,
-    tool_calls: list,
-    duration_ms: int,
-    tokens: dict,
-    errors: list = None
-):
-    """Log a skill invocation to the database."""
-
-    conn = sqlite3.connect(LOG_DB)
-    cursor = conn.cursor()
-
-    cursor.execute('''
-        INSERT INTO skill_invocations
-        (id, skill_name, timestamp, user_query, duration_ms,
-         tokens_input, tokens_output, tool_calls_json, errors_json,
-         response_length)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        str(uuid.uuid4()),
-        skill_name,
-        datetime.utcnow().isoformat(),
-        user_query,
-        duration_ms,
-        tokens.get('input', 0),
-        tokens.get('output', 0),
-        json.dumps(tool_calls),
-        json.dumps(errors or []),
-        len(output)
-    ))
-
-    conn.commit()
-    conn.close()
+def ensure_imports_present(code):
+    # Check for usage of external functions/classes
+    # Automatically add missing imports
 ```
 
-### Quality Signal Collection
+**Step 6 - Validate Fix**
+Monitor for 48 hours:
+- Quality score recovery: 67→79→86
+- Error rate: 35%→8%→2%  
+- User edit ratio: 0.7→0.3→0.1
 
-```python
-def collect_quality_signals(invocation_id: str, signals: dict):
-    """Update an invocation with quality signals."""
+**Expert Insight**: The novice approach would be to just re-calibrate the scoring threshold. The expert approach recognizes that a sudden quality drop with stable usage indicates a systematic issue requiring root cause analysis and targeted fixes.
 
-    conn = sqlite3.connect(LOG_DB)
-    cursor = conn.cursor()
+## Quality Gates
 
-    # Update with user feedback
-    cursor.execute('''
-        UPDATE skill_invocations
-        SET user_accepted = ?,
-            user_edit_ratio = ?,
-            follow_up_needed = ?,
-            explicit_rating = ?,
-            quality_score = ?
-        WHERE id = ?
-    ''', (
-        signals.get('accepted'),
-        signals.get('edit_ratio'),
-        signals.get('follow_up'),
-        signals.get('rating'),
-        calculate_score(signals),
-        invocation_id
-    ))
+- [ ] Logging infrastructure captures all required signals for skill category
+- [ ] Quality score calculation includes both immediate and delayed feedback
+- [ ] Baseline performance metrics established for trending analysis
+- [ ] Alert thresholds configured for quality drops >15% and error spikes >2x
+- [ ] Anti-pattern detection rules active for token inflation and metric drift
+- [ ] Quality data feeds into skill improvement recommendations
+- [ ] User feedback collection mechanism functioning (>60% response rate)
+- [ ] Data retention policy implemented (detailed logs 30 days, aggregates 1 year)
+- [ ] Privacy compliance verified (no sensitive data in permanent logs)
+- [ ] Integration points active with skill-coach and prompt-improver skills
 
-    conn.commit()
-    conn.close()
-```
+## NOT-FOR Boundaries
 
-## Alerting & Notifications
+**Do NOT use skill-logger for:**
+- Creating new skills → Use `agent-creator` instead
+- Writing skill documentation → Use `skill-coach` instead  
+- Runtime debugging or error diagnosis → Use `debugger` or `error-analyst` skills
+- General application logging → Use `devops-automator` for system logs
+- User behavior analytics → Use dedicated analytics tools
+- Real-time monitoring dashboards → Use `system-monitor` skill
 
-### Alert Conditions
-
-```python
-ALERT_CONDITIONS = {
-    'quality_drop': {
-        'condition': 'avg_quality_7d < avg_quality_30d * 0.8',
-        'message': 'Skill {skill} quality dropped 20%+ in past week',
-        'severity': 'warning'
-    },
-    'error_spike': {
-        'condition': 'error_rate_24h > error_rate_7d * 2',
-        'message': 'Skill {skill} error rate doubled in past 24h',
-        'severity': 'critical'
-    },
-    'underused': {
-        'condition': 'uses_7d < uses_30d_avg * 0.5',
-        'message': 'Skill {skill} usage down 50%+ this week',
-        'severity': 'info'
-    },
-    'high_performer': {
-        'condition': 'avg_quality_7d > 90 AND uses_7d > 10',
-        'message': 'Skill {skill} performing excellently',
-        'severity': 'positive'
-    }
-}
-```
-
-## Anti-Patterns
-
-### "Log Everything"
-**Wrong**: Logging complete input/output for every invocation.
-**Why**: Privacy concerns, storage explosion, noise.
-**Right**: Log metadata, summaries, and opt-in detailed logging.
-
-### "Score Once, Forget"
-**Wrong**: Calculating quality score immediately after completion.
-**Why**: Misses delayed signals (did code work? was it reverted?).
-**Right**: Collect signals over time, recalculate periodically.
-
-### "Averages Only"
-**Wrong**: Only tracking average quality scores.
-**Why**: Hides distribution, misses failure modes.
-**Right**: Track percentiles, failure rates, and patterns.
-
-### "No Baseline"
-**Wrong**: Measuring quality without establishing baselines.
-**Why**: Can't detect improvement or regression.
-**Right**: Establish baselines per skill, compare trends.
-
-## Output Reports
-
-### Weekly Skill Health Report
-
-```markdown
-# Skill Health Report - Week of 2025-01-13
-
-## Overview
-- Total invocations: 247
-- Average quality: 78.3 (up 2.1 from last week)
-- Error rate: 4.2% (down 1.8%)
-
-## Top Performers
-1. **wedding-immortalist** - 92.1 avg quality, 18 uses
-2. **skill-coach** - 89.4 avg quality, 34 uses
-3. **api-architect** - 87.2 avg quality, 22 uses
-
-## Needs Attention
-1. **legacy-code-converter** - 52.3 avg quality (down 15%)
-   - Common issue: Missing dependency detection
-   - Suggested fix: Add dependency scanning step
-
-## Improvement Opportunities
-- `partner-text-coach`: Users frequently ask for tone adjustment
-- `yard-landscaper`: High edit ratio on plant recommendations
-```
-
-## Integration Points
-
-- **skill-coach**: Feed quality data for skill improvements
-- **agent-creator**: Use metrics when designing new skills
-- **automatic-stateful-prompt-improver**: Quality signals for prompt optimization
-
----
-
-**Core Philosophy**: What gets measured gets improved. Skill logging transforms intuition about skill quality into actionable data, enabling continuous improvement of the entire skill ecosystem.
+**Delegate when:**
+- Quality issues require skill redesign → Hand off to `skill-coach`
+- Patterns suggest new skill needed → Escalate to `agent-creator`
+- Performance problems are infrastructure-related → Route to `devops-automator`

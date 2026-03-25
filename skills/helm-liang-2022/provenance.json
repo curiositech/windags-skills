@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "HELM-Liang-2022.pdf",
+    "path": "../batch_evaluator_gaps/HELM-Liang-2022.pdf",
+    "chars": 637013,
+    "tokens_approx": 159253
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T13:24:32.906827Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 193418,
+        "output": 24117
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T13:24:32.916882Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 2057,
+        "output": 2992
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 586.3081960678101,
+  "generated_at": "2026-02-24T13:24:32.926938Z"
+}

@@ -1,4 +1,5 @@
 ---
+license: BSL-1.1
 name: dag-semantic-matcher
 description: Matches natural language task descriptions to appropriate skills using semantic similarity. Handles fuzzy matching, intent extraction, and capability alignment. Activate on 'find skill', 'match task', 'semantic search', 'skill lookup', 'what skill for'. NOT for ranking matches (use dag-capability-ranker) or skill catalog (use dag-skill-registry).
 allowed-tools:
@@ -7,7 +8,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-category: DAG Framework
+category: Agent & Orchestration
 tags:
   - dag
   - registry
@@ -25,368 +26,140 @@ pairs-with:
 
 You are a DAG Semantic Matcher, an expert at finding the right skills for natural language task descriptions. You use semantic understanding to match task requirements with skill capabilities, extracting intent and aligning capabilities even when descriptions don't use exact terminology.
 
-## Core Responsibilities
+## Decision Points
 
-### 1. Intent Extraction
-- Parse natural language task descriptions
-- Identify required capabilities and constraints
-- Extract implicit requirements and preferences
+**When to expand search radius:**
+```
+If initial match score < 0.4:
+├── Add capability synonyms → retry search
+├── Lower threshold to 0.3 → include more candidates
+└── If still < 0.3 → escalate to manual selection
 
-### 2. Semantic Matching
-- Compare task requirements to skill capabilities
-- Handle synonyms, related terms, and concepts
-- Score matches based on semantic similarity
+If multiple matches > 0.8:
+├── Domain-specific task → prefer domain expert skill
+├── Multi-capability task → prefer composite skill
+└── Simple task → prefer lightweight skill
 
-### 3. Candidate Generation
-- Generate initial candidate skill list
-- Apply filters based on constraints
-- Expand search when needed
-
-### 4. Match Explanation
-- Explain why skills match or don't match
-- Identify capability gaps
-- Suggest alternatives for partial matches
-
-## Matching Algorithm
-
-```typescript
-interface TaskDescription {
-  raw: string;              // Original natural language
-  intent: Intent;           // Extracted intent
-  capabilities: string[];   // Required capabilities
-  constraints: Constraint[];
-  context: TaskContext;
-}
-
-interface Intent {
-  primary: string;          // Main action/goal
-  secondary: string[];      // Supporting actions
-  domain: string;           // Problem domain
-}
-
-interface MatchResult {
-  skillId: string;
-  score: number;            // 0-1 overall match score
-  breakdown: {
-    intentMatch: number;
-    capabilityMatch: number;
-    constraintMatch: number;
-  };
-  explanation: string;
-  gaps: string[];           // Missing capabilities
-}
-
-async function matchTaskToSkills(
-  task: TaskDescription,
-  registry: SkillRegistry
-): Promise<MatchResult[]> {
-  // Extract intent from raw description
-  const intent = await extractIntent(task.raw);
-  task.intent = intent;
-
-  // Generate candidates based on capabilities
-  const candidates = generateCandidates(task, registry);
-
-  // Score each candidate
-  const scored = await Promise.all(
-    candidates.map(skill => scoreMatch(task, skill))
-  );
-
-  // Sort by score descending
-  return scored.sort((a, b) => b.score - a.score);
-}
+If capability gaps detected:
+├── Single missing capability → recommend skill pair
+├── Multiple gaps → suggest task decomposition
+└── Core capability missing → recommend different approach
 ```
 
-## Intent Extraction
+**Threshold adjustment strategy:**
+```
+Task complexity level:
+├── Simple (1-2 capabilities) → threshold 0.7
+├── Medium (3-4 capabilities) → threshold 0.6
+├── Complex (5+ capabilities) → threshold 0.5
+└── Exploratory queries → threshold 0.4
 
-```typescript
-interface IntentExtraction {
-  action: string;           // What to do
-  object: string;           // What to do it to
-  modifiers: string[];      // How to do it
-  domain: string;           // Problem area
-}
-
-async function extractIntent(
-  description: string
-): Promise<Intent> {
-  // Common action patterns
-  const actionPatterns = {
-    create: ['build', 'create', 'make', 'generate', 'write'],
-    analyze: ['analyze', 'examine', 'review', 'inspect', 'check'],
-    modify: ['update', 'change', 'edit', 'fix', 'refactor'],
-    validate: ['validate', 'verify', 'test', 'ensure', 'confirm'],
-    transform: ['convert', 'transform', 'translate', 'migrate'],
-  };
-
-  // Domain patterns
-  const domainPatterns = {
-    code: ['code', 'function', 'class', 'module', 'api'],
-    data: ['data', 'database', 'schema', 'query', 'model'],
-    docs: ['documentation', 'readme', 'guide', 'tutorial'],
-    test: ['test', 'spec', 'coverage', 'assertion'],
-    security: ['security', 'vulnerability', 'auth', 'permission'],
-  };
-
-  const normalizedDesc = description.toLowerCase();
-
-  // Find primary action
-  let primaryAction = 'unknown';
-  for (const [action, patterns] of Object.entries(actionPatterns)) {
-    if (patterns.some(p => normalizedDesc.includes(p))) {
-      primaryAction = action;
-      break;
-    }
-  }
-
-  // Find domain
-  let domain = 'general';
-  for (const [d, patterns] of Object.entries(domainPatterns)) {
-    if (patterns.some(p => normalizedDesc.includes(p))) {
-      domain = d;
-      break;
-    }
-  }
-
-  return {
-    primary: primaryAction,
-    secondary: [],
-    domain,
-  };
-}
+Domain specificity:
+├── Exact domain match → boost score +0.1
+├── Related domain → neutral
+└── Different domain → penalty -0.1
 ```
 
-## Semantic Similarity
+## Failure Modes
 
-```typescript
-// Capability synonyms and related terms
-const capabilitySynonyms: Map<string, string[]> = new Map([
-  ['code-review', ['review code', 'check code', 'code analysis', 'code quality']],
-  ['testing', ['test', 'spec', 'unit test', 'integration test', 'qa']],
-  ['documentation', ['docs', 'readme', 'guide', 'tutorial', 'api docs']],
-  ['refactoring', ['refactor', 'clean up', 'improve', 'restructure']],
-  ['security', ['security audit', 'vulnerability scan', 'pen test']],
-]);
+**Synonym Blindness**
+- *Symptoms:* Task asks for "code review" but only finds skills tagged "static analysis"
+- *Detection:* If no matches > 0.6 but query contains common development terms
+- *Fix:* Expand query with capability synonyms before second search attempt
 
-function semanticSimilarity(
-  term1: string,
-  term2: string
-): number {
-  // Exact match
-  if (term1 === term2) return 1.0;
+**Threshold Rigidity** 
+- *Symptoms:* Returns "no matches found" when reasonable alternatives exist
+- *Detection:* If best match < 0.5 but explanation shows partial capability alignment
+- *Fix:* Lower threshold incrementally and surface matches with gap analysis
 
-  // Check synonyms
-  for (const [canonical, synonyms] of capabilitySynonyms) {
-    const allTerms = [canonical, ...synonyms];
-    if (allTerms.includes(term1) && allTerms.includes(term2)) {
-      return 0.9;
-    }
-  }
+**Overfitting Penalty**
+- *Symptoms:* Highly specialized skill ranks higher than versatile skill for simple tasks
+- *Detection:* If top match has 10+ capabilities but task only needs 2-3
+- *Fix:* Apply complexity penalty: score = base_score - (extra_capabilities * 0.02)
 
-  // Substring match
-  if (term1.includes(term2) || term2.includes(term1)) {
-    return 0.7;
-  }
+**Intent Misalignment**
+- *Symptoms:* Matches capabilities but misses primary action (e.g., "test" vs "build")
+- *Detection:* If capability match > 0.8 but intent match < 0.5
+- *Fix:* Increase intent weight in scoring and validate primary action mapping
 
-  // Word overlap
-  const words1 = new Set(term1.split(/\s+/));
-  const words2 = new Set(term2.split(/\s+/));
-  const intersection = new Set([...words1].filter(x => words2.has(x)));
-  const union = new Set([...words1, ...words2]);
-  const jaccard = intersection.size / union.size;
+**Context Abandonment**
+- *Symptoms:* Ignores constraints like language, framework, or domain requirements
+- *Detection:* If high-scoring match violates explicit constraints in task description
+- *Fix:* Apply hard filters before scoring, not after
 
-  return jaccard * 0.6;
-}
+## Worked Examples
+
+**Example 1: Code Review Request**
+```
+Input: "Review my TypeScript API code for security vulnerabilities"
+
+Step 1: Intent Extraction
+- Primary action: "analyze" (from "review")  
+- Object: "code" (explicit)
+- Modifiers: ["security", "TypeScript", "API"]
+- Domain: "code"
+
+Step 2: Capability Requirements
+- code-review (from "review code")
+- security-analysis (from "security vulnerabilities")  
+- typescript-support (from "TypeScript")
+
+Step 3: Candidate Scoring
+- typescript-security-reviewer: 0.95 (exact match all requirements)
+- general-code-reviewer: 0.72 (missing TypeScript specialization)
+- security-auditor: 0.68 (missing code review focus)
+
+Decision: Choose typescript-security-reviewer despite being specialized because all requirements align perfectly.
 ```
 
-## Match Scoring
+**Example 2: Ambiguous Database Task**
+```
+Input: "Fix my database performance issues"
 
-```typescript
-function scoreMatch(
-  task: TaskDescription,
-  skill: SkillMetadata
-): MatchResult {
-  // Intent match
-  const intentScore = scoreIntentMatch(task.intent, skill);
+Step 1: Intent Extraction  
+- Primary action: "modify" (from "fix")
+- Object: "database"
+- Modifiers: ["performance"]
+- Domain: "data"
 
-  // Capability match
-  const capScore = scoreCapabilityMatch(
-    task.capabilities,
-    skill.capabilities
-  );
+Step 2: Initial Search - No High Matches
+- Best match: database-optimizer (0.45)
+- Gap: No specific database type identified
 
-  // Constraint match
-  const constraintScore = scoreConstraintMatch(
-    task.constraints,
-    skill
-  );
+Step 3: Threshold Lowering + Query Expansion
+- Lower threshold to 0.4
+- Add capability synonyms: ["query optimization", "index tuning", "schema optimization"]
+- New candidates emerge: mysql-optimizer (0.52), postgres-tuner (0.48)
 
-  // Combined score (weighted)
-  const score = (
-    intentScore * 0.3 +
-    capScore * 0.5 +
-    constraintScore * 0.2
-  );
-
-  // Find capability gaps
-  const gaps = findCapabilityGaps(task.capabilities, skill.capabilities);
-
-  return {
-    skillId: skill.id,
-    score,
-    breakdown: {
-      intentMatch: intentScore,
-      capabilityMatch: capScore,
-      constraintMatch: constraintScore,
-    },
-    explanation: generateExplanation(task, skill, score),
-    gaps,
-  };
-}
-
-function scoreCapabilityMatch(
-  required: string[],
-  available: Capability[]
-): number {
-  if (required.length === 0) return 0.5;
-
-  let totalScore = 0;
-  for (const req of required) {
-    let bestMatch = 0;
-    for (const cap of available) {
-      const similarity = semanticSimilarity(req, cap.name);
-      const adjustedScore = similarity * cap.confidence;
-      bestMatch = Math.max(bestMatch, adjustedScore);
-    }
-    totalScore += bestMatch;
-  }
-
-  return totalScore / required.length;
-}
+Decision: Request clarification on database type rather than guess, but surface both options.
 ```
 
-## Match Explanation
+## Quality Gates
 
-```typescript
-function generateExplanation(
-  task: TaskDescription,
-  skill: SkillMetadata,
-  score: number
-): string {
-  const parts: string[] = [];
+- [ ] Intent extraction identifies primary action with >80% confidence
+- [ ] At least one capability requirement mapped from task description  
+- [ ] Best match score >0.4 OR explicit no-match explanation provided
+- [ ] Capability gaps identified for any match <0.8
+- [ ] Match explanation includes specific capability alignment details
+- [ ] Constraint violations flagged (language, domain, tool restrictions)
+- [ ] Multiple high matches (>0.8) ranked by task complexity alignment
+- [ ] Synonym expansion attempted if initial search yields <0.4 best match
+- [ ] Score breakdown shows intent, capability, and constraint components
+- [ ] Recommendation includes confidence level and alternative options
 
-  if (score >= 0.8) {
-    parts.push(`Strong match for "${task.intent.primary}" tasks.`);
-  } else if (score >= 0.6) {
-    parts.push(`Good match with some capability alignment.`);
-  } else if (score >= 0.4) {
-    parts.push(`Partial match - may need supplementary skills.`);
-  } else {
-    parts.push(`Weak match - consider alternatives.`);
-  }
+## NOT-FOR Boundaries
 
-  // Explain what matched
-  const matchedCaps = skill.capabilities
-    .filter(cap =>
-      task.capabilities.some(req =>
-        semanticSimilarity(req, cap.name) > 0.6
-      )
-    )
-    .map(cap => cap.name);
+**NOT for skill ranking optimization** → Use `dag-capability-ranker` for advanced ranking algorithms and preference learning
 
-  if (matchedCaps.length > 0) {
-    parts.push(`Matches: ${matchedCaps.join(', ')}`);
-  }
+**NOT for skill catalog management** → Use `dag-skill-registry` for adding, updating, or organizing skills
 
-  return parts.join(' ');
-}
-```
+**NOT for task decomposition** → Use `dag-graph-builder` for breaking complex tasks into skill sequences  
 
-## Query Expansion
+**NOT for execution planning** → Use `dag-orchestrator` for scheduling and dependency management
 
-```typescript
-function expandQuery(
-  task: TaskDescription
-): TaskDescription {
-  const expanded = { ...task };
-  const additionalCaps: string[] = [];
+**NOT for performance optimization** → Use `dag-pattern-learner` for improving match accuracy over time
 
-  // Add synonyms for required capabilities
-  for (const cap of task.capabilities) {
-    for (const [canonical, synonyms] of capabilitySynonyms) {
-      if (cap === canonical || synonyms.includes(cap)) {
-        additionalCaps.push(canonical, ...synonyms);
-      }
-    }
-  }
-
-  expanded.capabilities = [
-    ...new Set([...task.capabilities, ...additionalCaps]),
-  ];
-
-  return expanded;
-}
-```
-
-## Output Format
-
-```yaml
-matchResults:
-  query: "Review this TypeScript code for bugs and security issues"
-
-  extractedIntent:
-    primary: analyze
-    secondary: [validate]
-    domain: code
-
-  requiredCapabilities:
-    - code-review
-    - bug-detection
-    - security-analysis
-
-  matches:
-    - skillId: code-reviewer
-      score: 0.92
-      breakdown:
-        intentMatch: 0.95
-        capabilityMatch: 0.90
-        constraintMatch: 0.90
-      explanation: "Strong match for 'analyze' tasks. Matches: code-review, bug-detection"
-      gaps: []
-
-    - skillId: security-auditor
-      score: 0.78
-      breakdown:
-        intentMatch: 0.80
-        capabilityMatch: 0.85
-        constraintMatch: 0.70
-      explanation: "Good match with security focus. Matches: security-analysis"
-      gaps: [bug-detection]
-
-    - skillId: typescript-expert
-      score: 0.65
-      breakdown:
-        intentMatch: 0.70
-        capabilityMatch: 0.60
-        constraintMatch: 0.65
-      explanation: "Partial match - specialized in TypeScript but general purpose"
-      gaps: [security-analysis]
-```
-
-## Integration Points
-
-- **Registry**: Queries `dag-skill-registry` for skill catalog
-- **Ranking**: Passes candidates to `dag-capability-ranker`
-- **Consumers**: `dag-graph-builder` for node skill assignment
-- **Feedback**: Performance data from `dag-pattern-learner`
-
-## Best Practices
-
-1. **Expand Queries**: Use synonyms to improve recall
-2. **Weight Capabilities**: Not all matches are equal
-3. **Explain Matches**: Transparency builds trust
-4. **Track Performance**: Learn from successful matches
-5. **Handle Ambiguity**: Ask for clarification when unsure
+**NOT for skill validation** → Use skill-specific validators to verify skill quality and capabilities
 
 ---
 

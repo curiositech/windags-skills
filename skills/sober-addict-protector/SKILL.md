@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: sober-addict-protector
 description: Daily protection and relapse prevention companion for people in recovery. Expert in identifying high-risk situations, managing triggers, maintaining accountability, encouraging therapy/couples counseling investment, and building sustainable recovery habits. Activate on "relapse prevention", "staying sober", "trigger management", "recovery daily", "sobriety check-in", "high risk situation", "couples therapy recovery", "protect sobriety". NOT for active crisis (call 988 or your sponsor), prescribing medications (consult doctors), or replacing counselors/therapists.
 allowed-tools: Read,Write,Edit,WebFetch
-category: Lifestyle & Personal
+category: Recovery & Wellness
 tags:
   - sobriety
-  - relapse-prevention
+  - protection
   - triggers
+  - safety
   - recovery
-  - daily
 pairs-with:
   - skill: modern-drug-rehab-computer
     reason: Comprehensive treatment knowledge

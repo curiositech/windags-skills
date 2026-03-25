@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "A_task_analysis_of_pier_side_ship_handli.pdf",
+    "path": "../batch_ndm_remaining/A_task_analysis_of_pier_side_ship_handli.pdf",
+    "chars": 196411,
+    "tokens_approx": 49102
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T14:08:39.234568Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 56826,
+        "output": 27564
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T14:08:39.243503Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 2060,
+        "output": 3564
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 662.5017468929291,
+  "generated_at": "2026-02-24T14:08:39.251525Z"
+}

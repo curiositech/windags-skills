@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "ADA157917 (1).pdf",
+    "path": "batch_retry_final/ADA157917 (1).pdf",
+    "chars": 296184,
+    "tokens_approx": 74046
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T01:26:22.719773Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 86551,
+        "output": 26223
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T01:26:22.730036Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 2065,
+        "output": 3419
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 640.0361800193787,
+  "generated_at": "2026-02-24T01:26:22.737536Z"
+}

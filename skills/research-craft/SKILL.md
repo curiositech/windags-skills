@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: research-craft
 description: Systematic research methodology for formulating problems, building evidence-based arguments, and communicating findings in academic contexts. For scholarly writing, thesis development, and knowledge contribution. NOT for creative writing, journalistic reporting, or business analytics.
 allowed-tools: Read
+category: Productivity & Meta
+tags:
+  - research
+  - methodology
+  - craft
+  - synthesis
+  - analysis
 ---
 
 # Research Craft

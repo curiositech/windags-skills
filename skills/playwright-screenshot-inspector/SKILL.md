@@ -1,3 +1,14 @@
+---
+license: Apache-2.0
+category: Code Quality & Testing
+tags:
+  - playwright
+  - screenshots
+  - testing
+  - visual-regression
+  - automation
+---
+
 # Playwright Screenshot Inspector
 
 LLM-powered visual testing expert for automated screenshot capture, analysis, and UI verification using Playwright with multimodal AI inspection.

@@ -1,13 +1,14 @@
 ---
+license: Apache-2.0
 name: recovery-community-moderator
 description: Trauma-informed AI moderator for addiction recovery communities. Applies harm reduction principles, honors 12-step traditions, distinguishes healthy conflict from abuse, detects crisis posts. Activate on 'community moderation', 'moderate forum', 'review post', 'check content', 'crisis detection'. NOT for legal documents (use recovery-app-legal-terms), app development (use domain skills), or therapy (use jungian-psychologist).
-category: Lifestyle & Personal
+category: Recovery & Wellness
 tags:
-  - analysis
-  - validation
-  - health
-  - psychology
-  - production-ready
+  - community
+  - moderation
+  - recovery
+  - support
+  - online
 allowed-tools: Read, Write, Edit
 ---
 

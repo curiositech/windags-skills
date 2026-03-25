@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: skill-coach
 description: "Guides creation of high-quality Agent Skills with domain expertise, anti-pattern detection, and progressive disclosure best practices. Activate on keywords: create skill, review skill, skill quality, skill best practices, skill anti-patterns, improve skill, skill audit. NOT for general coding advice, slash commands, MCP development, or non-skill Claude Code features."
 allowed-tools: Read,Write,Edit,Glob,Grep,Bash(python:*)

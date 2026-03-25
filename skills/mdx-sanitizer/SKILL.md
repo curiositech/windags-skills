@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: mdx-sanitizer
 description: Comprehensive MDX content sanitizer that escapes angle brackets, generics, and other JSX-conflicting patterns to prevent build failures
-version: "1.0.0"
-category: DevOps & Automation
+version: 1.0.0
+category: Productivity & Meta
 tags:
   - mdx
-  - docusaurus
-  - markdown
-  - build-tools
   - sanitization
+  - content
+  - markdown
+  - security
 allowed-tools:
   - Read
   - Write
@@ -17,136 +18,153 @@ allowed-tools:
   - Glob
   - Grep
 triggers:
-  - "mdx error"
-  - "angle bracket"
-  - "jsx parsing"
-  - "build failure mdx"
-  - "escape angle brackets"
-  - "sanitize markdown"
+  - mdx error
+  - angle bracket
+  - jsx parsing
+  - build failure mdx
+  - escape angle brackets
+  - sanitize markdown
 ---
 
 # MDX Sanitizer
 
 Comprehensive MDX content sanitizer that prevents JSX parsing errors caused by angle brackets, generics, and other conflicting patterns.
 
-## The Problem
+## Decision Points
 
-MDX 2.x treats unescaped `<` and `{` as JSX syntax. This causes build failures when content contains:
+**When to sanitize vs validate vs wrap:**
 
-- **TypeScript generics**: `Promise&lt;T&gt;`, `Array&lt;string&gt;`, `Map&lt;K, V&gt;`
-- **Comparisons**: `&lt;100ms`, `&lt;=`, `&gt;=`
-- **Arrows**: `--&gt;`, `&lt;--`, `-&gt;`
-- **Invalid tags**: `&lt;link&gt;` in prose, `&lt;tag&gt;` placeholders
-- **Empty brackets**: `&lt;&gt;`
-
-## Solution Architecture
-
-This skill implements a three-layer defense:
-
-### 1. Sync-Time Sanitization (Proactive)
-Content is sanitized when syncing from `.claude/skills/` to `website/docs/`:
-- `syncSkillDocs.ts` - Main skill files
-- `syncSkillSubpages.ts` - Reference files
-- `doc-generator.ts` - Generated docs
-
-### 2. Pre-Commit Validation (Reactive)
-The git pre-commit hook validates files before commit using `validate-brackets.js`.
-
-### 3. Build-Time Validation (Final Check)
-`npm run validate:all` runs as part of `prebuild` to catch any issues.
-
-## Usage
-
-### Check for Issues (Dry Run)
-```bash
-cd website
-npm run sanitize:mdx
-# or with verbose output
-npm run sanitize:mdx -- --verbose
+```
+Content Analysis:
+├── Inside code blocks (```, `)
+│   └── → Skip sanitization (already protected)
+├── Contains TypeScript generics (`Promise<T>`)
+│   └── → Sanitize with HTML entities
+├── Contains comparisons (`<100ms`, `<=`)
+│   └── → Sanitize with HTML entities  
+├── Contains arrows (`->`, `<--`)
+│   └── → Sanitize with HTML entities
+├── Valid JSX components (PascalCase)
+│   └── → Skip sanitization (preserve functionality)
+├── Valid HTML5 elements (`<div>`, `<span>`)
+│   └── → Skip sanitization (preserve functionality)
+├── Invalid pseudo-tags (`<link>` in prose)
+│   └── → Sanitize with HTML entities
+└── Documentation examples
+    ├── If showing code syntax → Wrap in code blocks
+    └── If showing output/prose → Sanitize with HTML entities
 ```
 
-### Fix All Issues
-```bash
-cd website
-npm run sanitize:mdx -- --fix
-# or shorthand
-npm run fix:mdx
+**Content type decision matrix:**
+
+| Pattern | Action | Reason |
+|---------|--------|--------|
+| `Promise<T>` | Sanitize | TypeScript generic, not JSX |
+| `<MyComponent>` | Skip | Valid JSX component |
+| `<div>` | Skip | Valid HTML5 element |
+| `<link>` in prose | Sanitize | Invalid context for HTML |
+| `<100ms` | Sanitize | Comparison, not JSX |
+| `` `<T>` `` | Skip | Already in code block |
+
+## Failure Modes
+
+**Schema Bloat**: Over-sanitizing valid JSX
+- *Detection*: Valid React components getting escaped (`&lt;Button&gt;` instead of `<Button>`)
+- *Diagnosis*: Sanitizer not recognizing PascalCase or valid HTML5 elements
+- *Fix*: Update whitelist for valid JSX patterns, test with `isMdxSafe()` first
+
+**Escape Cascade**: Double-escaping already sanitized content
+- *Detection*: Seeing `&amp;lt;` instead of `&lt;` in output
+- *Diagnosis*: Running sanitizer multiple times on same content
+- *Fix*: Check if content already escaped with `validateMdxSafety()` before processing
+
+**Code Block Pollution**: Sanitizing content that should stay literal
+- *Detection*: Code examples showing `&lt;T&gt;` instead of `<T>`
+- *Diagnosis*: Sanitizer processing content inside code fences
+- *Fix*: Verify code block detection logic, wrap examples properly
+
+**Context Blindness**: Wrong sanitization strategy for content type
+- *Detection*: Documentation examples breaking or looking wrong
+- *Diagnosis*: Not distinguishing between code syntax vs prose descriptions
+- *Fix*: Analyze context - if showing syntax, use code blocks; if describing, sanitize
+
+**Validation Bypass**: Files passing validation but failing build
+- *Detection*: `npm run validate:all` passes but `npm run build` fails with JSX errors
+- *Diagnosis*: Build-time MDX parsing stricter than validation regex
+- *Fix*: Clear Docusaurus cache, re-run full sanitization, check for edge patterns
+
+## Worked Examples
+
+**Scenario 1: TypeScript API Documentation**
+
+*Input content:*
+```markdown
+The `createMap` function returns `Promise<Map<string, User>>` where each User has...
+Performance is <100ms for datasets <=1000 items.
 ```
 
-### Programmatic API
-```typescript
-import { sanitizeForMdx, validateMdxSafety, isMdxSafe } from './lib/mdx-sanitizer';
+*Decision process:*
+1. Scan for code blocks → None found
+2. Identify patterns → `Promise<Map<string, User>>`, `<100ms`, `<=1000`
+3. Check if valid JSX → No, these are TypeScript generics and comparisons
+4. Apply HTML entity escaping
 
-// Sanitize content
-const result = sanitizeForMdx(content, { useHtmlEntities: true });
-if (result.modified) {
-  console.log(`Fixed ${result.issues.length} issues`);
-  fs.writeFileSync(path, result.content);
-}
-
-// Validate without modifying
-const issues = validateMdxSafety(content, 'path/to/file.md');
-
-// Quick check
-if (!isMdxSafe(content)) {
-  // Handle issues
-}
+*Output:*
+```markdown
+The `createMap` function returns `Promise&lt;Map&lt;string, User&gt;&gt;` where each User has...
+Performance is &lt;100ms for datasets &lt;=1000 items.
 ```
 
-## Escaping Strategies
+*Expert insight*: Novice might wrap entire line in code block, losing prose flow. Expert selectively escapes only the problematic characters while preserving readability.
 
-The sanitizer uses HTML entities for maximum compatibility:
+**Scenario 2: Component Usage Guide**
 
-| Pattern | Original | Escaped |
-|---------|----------|---------|
-| Less-than | `<` | `&lt;` |
-| Greater-than | `>` | `&gt;` |
-| Generics | `&lt;T&gt;` | `&amp;lt;T&amp;gt;` |
-| Comparison | `&lt;=` | `&amp;lt;=` |
+*Input content:*
+```markdown
+Use <Button variant="primary"> for main actions.
+The <link> tag should be avoided in favor of <Link>.
+```
 
-Content inside code blocks (`` ``` `` or `` ` ``) is automatically protected and never escaped.
+*Decision process:*
+1. Analyze first pattern → `<Button variant="primary">` has PascalCase, valid JSX
+2. Skip sanitization for Button component
+3. Analyze second pattern → `<link>` in prose context, not valid JSX usage
+4. Sanitize invalid tag references
 
-## Files Modified
+*Output:*
+```markdown
+Use <Button variant="primary"> for main actions.  
+The &lt;link&gt; tag should be avoided in favor of <Link>.
+```
 
-- `website/scripts/lib/mdx-sanitizer.ts` - Core sanitizer module
-- `website/scripts/sanitize-mdx.ts` - CLI wrapper
-- `website/scripts/syncSkillDocs.ts` - Integration
-- `website/scripts/syncSkillSubpages.ts` - Integration
-- `website/scripts/lib/doc-generator.ts` - Integration
-- `website/package.json` - npm scripts
+*Trade-off analysis*: Preserving functional JSX while sanitizing prose references maintains both functionality and safety.
 
-## Patterns Detected
+## Quality Gates
 
-1. **Less-than before digit**: `&lt;100`, `&lt;0.5ms`
-2. **Comparison operators**: `&lt;=`, `&gt;=`
-3. **Empty brackets**: `&lt;&gt;`
-4. **Arrows**: `&lt;--`, `--&gt;`
-5. **Generic types**: `Promise&lt;T&gt;`, `Array&lt;string&gt;`
-6. **Space after less-than**: `&lt; value`
-7. **Invalid pseudo-tags**: `&lt;link&gt;`, `&lt;tag&gt;` (not valid HTML)
+- [ ] All `<` characters outside code blocks are either valid JSX components or HTML-entity escaped
+- [ ] No `&amp;lt;` double-escaping patterns in output
+- [ ] Code blocks (``` and `) preserve original angle brackets
+- [ ] PascalCase components (`<MyComponent>`) remain unescaped
+- [ ] Valid HTML5 elements (`<div>`, `<span>`, `<a>`) remain unescaped
+- [ ] TypeScript generics (`Promise<T>`) are escaped to `Promise&lt;T&gt;`
+- [ ] Comparison operators (`<100`, `<=`) are escaped
+- [ ] `validateMdxSafety()` returns no issues for processed content
+- [ ] `npm run build` completes without JSX parsing errors
+- [ ] Visual inspection confirms proper rendering in browser
 
-## Troubleshooting
+## NOT-FOR Boundaries
 
-### Build Still Fails After Running Sanitizer
+**This skill is NOT for:**
 
-1. Clear Docusaurus cache: `npm run clear`
-2. Re-run sanitizer: `npm run sanitize:mdx -- --fix`
-3. Rebuild: `npm run build`
+- **Dynamic JSX props with runtime values** → Use proper JSX escaping libraries like `escape-html` or React's built-in escaping
+- **Server-side HTML sanitization** → Use `DOMPurify` or similar XSS protection libraries  
+- **Markdown-to-HTML conversion** → Use dedicated parsers like `marked` or `remark`
+- **Syntax highlighting in code blocks** → Handled by Prism.js/highlight.js in build pipeline
+- **User-generated content sanitization** → Use `isomorphic-dompurify` with CSP policies
+- **Build-time MDX plugin development** → Use `@mdx-js/mdx` plugin API instead
 
-### False Positives
-
-If valid JSX components are being escaped:
-- Ensure they use PascalCase (e.g., `&lt;MyComponent&gt;`)
-- Check they're valid HTML5 elements
-
-### Manual Escaping
-
-For edge cases, manually escape in source:
-- Use backticks for inline code: `` `&lt;T&gt;` ``
-- Use fenced code blocks for multi-line
-- Use HTML entities: `&lt;` and `&gt;`
-
-## Sources
-
-- [MDX Troubleshooting](https://mdxjs.com/docs/troubleshooting-mdx/)
-- [TypeDoc MDX Issues](https://github.com/tgreyuk/typedoc-plugin-markdown/issues/167)
+**Delegation patterns:**
+- For XSS protection → `xss-security-skill`
+- For React component escaping → `react-escaping-skill` 
+- For build system integration → `docusaurus-config-skill`
+- For regex pattern development → `regex-patterns-skill`

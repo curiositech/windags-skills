@@ -1,7 +1,16 @@
 ---
+license: Apache-2.0
 name: react-performance-optimizer
 description: Optimize React apps for 60fps performance. Implements memoization, virtualization, code splitting, bundle optimization. Use for slow renders, large lists, bundle bloat. Activate on "React performance", "slow render", "useMemo", "bundle size", "virtualization". NOT for backend optimization, non-React frameworks, or premature optimization.
 allowed-tools: Read,Write,Edit,Bash(npm:*)
+category: Frontend & UI
+tags:
+  - react
+  - performance
+  - optimizer
+  - optimization
+  - frontend
+  - ui
 ---
 
 # React Performance Optimizer

@@ -1,26 +1,31 @@
 ---
+license: Apache-2.0
 name: caching-strategies
-description: Design multi-tier caching architectures for web applications — cache-aside vs write-through vs write-behind, TTL design, cache invalidation, Redis patterns, CDN configuration, browser caching,
-  and stampede prevention. Use when choosing a caching pattern, designing cache invalidation strategies, implementing Redis caching, configuring Cache-Control headers, or preventing cache stampedes. Activate
-  on "cache invalidation", "cache-aside", "write-through", "TTL", "Redis cache", "CDN caching", "cache stampede", "stale data", "browser cache". NOT for database query caching within an ORM, memoization
-  of pure functions, or CPU-level caching.
+description: Design multi-tier caching architectures for web applications — cache-aside vs write-through vs write-behind, TTL design, cache invalidation, Redis patterns, CDN configuration, browser caching, and stampede prevention. Use when choosing a caching pattern, designing cache invalidation strategies, implementing Redis caching, configuring Cache-Control headers, or preventing cache stampedes. Activate on "cache invalidation", "cache-aside", "write-through", "TTL", "Redis cache", "CDN caching", "cache stampede", "stale data", "browser cache". NOT for database query caching within an ORM, memoization of pure functions, or CPU-level caching.
 allowed-tools: Read,Write,Edit,Grep,Glob
 argument-hint: '[tier: browser|cdn|redis|in-memory] [pattern: cache-aside|write-through|write-behind]'
 metadata:
   category: DevOps & Site Reliability
   tags:
-  - caching
-  - strategies
-  - cache-invalidation
-  - cache-aside
-  - write-through
+    - caching
+    - strategies
+    - cache-invalidation
+    - cache-aside
+    - write-through
   pairs-with:
-  - skill: react-performance-optimizer
-    reason: Client-side caching (memoization, SWR) complements server-side cache architecture
-  - skill: performance-profiling
-    reason: Profiling identifies cache miss hotspots that caching strategies then address
-  - skill: cloudflare-worker-dev
-    reason: Edge caching with Cloudflare KV/Cache API is a key tier in multi-level cache architectures
+    - skill: react-performance-optimizer
+      reason: Client-side caching (memoization, SWR) complements server-side cache architecture
+    - skill: performance-profiling
+      reason: Profiling identifies cache miss hotspots that caching strategies then address
+    - skill: cloudflare-worker-dev
+      reason: Edge caching with Cloudflare KV/Cache API is a key tier in multi-level cache architectures
+category: Backend & Infrastructure
+tags:
+  - caching
+  - redis
+  - cdn
+  - performance
+  - strategy
 ---
 
 # Caching Strategies

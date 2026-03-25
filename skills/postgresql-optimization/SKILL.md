@@ -1,8 +1,14 @@
 ---
+license: Apache-2.0
 name: postgresql-optimization
 version: 1.0.0
-category: database
-tags: [postgresql, sql, performance, indexing, query-optimization, database]
+category: Backend & Infrastructure
+tags:
+  - postgresql
+  - optimization
+  - query-performance
+  - indexing
+  - tuning
 ---
 
 # PostgreSQL Optimization
@@ -11,267 +17,155 @@ tags: [postgresql, sql, performance, indexing, query-optimization, database]
 
 Expert in PostgreSQL performance tuning, query optimization, and database administration. Specializes in EXPLAIN analysis, indexing strategies, connection pooling, partitioning, and production-grade PostgreSQL operations.
 
-## When to Use
+## Decision Points
 
-- Diagnosing slow queries with EXPLAIN ANALYZE
-- Creating optimal indexes for query patterns
-- Designing database schemas for performance
-- Configuring PostgreSQL for production workloads
-- Implementing connection pooling (PgBouncer, Supavisor)
-- Setting up partitioning for large tables
-- Analyzing and reducing lock contention
-- Migrating or upgrading PostgreSQL versions
+### Index Type Selection Decision Tree
 
-## Capabilities
+```
+Query Pattern Analysis:
+├── Equality lookups (=, IN)?
+│   ├── High cardinality column → B-tree index
+│   └── Low cardinality (<100 unique) → Consider partial indexes or skip
+├── Range queries (>, <, BETWEEN)?
+│   ├── Date/time columns → B-tree index (created_at DESC for recent data)
+│   ├── Large table (>1M rows) + sparse data → BRIN index
+│   └── Regular ranges → B-tree index
+├── Full-text search or JSONB containment?
+│   ├── JSONB @>, ?, ?& operators → GIN index with jsonb_path_ops
+│   ├── Full-text search (tsvector) → GIN index
+│   └── JSONB keys/values extraction → GIN index
+├── Array operations (ANY, ALL)?
+│   └── GIN index on array column
+└── Exact hash lookups only?
+    ├── Large table + no range queries → HASH index
+    └── Default → B-tree index (more flexible)
+```
 
-### Query Optimization
-- EXPLAIN / EXPLAIN ANALYZE interpretation
-- Query plan analysis and optimization
-- Identifying sequential scans vs index scans
-- Join optimization and query rewriting
-- CTE vs subquery performance trade-offs
-- Window function optimization
+### Query Optimization Strategy
 
-### Indexing Strategies
-- B-tree, GIN, GiST, BRIN index selection
-- Partial indexes for filtered queries
-- Expression indexes for computed values
-- Covering indexes (INCLUDE clause)
-- Index-only scans optimization
-- Concurrent index creation
+| EXPLAIN Output Indicator | Decision Path | Action |
+|--------------------------|---------------|---------|
+| "Seq Scan" on large table (>10k rows) | Missing index | Create B-tree index on WHERE clause columns |
+| "Nested Loop" with high cost | Inefficient join | Add index on join keys, consider hash/merge join |
+| "Sort" with "external merge" | Insufficient memory | Increase work_mem or add index to avoid sort |
+| High "Rows Removed by Filter" | Late filtering | Move WHERE conditions earlier, use partial index |
+| "Bitmap Heap Scan" with low selectivity | Index not selective enough | Create multi-column index or partial index |
 
-### Schema Design
-- Normalization vs denormalization trade-offs
-- JSONB column design and indexing
-- Array columns and operations
-- Enum types vs lookup tables
-- Foreign key cascade strategies
-- Table inheritance and partitioning
+### Connection Pool Sizing
 
-### Configuration Tuning
-- Memory settings (shared_buffers, work_mem, effective_cache_size)
-- Connection limits and pooling
-- WAL and checkpoint tuning
-- Autovacuum configuration
-- Statistics collection settings
+```
+Application Analysis:
+├── Request pattern: Burst traffic?
+│   ├── Yes → pool_mode = transaction, max_client_conn = 5x default_pool_size
+│   └── No → pool_mode = session, max_client_conn = 2x default_pool_size
+├── Query duration: Long-running queries (>30s)?
+│   ├── Yes → pool_mode = session, higher reserve_pool_size
+│   └── No → pool_mode = transaction for better throughput
+└── Database connections available:
+    ├── max_connections > 200 → default_pool_size = max_connections / 4
+    └── max_connections ≤ 200 → default_pool_size = 20-25
+```
 
-### Advanced Features
-- Partitioning (range, list, hash)
-- Materialized views with refresh strategies
-- Full-text search with tsvector/tsquery
-- PostGIS geospatial queries
-- Logical replication setup
-- pg_stat_statements analysis
+## Failure Modes
 
-## Dependencies
+### Index Bloat Death Spiral
+- **Symptoms**: Queries slowing down over time despite unchanged code, pg_stat_user_tables shows high n_dead_tup
+- **Diagnosis**: `SELECT pg_size_pretty(pg_relation_size('table_name'))` shows growing size but `SELECT count(*)` stable
+- **Fix**: Regular VACUUM or tune autovacuum (reduce autovacuum_vacuum_scale_factor to 0.1)
 
-Works well with:
-- `database-modeler` - Schema design and ERD creation
-- `data-pipeline-engineer` - ETL and data processing
-- `site-reliability-engineer` - Database monitoring and alerting
-- `nextjs-app-router-expert` - Full-stack data fetching
+### Connection Pool Exhaustion
+- **Symptoms**: "remaining connection slots are reserved" errors, app timeouts
+- **Diagnosis**: `SELECT count(*) FROM pg_stat_activity WHERE state = 'active'` near max_connections
+- **Fix**: Implement PgBouncer with transaction pooling, reduce connection timeouts in app
 
-## Examples
+### Query Plan Regression
+- **Symptoms**: Previously fast queries become slow after data growth or schema changes
+- **Diagnosis**: EXPLAIN shows different plan, pg_stat_statements shows exec_time spike
+- **Fix**: Run ANALYZE table_name, consider query hints or restructure query
 
-### Reading EXPLAIN ANALYZE Output
+### Deadlock Cascade
+- **Symptoms**: Multiple transactions failing with deadlock errors, application retries creating more deadlocks
+- **Diagnosis**: Check pg_logs for deadlock details, identify conflicting lock patterns
+- **Fix**: Establish consistent lock ordering, reduce transaction scope, add explicit locking
+
+### Memory Configuration Mismatch
+- **Symptoms**: OOM kills or "could not allocate memory" errors despite available RAM
+- **Diagnosis**: shared_buffers + work_mem * max_connections exceeds available memory
+- **Fix**: Reduce work_mem or max_connections, or increase shared_buffers to reduce double-buffering
+
+## Worked Examples
+
+### Optimizing a Slow Analytics Query
+
+**Scenario**: Dashboard query taking 45 seconds to load monthly sales data
+
 ```sql
-EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
-SELECT u.*, COUNT(o.id) as order_count
+-- Initial slow query
+SELECT 
+  u.name, 
+  COUNT(o.id) as order_count,
+  SUM(o.total_amount) as revenue
 FROM users u
-LEFT JOIN orders o ON o.user_id = u.id
-WHERE u.created_at > '2024-01-01'
-GROUP BY u.id;
-
--- Key metrics to look for:
--- - "Seq Scan" on large tables → needs index
--- - "Rows Removed by Filter" high → filter before join
--- - "Sort Method: external merge" → increase work_mem
--- - "Buffers: shared hit" vs "shared read" → cache efficiency
+JOIN orders o ON o.user_id = u.id 
+WHERE o.created_at >= '2024-01-01' 
+  AND o.created_at < '2024-02-01'
+GROUP BY u.id, u.name
+ORDER BY revenue DESC;
 ```
 
-### Creating Effective Indexes
+**Step 1: Analyze current plan**
 ```sql
--- Basic B-tree for equality and range queries
-CREATE INDEX CONCURRENTLY idx_orders_user_created
-ON orders (user_id, created_at DESC);
-
--- Partial index for common filter
-CREATE INDEX CONCURRENTLY idx_orders_pending
-ON orders (created_at)
-WHERE status = 'pending';
-
--- GIN index for JSONB containment queries
-CREATE INDEX CONCURRENTLY idx_products_metadata
-ON products USING GIN (metadata jsonb_path_ops);
-
--- Covering index to enable index-only scans
-CREATE INDEX CONCURRENTLY idx_users_email_covering
-ON users (email) INCLUDE (name, created_at);
-
--- Expression index for case-insensitive search
-CREATE INDEX CONCURRENTLY idx_users_email_lower
-ON users (LOWER(email));
+EXPLAIN (ANALYZE, BUFFERS) [query above];
+-- Result: Seq Scan on orders (cost=0.00..450000 rows=2000000)
+-- Shows: scanning 2M rows to find 50k matching rows
 ```
 
-### Optimizing N+1 Queries
+**Expert catches**: Date range filter eliminating 95% of rows suggests need for date index
+**Novice misses**: Might try to optimize the JOIN first instead of the WHERE filter
+
+**Step 2: Create targeted index**
 ```sql
--- BAD: N+1 pattern (1 + N queries)
-SELECT * FROM posts WHERE user_id = $1;
--- Then for each post: SELECT * FROM comments WHERE post_id = $1;
-
--- GOOD: Single query with lateral join
-SELECT p.*, c.comments
-FROM posts p
-LEFT JOIN LATERAL (
-  SELECT json_agg(c.*) as comments
-  FROM comments c
-  WHERE c.post_id = p.id
-) c ON true
-WHERE p.user_id = $1;
-
--- GOOD: Window function for aggregates
-SELECT
-  p.*,
-  COUNT(*) OVER (PARTITION BY p.user_id) as user_post_count
-FROM posts p
-WHERE p.user_id = $1;
+-- Index for date filtering and JOIN
+CREATE INDEX CONCURRENTLY idx_orders_created_user 
+ON orders (created_at, user_id) 
+INCLUDE (total_amount);
 ```
 
-### Table Partitioning
+**Step 3: Re-analyze**
 ```sql
--- Create partitioned table by date range
-CREATE TABLE events (
-  id BIGSERIAL,
-  event_type TEXT NOT NULL,
-  payload JSONB,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  PRIMARY KEY (id, created_at)
-) PARTITION BY RANGE (created_at);
-
--- Create monthly partitions
-CREATE TABLE events_2024_01 PARTITION OF events
-FOR VALUES FROM ('2024-01-01') TO ('2024-02-01');
-
-CREATE TABLE events_2024_02 PARTITION OF events
-FOR VALUES FROM ('2024-02-01') TO ('2024-03-01');
-
--- Automate partition creation with pg_partman
-CREATE EXTENSION pg_partman;
-SELECT partman.create_parent('public.events', 'created_at', 'native', 'monthly');
+EXPLAIN (ANALYZE, BUFFERS) [query];
+-- New result: Index Scan using idx_orders_created_user (cost=0.43..15000 rows=50000)
+-- Query time: 45s → 1.2s
 ```
 
-### Connection Pooling Config (PgBouncer)
-```ini
-; pgbouncer.ini
+**Expert catches**: INCLUDE clause enables index-only scan, eliminating table lookup
+**Novice misses**: Would create separate indexes instead of one covering index
 
-[databases]
-myapp = host=localhost dbname=myapp
+## Quality Gates
 
-[pgbouncer]
-listen_addr = 0.0.0.0
-listen_port = 6432
-auth_type = md5
-auth_file = /etc/pgbouncer/userlist.txt
+- [ ] All tables >10k rows have appropriate indexes for common WHERE clauses
+- [ ] No sequential scans on tables >100k rows in production query plans
+- [ ] Average query execution time <500ms for 95th percentile
+- [ ] Database cache hit ratio >95% (check pg_stat_database.blks_hit/(blks_read+blks_hit))
+- [ ] Index size <3x table size for any single table
+- [ ] Connection pool utilization <80% during peak load
+- [ ] No queries using >25% of work_mem causing disk sorts
+- [ ] Autovacuum completing within maintenance windows
+- [ ] No tables with >20% dead tuple ratio
+- [ ] All foreign keys have corresponding indexes for JOIN performance
 
-; Pool settings
-pool_mode = transaction        ; Recommended for most apps
-max_client_conn = 1000
-default_pool_size = 20
-reserve_pool_size = 5
+## NOT-FOR Boundaries
 
-; Timeouts
-server_idle_timeout = 600
-client_idle_timeout = 0
-```
+**Do NOT use this skill for:**
+- **Database schema design** → Use `database-modeler` for ERD design and normalization decisions
+- **Application-level caching** → Use `redis-caching-expert` for cache layer architecture
+- **Data pipeline optimization** → Use `data-pipeline-engineer` for ETL performance
+- **Backup and disaster recovery** → Use `site-reliability-engineer` for backup strategies
+- **Cross-database migrations** → Use `database-migration-expert` for schema migrations
+- **Real-time streaming** → Use `event-streaming-architect` for Kafka/streaming solutions
 
-### Performance Configuration
-```sql
--- Check current settings
-SHOW shared_buffers;        -- ~25% of RAM
-SHOW effective_cache_size;  -- ~75% of RAM
-SHOW work_mem;              -- Per-operation, start small (64MB)
-SHOW maintenance_work_mem;  -- For VACUUM, CREATE INDEX (512MB-1GB)
-
--- Recommended production settings (for 32GB RAM server)
-ALTER SYSTEM SET shared_buffers = '8GB';
-ALTER SYSTEM SET effective_cache_size = '24GB';
-ALTER SYSTEM SET work_mem = '64MB';
-ALTER SYSTEM SET maintenance_work_mem = '1GB';
-ALTER SYSTEM SET random_page_cost = 1.1;  -- For SSD storage
-ALTER SYSTEM SET effective_io_concurrency = 200;  -- For SSD
-
--- Reload configuration
-SELECT pg_reload_conf();
-```
-
-### Finding Slow Queries
-```sql
--- Enable pg_stat_statements
-CREATE EXTENSION pg_stat_statements;
-
--- Top 10 slowest queries by total time
-SELECT
-  round(total_exec_time::numeric, 2) as total_ms,
-  calls,
-  round(mean_exec_time::numeric, 2) as avg_ms,
-  round((100 * total_exec_time / sum(total_exec_time) OVER())::numeric, 2) as pct,
-  query
-FROM pg_stat_statements
-ORDER BY total_exec_time DESC
-LIMIT 10;
-
--- Queries with most I/O
-SELECT
-  round(shared_blks_read::numeric, 2) as disk_reads,
-  round(shared_blks_hit::numeric, 2) as cache_hits,
-  round(100.0 * shared_blks_hit / nullif(shared_blks_hit + shared_blks_read, 0), 2) as cache_hit_ratio,
-  query
-FROM pg_stat_statements
-ORDER BY shared_blks_read DESC
-LIMIT 10;
-```
-
-### Analyzing Table Bloat
-```sql
--- Check table bloat
-SELECT
-  schemaname,
-  tablename,
-  pg_size_pretty(pg_total_relation_size(schemaname || '.' || tablename)) as total_size,
-  pg_size_pretty(pg_relation_size(schemaname || '.' || tablename)) as table_size,
-  n_dead_tup,
-  n_live_tup,
-  round(100.0 * n_dead_tup / nullif(n_live_tup + n_dead_tup, 0), 2) as dead_pct
-FROM pg_stat_user_tables
-ORDER BY n_dead_tup DESC
-LIMIT 10;
-
--- Manual VACUUM for critical tables
-VACUUM (VERBOSE, ANALYZE) orders;
-
--- Reclaim space (requires exclusive lock)
-VACUUM FULL orders;  -- Use during maintenance window
-```
-
-## Best Practices
-
-1. **Always use EXPLAIN ANALYZE** - Don't guess, measure actual query performance
-2. **Create indexes CONCURRENTLY** - Avoid blocking writes during index creation
-3. **Partial indexes for hot paths** - Index only the rows you query frequently
-4. **Use connection pooling** - PgBouncer or Supavisor for production
-5. **Monitor pg_stat_statements** - Track query performance over time
-6. **Regular ANALYZE** - Keep statistics current for query planner
-7. **Avoid SELECT *** - Only fetch columns you need
-8. **Batch large updates** - Process in chunks to avoid lock contention
-9. **Use prepared statements** - Reduce parsing overhead for repeated queries
-
-## Common Pitfalls
-
-- **Missing indexes** - Check for sequential scans on large tables
-- **Over-indexing** - Too many indexes slow down writes
-- **work_mem too low** - Causes disk-based sorts and hash joins
-- **Connection exhaustion** - Not using connection pooling
-- **Stale statistics** - Autovacuum not running frequently enough
-- **Bloated tables** - Not vacuuming after large deletes/updates
-- **N+1 queries** - Fetching related data in loops instead of joins
-- **SELECT * everywhere** - Fetching unnecessary columns
+**Delegate when:**
+- Query optimization requires application logic changes → Application architect
+- Performance issues stem from network latency → Infrastructure team
+- Database choice evaluation needed → Data architect
+- Compliance or security requirements → Database security specialist

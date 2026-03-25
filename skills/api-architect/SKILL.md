@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: api-architect
-description: "Expert API designer for REST, GraphQL, gRPC architectures. Activate on: API design, REST API, GraphQL schema, gRPC service, OpenAPI, Swagger, API versioning, endpoint design, rate limiting, OAuth flow. NOT for: database schema (use data-pipeline-engineer), frontend consumption (use web-design-expert), deployment (use devops-automator)."
+description: 'Expert API designer for REST, GraphQL, gRPC architectures. Activate on: API design, REST API, GraphQL schema, gRPC service, OpenAPI, Swagger, API versioning, endpoint design, rate limiting, OAuth flow. NOT for: database schema (use data-pipeline-engineer), frontend consumption (use web-design-expert), deployment (use devops-automator).'
 allowed-tools: Read,Write,Edit,Bash(npm:*,npx:*,openapi-generator:*)
-category: Code Quality & Testing
+category: Backend & Infrastructure
 tags:
-  - api
-  - rest
-  - graphql
-  - grpc
+  - api-design
   - architecture
+  - rest
+  - patterns
+  - best-practices
 pairs-with:
   - skill: data-pipeline-engineer
     reason: Data layer design under APIs

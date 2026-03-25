@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: sound-engineer
 description: Expert in spatial audio, procedural sound design, game audio middleware, and app UX sound design. Specializes in HRTF/Ambisonics, Wwise/FMOD integration, UI sound design, and adaptive music systems. Activate on 'spatial audio', 'HRTF', 'binaural', 'Wwise', 'FMOD', 'procedural sound', 'footstep system', 'adaptive music', 'UI sounds', 'notification audio', 'sonic branding'. NOT for music composition/production (use DAW), audio post-production for film (linear media), voice cloning/TTS (use voice-audio-engineer), podcast editing (use standard audio editors), or hardware design.
 allowed-tools: Read,Write,Edit,Bash(python:*,node:*,npm:*,ffmpeg:*),mcp__firecrawl__firecrawl_search,WebFetch,mcp__ElevenLabs__text_to_sound_effects
-category: Design & Creative
+category: Video & Audio
 tags:
+  - sound-engineering
+  - mixing
+  - mastering
   - audio
-  - spatial
-  - wwise
-  - fmod
-  - game-audio
+  - production
 pairs-with:
   - skill: voice-audio-engineer
     reason: Voice + spatial audio integration
@@ -20,268 +21,267 @@ pairs-with:
 
 Expert audio engineer for interactive media: games, VR/AR, and mobile apps. Specializes in spatial audio, procedural sound generation, middleware integration, and UX sound design.
 
-## When to Use This Skill
+## DECISION POINTS
 
-✅ **Use for:**
-- Spatial audio (HRTF, binaural, Ambisonics)
-- Procedural sound (footsteps, wind, environmental)
-- Game audio middleware (Wwise, FMOD)
-- Adaptive/interactive music systems
-- UI/UX sound design (clicks, notifications, feedback)
-- Sonic branding (audio logos, brand sounds)
-- iOS/Android audio session handling
-- Haptic-audio coordination
-- Real-time DSP (reverb, EQ, compression)
+### 1. Middleware Selection: Wwise vs FMOD
+```
+IF (budget < $10k AND indie game):
+    └─ Use free FMOD (up to $500k revenue)
+    
+IF (AAA production OR need extensive audio design tools):
+    └─ Use Wwise
+    └─ IF (team has dedicated audio programmers):
+        └─ Full Wwise SDK integration
+    └─ ELSE (programmers need simple API):
+        └─ Use Wwise Unity/Unreal plugins
+        
+IF (mobile-only OR web deployment):
+    └─ Consider lightweight alternatives
+    └─ Check platform restrictions (iOS/WebGL)
+```
 
-❌ **Do NOT use for:**
-- Music composition/production → DAW tools (Logic, Ableton)
-- Voice synthesis/cloning → **voice-audio-engineer**
-- Film audio post-production → linear editing workflows
-- Podcast editing → standard audio editors
-- Hardware microphone setup → specialized domain
+### 2. Spatial Audio Approach Selection
+```
+Decision Matrix Based on Context:
 
-## MCP Integrations
+Sources > 20 AND VR with head tracking:
+    └─ Use Ambisonics (encode once, rotate cheaply)
+    
+Sources < 10 AND close/important sounds:
+    └─ Use full HRTF convolution per source
+    
+Mobile OR CPU budget tight:
+    └─ IF (stereo headphones expected):
+        └─ Simple binaural panning
+    └─ ELSE:
+        └─ Standard stereo panning + distance rolloff
+        
+Background/ambient sounds:
+    └─ Always use simple panning (save CPU for foreground)
+```
 
-| MCP | Purpose |
-|-----|---------|
-| **ElevenLabs** | `text_to_sound_effects` - Generate UI sounds, notifications, impacts |
-| **Firecrawl** | Research Wwise/FMOD docs, DSP algorithms, platform guidelines |
-| **WebFetch** | Fetch Apple/Android audio session documentation |
+### 3. Adaptive Music Strategy
+```
+IF (music needs to match gameplay intensity):
+    └─ Horizontal Re-orchestration:
+        └─ Layer 1: Basic rhythm/bass
+        └─ Layer 2: Add melody
+        └─ Layer 3: Add harmony/counterpoint
+        └─ Layer 4: Full orchestration
+        
+IF (different moods needed per area):
+    └─ Vertical Stems:
+        └─ Peaceful stem (woodwinds, strings)
+        └─ Tense stem (brass, percussion)
+        └─ Combat stem (full orchestra)
+        └─ Crossfade based on game state
+        
+IF (seamless transitions critical):
+    └─ Use musical bars as transition boundaries
+    └─ Pre-calculate next transition point
+    └─ Never cut mid-phrase
+```
 
-## Expert vs Novice Shibboleths
+### 4. Footstep Implementation Choice
+```
+Memory budget > 5MB AND < 50 total surfaces:
+    └─ Use sample library approach
+    
+Memory budget tight OR > 100 surface variations:
+    └─ Procedural synthesis:
+        └─ Impact component (filtered noise burst)
+        └─ Surface texture (material-specific)
+        └─ Debris scattering (micro-impacts)
+        
+Performance critical (mobile):
+    └─ Pre-generate variations at load time
+    └─ Cache 10-20 variants per surface type
+```
 
-| Topic | Novice | Expert |
-|-------|--------|--------|
-| **Spatial audio** | "Just pan left/right" | Uses HRTF convolution for true 3D; knows Ambisonics for VR head tracking |
-| **Footsteps** | "Use 10-20 samples" | Procedural synthesis: infinite variation, tiny memory, parameter-driven |
-| **Middleware** | "Just play sounds" | Uses RTPC for continuous params, Switches for materials, States for music |
-| **Adaptive music** | "Crossfade tracks" | Horizontal re-orchestration (layers) + vertical remixing (stems) |
-| **UI sounds** | "Any click sound works" | Designs for brand consistency, accessibility, haptic coordination |
-| **iOS audio** | "AVAudioPlayer works" | Knows AVAudioSession categories, interruption handling, route changes |
-| **Distance rolloff** | Linear attenuation | Inverse square with reference distance; logarithmic for realism |
-| **CPU budget** | "Audio is cheap" | Knows 5-10% budget; HRTF convolution is expensive (2ms/source) |
+## FAILURE MODES
 
-## Common Anti-Patterns
+### 1. HRTF Overload ("Everything Needs 3D")
+**Symptom**: Frame drops when 20+ sounds play simultaneously
+**Detection**: CPU profiler shows >50% time in HRTF convolution
+**Root Cause**: Applying full HRTF to every sound source
+**Fix**: Use HRTF only for 3-5 important sources; simple panning for background
+**Prevention**: Set source importance hierarchy at design time
 
-### Anti-Pattern: Sample-Based Footsteps at Scale
-**What it looks like**: 20 footstep samples × 6 surfaces × 3 intensities = 360 files (180MB)
-**Why it's wrong**: Memory bloat, repetition audible after 20 minutes of play
-**What to do instead**: Procedural synthesis - impact + texture layers, infinite variation from parameters
-**When samples OK**: Small games, very specific character sounds
+### 2. Sample Memory Bloat ("Footstep Explosion")
+**Symptom**: 500MB+ audio assets for simple character movement
+**Detection**: 50+ footstep samples per character/surface combination
+**Root Cause**: Artist creating samples for every possible variation
+**Fix**: Implement procedural footstep synthesis with 4-5 base components
+**Prevention**: Establish memory budgets early; use procedural for high-variation content
 
-### Anti-Pattern: HRTF for Every Sound
-**What it looks like**: Full HRTF convolution on 50 simultaneous sources
-**Why it's wrong**: 50 × 2ms = 100ms CPU time; destroys frame budget
-**What to do instead**: HRTF for 3-5 important sources; Ambisonics for ambient bed; simple panning for distant/unimportant
+### 3. Mobile Session Chaos ("The Silent Treatment")
+**Symptom**: App audio stops working after phone call/notification
+**Detection**: Audio stops, never resumes; works fine on first launch
+**Root Cause**: No interruption handling for iOS/Android audio sessions
+**Fix**: Implement proper session management with interruption observers
+**Prevention**: Test with incoming calls, music apps, Siri activation
 
-### Anti-Pattern: Ignoring Audio Sessions (Mobile)
-**What it looks like**: App audio stops when user gets a phone call, never resumes
-**Why it's wrong**: iOS/Android require explicit session management
-**What to do instead**: Implement `AVAudioSession` (iOS) or `AudioFocus` (Android); handle interruptions, route changes
+### 4. UI Sound Assault ("Click Fatigue")
+**Symptom**: Users disable sound after 10 minutes of interaction
+**Detection**: Every button click at same volume as gameplay audio
+**Root Cause**: UI sounds mixed at gameplay levels (-6dB instead of -20dB)
+**Fix**: Reduce UI sounds to -18 to -24dB; use subtle, brief tones
+**Prevention**: Follow platform audio guidelines; A/B test with real users
 
-### Anti-Pattern: Hard-Coded Sounds
-**What it looks like**: `PlaySound("footstep_concrete_01.wav")`
-**Why it's wrong**: No variation, no parameter control, can't adapt to context
-**What to do instead**: Use middleware events with Switches/RTPCs; procedural generation for environmental sounds
+### 5. Real-time Processing Overload ("DSP Death Spiral")
+**Symptom**: Audio stutters, pops, or cuts out during intense scenes
+**Detection**: Audio callback exceeds allocated time budget (>10ms)
+**Root Cause**: Too many real-time effects, unoptimized convolution
+**Fix**: Use FFT-based convolution; limit concurrent DSP effects
+**Prevention**: Profile on lowest-spec target device; set hard limits
 
-### Anti-Pattern: Loud UI Sounds
-**What it looks like**: Every button click at -3dB, same volume as gameplay audio
-**Why it's wrong**: UI sounds should be subtle, never fatiguing; violates platform guidelines
-**What to do instead**: UI sounds at -18 to -24dB; use short, high-frequency transients; respect system volume
+## WORKED EXAMPLES
 
-## Evolution Timeline
+### Example 1: VR Footstep System (Procedural Approach)
+**Scenario**: VR game needs infinite footstep variation across 15 surface types, tight memory budget (50MB total audio)
 
-### Pre-2010: Fixed Audio
-- Sample playback only
-- Basic stereo panning
-- Limited real-time processing
+**Expert Decision Process**:
+1. **Reject sample approach**: 15 surfaces × 10 variations × 2 feet = 300 samples (150MB)
+2. **Choose procedural**: Impact + texture layers, ~2KB of parameters per surface
+3. **Surface detection**: Use physics material from VR floor collision
+4. **Parameter mapping**: Player velocity → impact force (0.0-1.0 RTPC)
 
-### 2010-2015: Middleware Era
-- Wwise/FMOD become standard
-- RTPC and State systems mature
-- Basic HRTF support
-
-### 2016-2020: VR Audio Revolution
-- Ambisonics for VR head tracking
-- Spatial audio APIs (Resonance, Steam Audio)
-- Procedural audio gains traction
-
-### 2021-2024: AI & Mobile
-- ElevenLabs/AI sound effect generation
-- Apple Spatial Audio for AirPods
-- Procedural audio standard for AAA
-- Haptic-audio design becomes discipline
-
-### 2025+: Current Best Practices
-- AI-assisted sound design
-- Neural audio codecs
-- Real-time voice transformation
-- Personalized HRTF from photos
-
-## Core Concepts
-
-### Spatial Audio Approaches
-
-| Approach | CPU Cost | Quality | Use Case |
-|----------|----------|---------|----------|
-| **Stereo panning** | ~0.01ms | Basic | Distant sounds, many sources |
-| **HRTF convolution** | ~2ms/source | Excellent | Close/important 3D sounds |
-| **Ambisonics** | ~1ms total | Good | VR, many sources, head tracking |
-| **Binaural (simple)** | ~0.1ms/source | Decent | Budget/mobile spatial |
-
-**HRTF**: Convolves audio with measured ear impulse responses (512-1024 taps). Creates convincing 3D positioning including elevation.
-
-**Ambisonics**: Encodes sound field as spherical harmonics (W,X,Y,Z for 1st order). Rotation-invariant, efficient for many sources.
-
+**Implementation**:
 ```cpp
-// Key insight: encode once, rotate cheaply
-AmbisonicSignal encode(mono_input, direction) {
-    return {
-        mono * 0.707f,      // W (omnidirectional)
-        mono * direction.x, // X (front-back)
-        mono * direction.y, // Y (left-right)
-        mono * direction.z  // Z (up-down)
-    };
+void OnVRFootstep(Vector3 position, PhysicsMaterial surface, float velocity) {
+    // Surface-specific parameters (expert knowledge)
+    SurfaceParams params = GetSurfaceParams(surface);
+    
+    // Procedural synthesis
+    float impact_force = Mathf.Clamp01(velocity / 3.0f); // 3m/s = max force
+    
+    // Wwise integration
+    SetRTPCValue("Impact_Force", impact_force, player);
+    SetRTPCValue("Surface_Hardness", params.hardness, player);
+    SetSwitch("Surface_Type", params.type_name, player);
+    
+    PostEvent("Play_Footstep_Procedural", player);
 }
 ```
 
-### Procedural Footsteps
+**Novice vs Expert Trade-offs**:
+- **Novice**: "Use realistic footstep recordings" → 150MB, repetition after 30 mins
+- **Expert**: "Synthesis sounds 90% as good, infinite variation, 50KB total"
 
-**Why procedural beats samples:**
-- ✅ Infinite variation (no repetition)
-- ✅ Tiny memory (~50KB vs 5-10MB)
-- ✅ Parameter-driven (speed → impact force)
-- ✅ Surface-aware from physics materials
+### Example 2: Mobile UI Sound Design (Session Handling)
+**Scenario**: Meditation app needs subtle notification sounds that respect music apps and phone calls
 
-**Core synthesis:**
-1. Impact burst (20ms noise + resonant tone)
-2. Surface texture (gravel = granular, grass = filtered noise)
-3. Debris (scattered micro-impacts)
-4. Surface EQ (metal = bright, grass = muffled)
+**Expert Decision Process**:
+1. **Audio session category**: `.ambient` with `.mixWithOthers` (don't interrupt Spotify)
+2. **Volume levels**: -20dB for notifications, -24dB for UI feedback
+3. **Interruption handling**: Pause during calls, resume after
+4. **Haptic coordination**: Match audio transients to taptic feedback
 
-```cpp
-// Surface resonance frequencies (expert knowledge)
-float get_resonance(Surface s) {
-    switch(s) {
-        case Concrete: return 150.0f;  // Low, dull
-        case Wood:     return 250.0f;  // Mid, warm
-        case Metal:    return 500.0f;  // High, ringing
-        case Gravel:   return 300.0f;  // Crunchy mid
-        default:       return 200.0f;
+**Implementation**:
+```swift
+class AppAudioManager {
+    func setupAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        try? session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+        
+        // Handle interruptions (phone calls, Siri)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleInterruption),
+            name: AVAudioSession.interruptionNotification, object: nil
+        )
+    }
+    
+    @objc func handleInterruption(notification: Notification) {
+        guard let info = notification.userInfo,
+              let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+        
+        switch type {
+        case .began:
+            pauseAllAudio()  // Phone call started
+        case .ended:
+            if let optionsValue = info[AVAudioSessionInterruptionOptionKey] as? UInt {
+                let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+                if options.contains(.shouldResume) {
+                    resumeAudio()  // Safe to resume
+                }
+            }
+        }
     }
 }
 ```
 
-### Wwise/FMOD Integration
+**What Novice Misses**: Assumes audio "just works"; ignores platform session requirements
+**Expert Insight**: Mobile audio requires explicit session management; test with real interruptions
 
-**Key abstractions:**
-- **Events**: Trigger sounds (footstep, explosion, ambient loop)
-- **RTPC**: Continuous parameters (speed 0-100, health 0-1)
-- **Switches**: Discrete choices (surface type, weapon type)
-- **States**: Global context (music intensity, underwater)
+### Example 3: Adaptive Music System (RTPC Setup)
+**Scenario**: Action RPG needs music that scales with combat intensity (0 = exploration, 1 = boss fight)
 
+**Expert Decision Process**:
+1. **Choose horizontal orchestration** over vertical stems (smoother intensity scaling)
+2. **RTPC mapping**: Combat_Intensity (0.0-1.0) drives 4 instrument layers
+3. **Transition timing**: Use musical bars, never cut mid-phrase
+4. **Fallback logic**: If RTPC fails, default to medium intensity
+
+**Wwise Implementation**:
+```
+Combat_Music_Container/
+├── Layer_1_Rhythm (RTPC: Combat_Intensity > 0.0)
+├── Layer_2_Melody (RTPC: Combat_Intensity > 0.3)  
+├── Layer_3_Harmony (RTPC: Combat_Intensity > 0.6)
+└── Layer_4_Full_Orch (RTPC: Combat_Intensity > 0.8)
+```
+
+**Code Integration**:
 ```cpp
-// Material-aware footsteps via Wwise
-void OnFootDown(FHitResult& hit) {
-    FString surface = DetectSurface(hit.PhysMaterial);
-    float speed = GetVelocity().Size();
-
-    SetSwitch("Surface", surface, this);        // Concrete/Wood/Metal
-    SetRTPCValue("Impact_Force", speed/600.0f); // 0-1 normalized
-    PostEvent(FootstepEvent, this);
+void UpdateCombatMusic() {
+    float intensity = CalculateCombatIntensity(); // 0.0 = safe, 1.0 = boss fight
+    
+    // Smooth the transitions (avoid jarring jumps)
+    float smoothed = Mathf.Lerp(current_intensity, intensity, Time.deltaTime * 2.0f);
+    current_intensity = smoothed;
+    
+    // Only update on musical boundaries
+    if (IsOnMusicalBeat() && Mathf.Abs(smoothed - last_sent_intensity) > 0.1f) {
+        SetRTPCValue("Combat_Intensity", smoothed, music_player);
+        last_sent_intensity = smoothed;
+    }
 }
 ```
 
-### UI/UX Sound Design
+**Expert vs Novice**:
+- **Novice**: Hard cuts between "calm" and "combat" tracks
+- **Expert**: Continuous intensity scaling with musical timing awareness
 
-**Principles for app sounds:**
-1. **Subtle** - UI sounds at -18 to -24dB
-2. **Short** - 50-200ms for most interactions
-3. **Consistent** - Same family/timbre across app
-4. **Accessible** - Don't rely solely on audio for feedback
-5. **Haptic-paired** - iOS haptics should match audio characteristics
+## QUALITY GATES
 
-**Sound types:**
-| Category | Examples | Duration | Character |
-|----------|----------|----------|-----------|
-| Tap feedback | Button, toggle | 30-80ms | Soft, high-frequency click |
-| Success | Save, send, complete | 150-300ms | Rising, positive tone |
-| Error | Invalid, failed | 200-400ms | Descending, minor tone |
-| Notification | Alert, reminder | 300-800ms | Distinctive, attention-getting |
-| Transition | Screen change, modal | 100-250ms | Whoosh, subtle movement |
+Audio implementation is complete when ALL conditions are verified:
 
-### iOS/Android Audio Sessions
+- [ ] **Spatial Audio Performance**: HRTF processing uses <2ms per source; total audio CPU <10% of frame time
+- [ ] **Procedural Sound Variation**: No audible repetition in 5+ minutes of continuous footsteps/environmental audio
+- [ ] **Mobile Session Handling**: Audio correctly pauses/resumes during phone calls, route changes, and interruptions
+- [ ] **Distance Rolloff Accuracy**: 3D positioned sounds follow inverse-square law with proper reference distance
+- [ ] **RTPC Parameter Validation**: All real-time parameters (0.0-1.0) respond smoothly without pops or clicks
+- [ ] **Memory Budget Compliance**: Total audio assets <50MB mobile, <200MB desktop; streaming works for large content
+- [ ] **UI Sound Levels**: Interface audio at -18 to -24dB; never conflicts with gameplay audio
+- [ ] **Platform Audio Guidelines**: iOS/Android audio session categories correct; respects system volume controls
+- [ ] **Middleware Integration**: All audio events fire correctly; no missing dependencies or broken references
+- [ ] **Haptic-Audio Sync**: Tactile feedback matches audio transients within 10ms on supported devices
 
-**iOS AVAudioSession categories:**
-- `.ambient` - Mixes with other audio, silenced by ringer
-- `.playback` - Interrupts other audio, ignores ringer
-- `.playAndRecord` - For voice apps
-- `.soloAmbient` - Default, silences other audio
+## NOT-FOR Boundaries
 
-**Critical handlers:**
-- Interruption (phone call)
-- Route change (headphones unplugged)
-- Secondary audio (Siri)
+**This skill should NOT be used for:**
 
-```swift
-// Proper iOS audio session setup
-func configureAudioSession() {
-    let session = AVAudioSession.sharedInstance()
-    try? session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-    try? session.setActive(true)
+- **Music composition/production** → Use DAW-specific skills (Logic, Ableton, Pro Tools)
+- **Voice synthesis/cloning** → Use `voice-audio-engineer` skill instead
+- **Linear audio post-production** → Film/TV workflows require different expertise
+- **Podcast/broadcast editing** → Use standard audio editor workflows
+- **Hardware microphone setup** → Audio engineering hardware expertise
+- **Real-time voice chat implementation** → Use WebRTC/networking specialists
+- **Audio compression/streaming protocols** → Use backend/networking skills
+- **Machine learning audio models** → Use ML/AI specialists for model training
 
-    NotificationCenter.default.addObserver(
-        self,
-        selector: #selector(handleInterruption),
-        name: AVAudioSession.interruptionNotification,
-        object: nil
-    )
-}
-```
-
-## Performance Targets
-
-| Operation | CPU Time | Notes |
-|-----------|----------|-------|
-| HRTF convolution (512-tap) | ~2ms/source | Use FFT overlap-add |
-| Ambisonic encode | ~0.1ms/source | Very efficient |
-| Ambisonic decode (binaural) | ~1ms total | Supports many sources |
-| Procedural footstep | ~1-2ms | vs 500KB per sample |
-| Wind synthesis | ~0.5ms/frame | Real-time streaming |
-| Wwise event post | &lt;0.1ms | Negligible |
-| iOS audio callback | 5-10ms budget | At 48kHz/512 samples |
-
-**Budget guideline**: Audio should use 5-10% of frame time.
-
-## Quick Reference
-
-### Spatial Audio Decision Tree
-- **VR with head tracking?** → Ambisonics
-- **Few important sources?** → Full HRTF
-- **Many background sources?** → Simple panning + distance rolloff
-- **Mobile with limited CPU?** → Binaural (simple) or panning
-
-### When to Use Procedural Audio
-- Environmental (wind, rain, fire) → Always procedural
-- Footsteps → Procedural for large games, samples for small
-- UI sounds → Generated once, then cached
-- Impacts/explosions → Hybrid (procedural + sample layers)
-
-### Platform Audio Sessions
-- **Game with music**: `.ambient` + `mixWithOthers`
-- **Meditation/focus app**: `.playback` (interrupt music)
-- **Voice chat**: `.playAndRecord`
-- **Video player**: `.playback`
-
-## Integrates With
-
-- **voice-audio-engineer** - Voice synthesis and TTS
-- **vr-avatar-engineer** - VR audio + avatar integration
-- **metal-shader-expert** - GPU audio processing
-- **native-app-designer** - App UI sound integration
-
----
-
-**For detailed implementations**: See `/references/implementations.md`
-
-**Remember**: Great audio is invisible—players feel it, don't notice it. Focus on supporting the experience, not showing off. Procedural audio saves memory and eliminates repetition. Always respect CPU budgets and platform audio session requirements.
+**Delegation Rules:**
+- For voice AI: "Use **voice-audio-engineer** for TTS, voice cloning, speech recognition"
+- For music creation: "Use DAW specialists for composition, arrangement, mixing"
+- For video audio: "Use video editor skills for linear media synchronization"

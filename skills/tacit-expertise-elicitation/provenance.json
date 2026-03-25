@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Mediator_Expertise_Live_Interview_MELI.pdf",
+    "path": "../batch_ndm_remaining/Mediator_Expertise_Live_Interview_MELI.pdf",
+    "chars": 50394,
+    "tokens_approx": 12598
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T15:34:55.125732Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 15219,
+        "output": 27513
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T15:34:55.136279Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1821,
+        "output": 3513
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 640.5692567825317,
+  "generated_at": "2026-02-24T15:34:55.144679Z"
+}

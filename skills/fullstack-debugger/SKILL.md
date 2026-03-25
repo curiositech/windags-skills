@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: fullstack-debugger
 description: "Expert debugger for Next.js + Cloudflare Workers + Supabase stacks. Systematic troubleshooting for auth, caching, workers, RLS, CORS, and build issues. Activate on: 'debug', 'not working', 'error', 'broken', '500', '401', '403', 'cache issue', 'RLS', 'CORS'. NOT for: feature development (use language skills), architecture design (use system-architect)."
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob,WebFetch,mcp__supabase__*,mcp__playwright__*
@@ -18,513 +19,330 @@ pairs-with:
 
 # Fullstack Debugger
 
-Expert debugger for modern web stacks: Next.js 15, Cloudflare Workers, Supabase, and edge deployments. Systematic, evidence-based troubleshooting.
+Expert debugger for Next.js + Cloudflare Workers + Supabase stacks. Evidence-based troubleshooting with systematic layer isolation.
 
-## Activation Triggers
+## DECISION POINTS
 
-**Activate on:** "debug", "not working", "broken", "error", "500 error", "401", "403", "cache issue", "CORS error", "RLS policy", "auth not working", "blank page", "hydration error", "build failed", "worker not responding"
-
-**NOT for:** Feature development → language skills | Architecture → `system-architect` | Performance optimization → `performance-engineer`
-
-## Debug Philosophy
+### 1. Error Source Identification
 
 ```
-1. REPRODUCE → Can you make it fail consistently?
-2. ISOLATE   → Which layer is broken?
-3. EVIDENCE  → What do logs/network/state show?
-4. HYPOTHESIZE → What could cause this?
-5. TEST      → Validate one hypothesis at a time
-6. FIX       → Minimal change that resolves issue
-7. VERIFY    → Confirm fix doesn't break other things
+Is there an error message visible?
+├── YES: Browser console error
+│   ├── "Failed to fetch" → CORS/Network issue → Test endpoint with curl
+│   ├── "Hydration failed" → SSR/Client mismatch → Check for browser APIs
+│   ├── "Cannot read properties" → Data loading race → Add optional chaining
+│   └── TypeScript error → Type mismatch → Check interface definitions
+│
+├── YES: Network tab shows red
+│   ├── 401/403 status → Auth issue → Check JWT + RLS policies
+│   ├── 404 status → Wrong endpoint → Verify worker routes
+│   ├── 500 status → Server error → Check worker logs
+│   └── CORS preflight fail → Missing headers → Add OPTIONS handler
+│
+├── YES: Build/Deploy error
+│   ├── "Module not found" → Import path wrong → Check relative paths
+│   ├── "Type error" → TypeScript strict → Fix type definitions
+│   ├── Memory exceeded → Bundle too large → Check webpack config
+│   └── Deploy timeout → Worker size → Optimize dependencies
+│
+└── NO: Silent failure/unexpected behavior
+    ├── Empty data returned → RLS blocking → Test with direct SQL
+    ├── Stale data shown → Cache not invalidating → Check KV cache keys
+    ├── Auth state lost → Session issue → Verify localStorage persistence
+    └── Worker not updating → Deploy failed → Check wrangler status
 ```
 
-## Architecture Layers
+### 2. Layer Isolation Strategy
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    DEBUGGING LAYERS                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  Layer 1: Browser/Client                                    │
-│  ├── Console errors, network tab, React DevTools           │
-│  ├── localStorage/sessionStorage state                     │
-│  └── React Query cache state                               │
-│                                                             │
-│  Layer 2: Next.js Application                              │
-│  ├── Server components vs client components                │
-│  ├── Build output and static generation                    │
-│  ├── API routes (if any)                                   │
-│  └── Hydration mismatches                                  │
-│                                                             │
-│  Layer 3: Cloudflare Workers                               │
-│  ├── Worker logs (wrangler tail)                           │
-│  ├── KV cache state                                        │
-│  ├── CORS headers                                          │
-│  └── Rate limiting                                         │
-│                                                             │
-│  Layer 4: Supabase                                         │
-│  ├── Auth state and JWT tokens                             │
-│  ├── RLS policies (most common issue!)                     │
-│  ├── Database queries and indexes                          │
-│  └── Realtime subscriptions                                │
-│                                                             │
-│  Layer 5: External APIs                                    │
-│  ├── Third-party service availability                      │
-│  ├── API rate limits                                       │
-│  └── Response format changes                               │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+Which layer contains the bug?
+│
+├── Client (Browser/React)
+│   ├── Console errors present → Fix JavaScript/React issues
+│   ├── Network requests failing → Check endpoint accessibility
+│   └── State management broken → Debug React Query/Context
+│
+├── Next.js Application
+│   ├── Build fails → Fix TypeScript/import issues
+│   ├── Pages not rendering → Check routing/components
+│   └── SSR/SSG issues → Verify static generation setup
+│
+├── Cloudflare Worker
+│   ├── Worker logs show errors → Fix worker code
+│   ├── CORS headers missing → Add proper headers
+│   └── KV cache issues → Check cache keys/expiration
+│
+├── Supabase Database
+│   ├── Auth failing → Check user session/JWT
+│   ├── Queries empty → Test RLS policies
+│   └── Realtime broken → Verify subscriptions
+│
+└── External APIs
+    ├── Rate limited → Check headers/implement backoff
+    ├── Changed response format → Update parsing logic
+    └── Service unavailable → Add error handling/fallbacks
 ```
 
-## Quick Diagnosis Commands
+### 3. Fix Validation Process
 
-### Check Everything At Once
+```
+After applying fix, how to verify?
+│
+├── Local testing
+│   ├── Run `npm run build` → Ensure no build errors
+│   ├── Test in browser → Verify UI works correctly
+│   ├── Check console → No new errors introduced
+│   └── Test edge cases → Boundary conditions work
+│
+├── Worker testing
+│   ├── Deploy to staging → `wrangler deploy --env staging`
+│   ├── Test endpoints → Curl all affected routes
+│   ├── Check logs → `wrangler tail` shows no errors
+│   └── Monitor for 10min → No immediate regressions
+│
+└── Database testing
+    ├── Test as anon user → RLS policies work correctly
+    ├── Test as auth user → Permissions appropriate
+    ├── Check query performance → No new slow queries
+    └── Verify data integrity → No data corruption
+```
 
+## FAILURE MODES
+
+### 1. Rubber Stamp Debugging
+**Symptoms:** Applying common fixes without understanding root cause
+**Detection:** If you're changing multiple things at once without testing each
+**Fix:** Stop. Reproduce issue first, then test ONE hypothesis at a time
+
+### 2. Layer Confusion
+**Symptoms:** Debugging client code when issue is in worker, or vice versa
+**Detection:** If you've been debugging for 30+ minutes in wrong layer
+**Fix:** Use decision tree above to isolate which layer actually has the bug
+
+### 3. Cache Blindness
+**Symptoms:** "Fixed" code still showing old behavior due to cached responses
+**Detection:** If fix looks correct but behavior unchanged
+**Fix:** Clear ALL caches - browser, React Query, KV, TypeScript, CDN
+
+### 4. RLS Tunnel Vision
+**Symptoms:** Assuming all empty queries are RLS issues
+**Detection:** If you immediately jump to RLS without checking other causes
+**Fix:** First verify query syntax, then check network, then RLS policies
+
+### 5. Production Panic
+**Symptoms:** Making multiple changes rapidly when live site is broken
+**Detection:** If you're editing production code without local reproduction
+**Fix:** Reproduce locally first, or rollback immediately and debug systematically
+
+## WORKED EXAMPLES
+
+### Example 1: JWT Token Expiry Causing 401 Errors
+
+**Initial symptom:** User reports getting logged out randomly, 401 errors in network tab
+
+**Step 1: Layer isolation**
+- Check browser console → No errors
+- Check network tab → 401 on /api/profile requests
+- Status 401 = auth issue → Focus on Supabase layer
+
+**Step 2: Evidence gathering**
 ```bash
-# Run from next-app/ directory
-echo "=== Build Check ===" && npm run build 2>&1 | tail -20
-echo "=== TypeScript ===" && npx tsc --noEmit 2>&1 | head -20
-echo "=== Lint ===" && npm run lint 2>&1 | head -20
-echo "=== Git Status ===" && git status --short
-```
-
-### Supabase RLS Diagnosis
-
-```bash
-# Check if RLS is blocking queries (most common issue!)
+# Check current JWT
 node -e "
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(
-  'YOUR_SUPABASE_URL',
-  'YOUR_ANON_KEY'
-);
-
-async function diagnose() {
-  // Test as anonymous user
-  const { data, error, count } = await supabase
-    .from('YOUR_TABLE')
-    .select('*', { count: 'exact' })
-    .limit(5);
-
-  console.log('Error:', error);
-  console.log('Count:', count);
-  console.log('Sample:', data);
-}
-diagnose();
+const jwt = localStorage.getItem('sb-project-auth-token');
+console.log('JWT payload:', JSON.parse(atob(jwt.split('.')[1])));
+console.log('Expires:', new Date(JSON.parse(atob(jwt.split('.')[1])).exp * 1000));
 "
 ```
 
-### Worker Health Check
+**Step 3: Root cause analysis**
+JWT shows expiry 1 hour ago. Token refresh failing because:
+- RLS policy on profiles table requires valid JWT
+- Refresh endpoint also hitting profiles table
+- Circular dependency causing refresh to fail
 
-```bash
-# Check if workers are responding
-curl -s -o /dev/null -w "%{http_code}" https://YOUR-WORKER.workers.dev/health
-
-# Check CORS headers
-curl -s -D - -o /dev/null -H "Origin: https://yoursite.com" \
-  https://YOUR-WORKER.workers.dev/api/endpoint | grep -iE "(access-control|x-)"
-
-# Stream worker logs
-cd workers/your-worker && npx wrangler tail
-```
-
-### Cache Inspection
-
-```bash
-# Check Cloudflare KV cache
-npx wrangler kv:key list --namespace-id=YOUR_NAMESPACE_ID | head -20
-
-# Get specific cached value
-npx wrangler kv:key get --namespace-id=YOUR_NAMESPACE_ID "cache:key"
-
-# Clear a cached item
-npx wrangler kv:key delete --namespace-id=YOUR_NAMESPACE_ID "cache:key"
-```
-
-## Common Issues & Solutions
-
-### 1. RLS Policy Blocking Data (Most Common!)
-
-**Symptoms:**
-- Query returns empty array but no error
-- Works in Supabase dashboard but not in app
-- Works for some users but not others
-
-**Diagnosis:**
+**Step 4: Fix implementation**
 ```sql
--- In Supabase SQL Editor
--- Check what policies exist
-SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual
-FROM pg_policies
-WHERE tablename = 'your_table';
-
--- Test as anonymous user
-SET ROLE anon;
-SELECT * FROM your_table LIMIT 5;
-RESET ROLE;
-
--- Test as authenticated user
-SET ROLE authenticated;
-SET request.jwt.claims = '{"sub": "user-uuid-here"}';
-SELECT * FROM your_table LIMIT 5;
-RESET ROLE;
+-- Create policy that allows token refresh
+CREATE POLICY "Allow token refresh" ON profiles
+  FOR SELECT USING (
+    auth.jwt() IS NOT NULL 
+    OR current_setting('request.jwt.claims', true)::json->>'exp' > extract(epoch from now())::text
+  );
 ```
 
-**Common Fixes:**
-```sql
--- Allow public read access
-CREATE POLICY "Allow public read" ON your_table
-  FOR SELECT USING (true);
+**Step 5: Verification**
+- Clear localStorage
+- Log in fresh user
+- Wait 1 hour
+- Verify automatic token refresh works
+- Check no 401 errors in network tab
 
--- Allow authenticated users to read
-CREATE POLICY "Allow authenticated read" ON your_table
-  FOR SELECT TO authenticated USING (true);
+**Lesson:** Token expiry can create cascading auth failures when RLS policies block refresh attempts
 
--- Allow users to read their own data
-CREATE POLICY "Users read own data" ON your_table
-  FOR SELECT USING (auth.uid() = user_id);
-```
+### Example 2: CORS Error on Worker Endpoint
 
-### 2. CORS Errors
+**Initial symptom:** "Access to fetch blocked by CORS policy" when calling worker API
 
-**Symptoms:**
-- "Access to fetch blocked by CORS policy"
-- Works in Postman but not in browser
-- Preflight request fails
-
-**Diagnosis:**
+**Step 1: Reproduction**
 ```bash
-# Check what CORS headers are returned
-curl -s -D - -o /dev/null \
-  -H "Origin: https://yoursite.com" \
-  -H "Access-Control-Request-Method: POST" \
-  -X OPTIONS \
-  https://your-worker.workers.dev/api/endpoint
+# Direct curl works
+curl https://my-worker.workers.dev/api/meetings
+# Returns data successfully
+
+# Browser fetch fails with CORS error
+fetch('https://my-worker.workers.dev/api/meetings').catch(console.error)
+# CORS error
 ```
 
-**Fix in Cloudflare Worker:**
+**Step 2: Diagnosis**
+```bash
+# Check what headers are returned
+curl -i -H "Origin: https://my-site.com" https://my-worker.workers.dev/api/meetings
+# Missing Access-Control-Allow-Origin header
+```
+
+**Step 3: Trade-off analysis**
+Option A: Allow all origins (*) - Simple but less secure
+Option B: Whitelist specific domains - Secure but requires maintenance
+Option C: Dynamic origin checking - Flexible but more complex
+
+**Step 4: Fix with security consideration**
 ```typescript
-// In your worker
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // Or specific domain
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-};
+// worker.js - Option B chosen for security
+const ALLOWED_ORIGINS = [
+  'https://my-site.com',
+  'https://my-site-staging.pages.dev',
+  'http://localhost:3000' // dev only
+];
+
+function corsHeaders(origin) {
+  return {
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.includes(origin) ? origin : 'null',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  };
+}
 
 // Handle preflight
 if (request.method === 'OPTIONS') {
-  return new Response(null, { headers: corsHeaders });
+  return new Response(null, { 
+    headers: corsHeaders(request.headers.get('Origin')) 
+  });
 }
-
-// Add to all responses
-return new Response(data, {
-  headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-});
 ```
 
-### 3. Auth State Not Persisting
+**Step 5: Verification**
+```bash
+# Test from allowed origin
+curl -H "Origin: https://my-site.com" -i https://my-worker.workers.dev/api/meetings
+# Should include Access-Control-Allow-Origin: https://my-site.com
 
-**Symptoms:**
-- User logged in but shows as logged out on refresh
-- Auth works locally but not in production
-- Session disappears randomly
+# Test from disallowed origin  
+curl -H "Origin: https://evil-site.com" -i https://my-worker.workers.dev/api/meetings
+# Should include Access-Control-Allow-Origin: null
+```
 
-**Diagnosis:**
+**Lesson:** CORS failures often indicate missing preflight handling; security requires thoughtful origin whitelisting
+
+### Example 3: RLS Policy Silently Blocking Data
+
+**Initial symptom:** Meeting search returns empty array, but Supabase dashboard shows data exists
+
+**Step 1: Evidence collection**
 ```javascript
-// In browser console
-console.log('Session:', await supabase.auth.getSession());
-console.log('User:', await supabase.auth.getUser());
-console.log('LocalStorage:', Object.keys(localStorage).filter(k => k.includes('supabase')));
+// Test current query
+const { data, error, count } = await supabase
+  .from('meetings')
+  .select('*', { count: 'exact' })
+  .limit(5);
+console.log({ data, error, count }); // data: [], error: null, count: 0
 ```
 
-**Common Fixes:**
-- Check Supabase URL matches (http vs https, trailing slash)
-- Verify site URL in Supabase Auth settings
-- Check for cookie blocking (Safari, incognito)
-- Ensure AuthContext wraps all components needing auth
+**Step 2: Isolate RLS vs query issue**
+```sql
+-- In Supabase SQL Editor, test as anon user
+SET ROLE anon;
+SELECT COUNT(*) FROM meetings; -- Returns 0
+RESET ROLE;
 
-### 4. Hydration Mismatch
-
-**Symptoms:**
-- "Hydration failed because the initial UI does not match"
-- Content flashes on page load
-- Different content on server vs client
-
-**Diagnosis:**
-```typescript
-// Temporarily add to suspect component
-useEffect(() => {
-  console.log('Client render:', document.body.innerHTML.slice(0, 500));
-}, []);
+-- Test as admin
+SELECT COUNT(*) FROM meetings; -- Returns 1000+
 ```
 
-**Common Fixes:**
-```typescript
-// Use client-only rendering for dynamic content
-'use client';
-import { useState, useEffect } from 'react';
+**Step 3: Policy analysis**
+```sql
+-- Check existing policies
+SELECT policyname, permissive, roles, cmd, qual 
+FROM pg_policies 
+WHERE tablename = 'meetings';
 
-function DynamicContent() {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return null; // or skeleton
-  return <div>{/* dynamic content */}</div>;
-}
+-- Shows: "authenticated_read" policy with USING (auth.uid() IS NOT NULL)
 ```
 
-### 5. Worker Not Deploying
+**Step 4: Root cause**
+Anonymous users need read access to public meetings, but policy requires authentication. Query silently fails instead of erroring.
 
-**Symptoms:**
-- Deploy command succeeds but changes not reflected
-- Old code still running
-- Intermittent old/new behavior
+**Step 5: Fix with proper scoping**
+```sql
+-- Remove overly restrictive policy
+DROP POLICY "authenticated_read" ON meetings;
 
-**Diagnosis:**
-```bash
-# Check deployment status
-npx wrangler deployments list
+-- Add public read for published meetings
+CREATE POLICY "public_read_published" ON meetings
+  FOR SELECT USING (status = 'published');
 
-# View current worker code
-npx wrangler deployments view
-
-# Check for multiple environments
-npx wrangler whoami
+-- Add authenticated read for all meetings
+CREATE POLICY "authenticated_read_all" ON meetings  
+  FOR SELECT TO authenticated USING (true);
 ```
 
-**Fixes:**
-```bash
-# Force redeploy
-npx wrangler deploy --force
+**Step 6: Verification**
+```sql
+-- Test as anon - should see published only
+SET ROLE anon;
+SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'published') 
+FROM meetings; -- Should show same count for both
 
-# Clear Cloudflare cache
-curl -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/purge_cache" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data '{"purge_everything":true}'
+-- Test as authenticated - should see all
+SET ROLE authenticated;
+SELECT COUNT(*), COUNT(*) FILTER (WHERE status = 'published') 
+FROM meetings; -- Total count > published count
 ```
 
-### 6. TypeScript Cache Haunting
+**Lesson:** RLS policies fail silently; always test with actual user roles, not just admin dashboard
 
-**Symptoms:**
-- Errors reference deleted/changed code
-- Types don't match current code
-- "Cannot find module" for existing files
+## QUALITY GATES
 
-**Fix:**
-```bash
-# Nuclear option - clear all caches
-rm -rf .next node_modules/.cache tsconfig.tsbuildinfo
-npm run build
+**Before marking debug complete, verify:**
 
-# Or just TypeScript cache
-rm -rf node_modules/.cache/typescript
-npx tsc --build --clean
-```
+- [ ] Issue can be reproduced consistently in original environment
+- [ ] Root cause identified with supporting evidence (logs, queries, network traces)
+- [ ] Fix applied addresses root cause, not just symptoms
+- [ ] Solution tested in clean browser session / incognito mode
+- [ ] No new errors introduced in browser console
+- [ ] No failed requests in network tab after fix
+- [ ] Worker logs show no new errors (if workers involved)
+- [ ] Database queries return expected results (if DB involved)
+- [ ] Fix works for both authenticated and anonymous users (if auth involved)
+- [ ] Change tested in production-like environment (not just localhost)
+- [ ] No performance regression introduced (check load times)
+- [ ] Documentation updated if configuration changed
 
-### 7. Static Export Issues
+## NOT-FOR BOUNDARIES
 
-**Symptoms:**
-- "Error: Page X couldn't be rendered statically"
-- Dynamic routes fail in static export
-- API routes don't work after deploy
+**This skill should NOT be used for:**
 
-**Diagnosis:**
-```bash
-# Check next.config for output mode
-grep -A5 "output:" next.config.ts
+- **Feature development** → Use language-specific skills (typescript-expert, react-expert)
+- **Architecture design** → Use `system-architect` for design decisions  
+- **Performance optimization** → Use `performance-engineer` for speed/efficiency
+- **Security audits** → Use `security-analyst` for vulnerability assessment
+- **Database design** → Use `data-engineer` for schema/query optimization
+- **UI/UX issues** → Use `frontend-expert` for design/usability problems
 
-# Find dynamic components
-grep -r "useSearchParams\|usePathname\|cookies()\|headers()" src/
-```
-
-**Fixes:**
-```typescript
-// For components using dynamic APIs
-export const dynamic = 'force-dynamic';
-// or wrap in Suspense with fallback
-
-// For generateStaticParams
-export async function generateStaticParams() {
-  return [{ slug: 'page1' }, { slug: 'page2' }];
-}
-```
-
-### 8. Rate Limiting Issues
-
-**Symptoms:**
-- 429 errors after several requests
-- Works initially then stops
-- Different behavior per IP
-
-**Diagnosis:**
-```bash
-# Check rate limit headers
-curl -i https://your-worker.workers.dev/api/endpoint 2>&1 | grep -i ratelimit
-
-# Check KV for rate limit keys
-npx wrangler kv:key list --namespace-id=RATE_LIMIT_KV_ID | grep rate
-```
-
-**Fixes:**
-```bash
-# Clear rate limit for an IP
-npx wrangler kv:key delete --namespace-id=RATE_LIMIT_KV_ID "rate:192.168.1.1"
-
-# Adjust limits in wrangler.toml
-RATE_LIMIT_REQUESTS = "100"
-RATE_LIMIT_WINDOW = "3600"
-```
-
-### 9. Meeting/Location Data Issues
-
-**Symptoms:**
-- No meetings found in certain areas
-- Stale meeting data
-- Cache showing wrong data
-
-**Diagnosis:**
-```bash
-# Check cache status for a location
-curl -s -D - -o /dev/null \
-  -H "Origin: https://yoursite.com" \
-  "https://your-proxy.workers.dev/api/all?lat=45.52&lng=-122.68&radius=25" \
-  | grep -iE "(x-cache|x-geohash|x-source)"
-
-# Force cache refresh
-curl -H "Origin: https://yoursite.com" \
-  "https://your-proxy.workers.dev/warm"
-
-# Check Supabase for meeting count
-node -e "
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient('URL', 'KEY');
-supabase.from('meetings').select('*', { count: 'exact', head: true })
-  .then(({count}) => console.log('Total meetings:', count));
-"
-```
-
-### 10. Build Fails on Cloudflare Pages
-
-**Symptoms:**
-- Works locally but fails on deploy
-- "Module not found" errors
-- Memory exceeded
-
-**Diagnosis:**
-```bash
-# Check build output locally
-NODE_ENV=production npm run build 2>&1 | tee build.log
-
-# Check for conditional imports
-grep -r "require(" src/ --include="*.ts" --include="*.tsx"
-
-# Check bundle size
-npx next-bundle-analyzer
-```
-
-**Fixes:**
-```javascript
-// next.config.ts - increase memory
-module.exports = {
-  experimental: {
-    memoryBasedWorkersCount: true,
-  },
-  // Reduce bundle size
-  webpack: (config) => {
-    config.externals = [...(config.externals || []), 'sharp'];
-    return config;
-  }
-};
-```
-
-## Debug Scripts
-
-### `scripts/diagnose.sh`
-```bash
-#!/bin/bash
-# Run all diagnostics
-
-echo "=== Environment ==="
-node -v && npm -v
-
-echo "=== Dependencies ==="
-npm ls --depth=0 2>&1 | grep -E "(UNMET|missing)"
-
-echo "=== TypeScript ==="
-npx tsc --noEmit 2>&1 | head -30
-
-echo "=== Build ==="
-npm run build 2>&1 | tail -30
-
-echo "=== Workers ==="
-for worker in workers/*/; do
-  echo "Worker: $worker"
-  (cd "$worker" && npx wrangler whoami 2>/dev/null)
-done
-
-echo "=== Supabase ==="
-npx supabase status 2>/dev/null || echo "Supabase CLI not configured"
-```
-
-### `scripts/check-rls.js`
-```javascript
-// Check RLS policies are working correctly
-const { createClient } = require('@supabase/supabase-js');
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-async function checkTable(table) {
-  console.log(`\n=== Checking ${table} ===`);
-  const { data, error, count } = await supabase
-    .from(table)
-    .select('*', { count: 'exact' })
-    .limit(1);
-
-  if (error) {
-    console.log(`ERROR: ${error.message}`);
-  } else {
-    console.log(`OK: ${count} rows accessible`);
-  }
-}
-
-// Check critical tables
-['profiles', 'meetings', 'forum_posts', 'journal_entries'].forEach(checkTable);
-```
-
-## Validation Checklist
-
-```
-[ ] Can reproduce the issue consistently
-[ ] Identified which layer is failing (client/Next/Worker/Supabase/API)
-[ ] Checked browser console for errors
-[ ] Checked network tab for failed requests
-[ ] Checked worker logs (wrangler tail)
-[ ] Verified RLS policies allow access
-[ ] Tested with fresh browser/incognito
-[ ] Cleared all caches (browser, React Query, KV, TS)
-[ ] Checked environment variables match production
-[ ] Verified CORS headers are correct
-[ ] Tested on production URL (not just localhost)
-[ ] Created minimal reproduction case
-```
-
-## Output
-
-When debugging, always provide:
-1. **Root cause** - What exactly was wrong
-2. **Evidence** - Logs, errors, or queries that proved it
-3. **Fix** - Minimal code change to resolve
-4. **Verification** - How to confirm it's fixed
-5. **Prevention** - How to avoid this in future
-
-## Tools Available
-
-- `Read`, `Write`, `Edit` - File operations
-- `Bash` - Run commands, curl, wrangler
-- `Grep`, `Glob` - Search codebase
-- `WebFetch` - Test endpoints
-- `mcp__supabase__*` - Direct Supabase operations
-- `mcp__playwright__*` - Browser automation for UI testing
+**Delegate when you see:**
+- "How should I structure this feature?" → `system-architect`
+- "This page loads slowly" → `performance-engineer` 
+- "Is this secure?" → `security-analyst`
+- "What's the best database schema?" → `data-engineer`
+- "Users find this confusing" → `frontend-expert`

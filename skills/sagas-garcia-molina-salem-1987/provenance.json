@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Sagas-Garcia-Molina-Salem-1987.pdf",
+    "path": "../batch_evaluator_gaps/Sagas-Garcia-Molina-Salem-1987.pdf",
+    "chars": 49115,
+    "tokens_approx": 12278
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T13:44:03.190032Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 20303,
+        "output": 23725
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T13:44:03.201032Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1809,
+        "output": 3369
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 566.3888099193573,
+  "generated_at": "2026-02-24T13:44:03.209886Z"
+}

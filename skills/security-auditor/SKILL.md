@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: security-auditor
 description: Security vulnerability scanner and OWASP compliance auditor for codebases. Dependency scanning (npm audit, pip-audit), secret detection (high-entropy strings, API keys), SAST for injection/XSS vulnerabilities, and security posture reports. Activate on 'security audit', 'vulnerability scan', 'OWASP', 'secret detection', 'dependency check', 'CVE', 'security review', 'penetration testing prep'. NOT for runtime WAF configuration (use infrastructure tools), network security/firewalls, or compliance certifications like SOC2/HIPAA (legal/organizational).
 allowed-tools: Read,Write,Edit,Bash(npm audit:*,pip-audit:*,grep:*,find:*),Grep,Glob
-category: Code Quality & Testing
+category: Security
 tags:
-  - security
-  - owasp
-  - vulnerabilities
-  - sast
-  - dependencies
+  - security-audit
+  - vulnerability
+  - penetration-testing
+  - code-review
+  - compliance
 pairs-with:
   - skill: devops-automator
     reason: Secure deployment pipelines

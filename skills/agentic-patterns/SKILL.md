@@ -1,17 +1,9 @@
 ---
+license: Apache-2.0
 name: agentic-patterns
-description: >
-  Fundamental patterns for effective agentic behavior. Teaches decomposition,
-  tool orchestration, error recovery, context management, quality
-  self-assessment, and knowing when to stop. Model-agnostic principles that
-  make any agent more effective regardless of domain.
-  Activate on: "how should I structure this agent", "agentic workflow",
-  "agent patterns", "multi-step task", "tool orchestration", "/agentic-patterns",
-  "decompose this", "agent best practices", "chain of actions",
-  "when should the agent stop", "agent loop design".
-  NOT for: creating agent infrastructure (use agent-creator), building
-  DAGs (use windags-architect), specific tool implementation.
-category: Agent Design & Orchestration
+description: |
+  Fundamental patterns for effective agentic behavior. Teaches decomposition, tool orchestration, error recovery, context management, quality self-assessment, and knowing when to stop. Model-agnostic principles that make any agent more effective regardless of domain. Activate on: "how should I structure this agent", "agentic workflow", "agent patterns", "multi-step task", "tool orchestration", "/agentic-patterns", "decompose this", "agent best practices", "chain of actions", "when should the agent stop", "agent loop design". NOT for: creating agent infrastructure (use agent-creator), building DAGs (use windags-architect), specific tool implementation.
+category: Agent & Orchestration
 tags:
   - agents
   - orchestration

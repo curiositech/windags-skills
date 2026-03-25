@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: indie-monetization-strategist
 description: Monetization strategies for indie developers, solopreneurs, and small teams. Covers freemium models, SaaS pricing, sponsorships, donations, email list building, and passive income for developer tools, content sites, and educational apps. Activate on 'monetization', 'make money', 'pricing', 'freemium', 'SaaS', 'sponsorship', 'donations', 'passive income', 'indie hacker'. NOT for enterprise sales, B2B outbound, VC fundraising, or large-scale advertising (use enterprise/marketing skills).
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep,WebFetch,WebSearch
-category: Business & Monetization
+category: Content & Marketing
 tags:
   - monetization
-  - pricing
-  - saas
   - indie
-  - passive-income
+  - strategy
+  - pricing
+  - revenue
 pairs-with:
   - skill: tech-entrepreneur-coach-adhd
     reason: ADHD-friendly founder guidance
@@ -18,219 +19,179 @@ pairs-with:
 
 # Indie Monetization Strategist
 
-Turn side projects into sustainable income. Battle-tested strategies for indie developers and solopreneurs.
+Turn side projects into sustainable income with battle-tested revenue strategies.
 
-## Quick Start
+## DECISION POINTS
 
-1. **Build audience first** - Email list is your foundation
-2. **Start with validation** - If people won't use it free, they won't pay
-3. **Stack revenue streams** - Multiple small wins beats one moonshot
-4. **Price on value, not cost** - Premium pricing attracts premium customers
-5. **Play the long game** - Most "overnight" successes took 3-5 years
-
-## When to Use
-
-**Use for:**
-- Choosing monetization models for dev tools
-- Setting up freemium/premium tiers
-- Pricing strategy decisions
-- Email list building for launches
-- Sponsorship and donation systems
-
-**NOT for:**
-- Enterprise B2B sales (use sales skills)
-- VC fundraising/pitch decks
-- Large-scale advertising campaigns
-
-## The Indie Monetization Stack
-
+### Choosing Primary Monetization Model
 ```
-┌─────────────────────────────────────────────┐
-│           PREMIUM PRODUCTS                  │
-│  SaaS subscriptions, one-time purchases     │
-│  → Highest revenue, requires product-market │
-├─────────────────────────────────────────────┤
-│           SERVICES & CONSULTING             │
-│  Custom work, implementation, training      │
-│  → Trade time for money, but validates      │
-├─────────────────────────────────────────────┤
-│           PASSIVE/SEMI-PASSIVE              │
-│  Sponsorships, donations, affiliates        │
-│  → Lower friction, good for content/tools   │
-├─────────────────────────────────────────────┤
-│           LIST BUILDING                     │
-│  Email subscribers, community members       │
-│  → Foundation for all monetization          │
-└─────────────────────────────────────────────┘
+1. What type of product do you have?
+   ├── Developer Tool
+   │   ├── If open source → GitHub Sponsors + Premium features
+   │   ├── If CLI/utility → Freemium SaaS ($9-29/mo)
+   │   └── If complex platform → Multi-tier SaaS ($29-199/mo)
+   │
+   ├── Content/Educational
+   │   ├── If course material → One-time purchase ($49-299)
+   │   ├── If ongoing tutorials → Membership ($19-49/mo)
+   │   └── If reference site → Sponsorships + Premium tier
+   │
+   └── Community/Audience
+       ├── If <10k followers → Focus on email list building
+       ├── If 10k-100k → Add sponsorships ($500-2k/mo)
+       └── If >100k → Premium community ($29-99/mo)
 ```
 
-## Monetization Decision Tree
-
+### When to Pivot Strategy (Revenue/Churn Thresholds)
 ```
-Is your project...
-
-A DEVELOPER TOOL?
-├── Open source? → Sponsorships + Premium features/hosting
-├── Closed source? → Freemium SaaS or one-time purchase
-└── CLI tool? → Pay-what-you-want + Pro tier
-
-AN EDUCATIONAL RESOURCE?
-├── Course/tutorial? → One-time purchase or membership
-├── Reference site? → Sponsorships + Premium content
-└── Interactive app? → Freemium with advanced features
-
-A CONTENT SITE?
-├── Technical blog? → Sponsorships + Newsletter premium tier
-├── Showcase/portfolio? → Consulting leads + Sponsorships
-└── Community site? → Membership + Sponsorships
+2. Current performance check:
+   ├── Revenue <$500/mo after 6 months
+   │   └── Pivot to: Better product-market fit or different audience
+   │
+   ├── Churn >15%/month
+   │   ├── If usage low → Add onboarding/activation flows
+   │   └── If usage high → Pricing/positioning mismatch
+   │
+   ├── Free users won't upgrade (conversion <2%)
+   │   ├── If high engagement → Pricing too high
+   │   └── If low engagement → Free tier too generous
+   │
+   └── Revenue plateau >3 months
+       └── Add: New pricing tier or complementary product
 ```
 
-## Model Quick Reference
-
-### Freemium SaaS (80/20 Rule)
-
-| Tier | Price | What to Include |
-|------|-------|-----------------|
-| **Free** | $0 | Core functionality, usage limits, goal: get users hooked |
-| **Pro** | $9-29/mo | Higher limits, no branding, priority support |
-| **Team** | $49-199/mo | Admin controls, SSO, SLA guarantees |
-
-**Gate these:** Usage volume, team features, white-labeling, advanced analytics
-**Never gate:** Core functionality, security features, basics competitors offer free
-
-### Sponsorship Pricing Formula
-
+### Pricing Decision Framework
 ```
-Monthly visitors × $0.01-0.05 = Base sponsorship rate
+3. How to price your offering:
+   ├── If solving urgent problem → Price 3x higher than comfort level
+   ├── If nice-to-have feature → Start low, test increments
+   ├── If developer audience → $29-99/mo (they expect quality)
+   ├── If consumer audience → $9-29/mo (price sensitive)
+   └── If enterprise users → $99-999/mo (budget exists)
 
-Multipliers:
-+ Developer audience (2-3x)
-+ Niche focus (1.5-2x)
-+ High engagement (1.5x)
+4. Annual vs monthly pricing:
+   ├── If high churn risk → Push annual (2-3 months discount)
+   ├── If trying to grow fast → Monthly only (lower barrier)
+   └── If established product → Both options (annual preferred)
 ```
 
-### Donation Platforms
+## FAILURE MODES
 
-| Platform | Best For | Notes |
-|----------|----------|-------|
-| GitHub Sponsors | Developers | Best for OSS |
-| Buy Me a Coffee | Low friction | Quick setup |
-| Ko-fi | Creators | No platform cut |
-| Stripe Links | Direct | Lowest fees |
+### Anti-Pattern: "Premature Monetization"
+**Detection Rule:** If you're adding payments before 100+ active free users
+- **Symptom:** Low conversion rates, users bounce at paywall
+- **Diagnosis:** No product-market fit established yet
+- **Fix:** Build value first, then monetize proven engagement
 
-## Pricing Psychology Essentials
+### Anti-Pattern: "Race to Bottom Pricing"  
+**Detection Rule:** If your pricing is >50% below comparable competitors
+- **Symptom:** Attracting price shoppers, high churn, unsustainable margins
+- **Diagnosis:** Competing on price instead of value
+- **Fix:** Raise prices 2x, focus on unique value proposition
 
-**The Decoy Effect:**
-```
-BASIC: $9    PRO: $29 (target)    ENTERPRISE: $99 (decoy)
-```
+### Anti-Pattern: "Crippled Free Tier"
+**Detection Rule:** If free users can't accomplish a complete workflow
+- **Symptom:** No free-to-paid conversions, negative feedback on free tier
+- **Diagnosis:** Free tier doesn't demonstrate product value
+- **Fix:** Allow complete basic workflow free, gate advanced features
 
-**Price Anchoring:**
-```
-❌ "Only $29/month!"
-✅ "$49/month → $29/month (save 40%)"
-```
+### Anti-Pattern: "Revenue Stream Hopping"
+**Detection Rule:** If you've tried 3+ monetization models in 6 months
+- **Symptom:** No model reaches $1k/mo, constantly switching strategies
+- **Diagnosis:** Not giving strategies time to work, avoiding hard optimization
+- **Fix:** Pick one model, optimize for 6+ months before considering change
 
-**Annual vs Monthly:**
-```
-Monthly: $29/month | Annual: $19/month (billed $228/year)
-Annual subscribers have 5x lower churn.
-```
+### Anti-Pattern: "Ignoring Retention Metrics"
+**Detection Rule:** If you don't know your monthly churn rate
+- **Symptom:** Growing signups but flat revenue, high customer acquisition costs
+- **Diagnosis:** Leaky bucket - acquiring faster than you're retaining
+- **Fix:** Track churn weekly, optimize retention before acquisition
 
-## Anti-Patterns (10 Critical Mistakes)
+## WORKED EXAMPLES
 
-### 1. Premature Monetization
-**Symptom:** Adding payments before product-market fit
-**Fix:** Validate with free users first
+### Example 1: DevTool SaaS Evolution ($0→$8k MRR)
 
-### 2. Race to the Bottom Pricing
-**Symptom:** Pricing way below competitors
-**Fix:** Price on value delivered, not competitor copying
+**Initial State:** Open source CLI tool, 500 GitHub stars, no revenue
 
-### 3. Feature Bloat to Justify Price
-**Symptom:** Adding features nobody asked for
-**Fix:** Charge more for LESS but BETTER
+**Month 1-3 Decision Process:**
+- Analyzed GitHub issues → 60% requests for team features
+- Decision: Freemium SaaS model, not donations
+- Pricing strategy: Free (individual use) → Pro ($29/mo for teams)
 
-### 4. Ignoring Existing Monetization
-**Symptom:** Building new revenue streams instead of optimizing existing
-**Fix:** 2x conversion rate before adding new streams
+**Implementation:**
+- Built web dashboard with team management
+- Kept CLI free, gated dashboard features
+- Email sequence: CLI users → dashboard trial → paid conversion
 
-### 5. Crippled Free Tier
-**Symptom:** Free tier so limited it's useless
-**Fix:** Users who never experience value never convert
+**Results & Pivots:**
+- Month 3: $400 MRR (1.2% free→paid conversion)  
+- Issue: Conversion too low
+- Analysis: Free tier solved 90% of use cases
+- Pivot: Added usage limits to free tier (5 projects max)
+- Month 6: $2.1k MRR (4.8% conversion)
+- Month 12: $8.2k MRR (added $99 team tier)
 
-### 6. No Email List
-**Symptom:** Relying only on organic traffic
-**Fix:** Build list before you need it - foundation for everything
+**Key Lessons:**
+- Free tier must create upgrade pressure through limits, not features
+- B2B tools can support higher pricing ($29+ vs $9)
+- Team features unlock higher willingness to pay
 
-### 7. One-Size-Fits-All Pricing
-**Symptom:** Same price for hobbyists and enterprises
-**Fix:** Segment pricing by use case and value
+### Example 2: Educational Content Monetization ($0→$4k MRR)
 
-### 8. Hidden Costs
-**Symptom:** Surprise fees after signup
-**Fix:** Transparent pricing builds trust
+**Initial State:** Technical blog, 50k monthly visitors, AdSense revenue $200/mo
 
-### 9. Ignoring Churn
-**Symptom:** Focus on acquisition, not retention
-**Fix:** Reducing churn 5% can increase profits 25-95%
+**Decision Process:**
+- Audience analysis: 70% senior developers, 30% beginners
+- High email signup rate (8%) but low engagement
+- Decision: Premium newsletter + cohort course model
 
-### 10. Pricing Too Low
-**Symptom:** Undervaluing your work
-**Fix:** Higher prices = better customers, higher expectations
+**Revenue Evolution:**
+- Phase 1: Premium newsletter ($19/mo) - 2% conversion from free subscribers
+- Month 4: $800 MRR from newsletter (42 paid subscribers)
+- Phase 2: Added monthly cohort course ($199) for newsletter subscribers
+- Month 8: $2.8k MRR (newsletter + courses)
+- Phase 3: Annual course option ($1,299 vs monthly $199)
+- Month 12: $4.2k MRR (40% take annual option)
 
-## Revenue Benchmarks (Indie Scale)
+**Trade-off Analysis:**
+- Newsletter provided steady baseline revenue
+- Courses had higher per-customer value but required more time investment
+- Annual pricing improved cash flow but required stronger value proof
 
-| Stage | Monthly Revenue | Meaning |
-|-------|-----------------|---------|
-| Ramen Profitable | $2-5k | Can quit day job (barely) |
-| Comfortable | $10-20k | Good indie income |
-| Scaling | $50k+ | Time to consider hiring |
+## QUALITY GATES
 
-**Reality check:** Most indie projects earn $0-500/month. $2k/month = top 10%.
+### Revenue Model Validation Checklist
+- [ ] Free users can complete at least one valuable workflow end-to-end
+- [ ] Pricing is based on customer value metrics, not internal costs
+- [ ] At least 2% of free users convert to paid within 30 days
+- [ ] Monthly churn rate is below 10% for paid subscribers
+- [ ] Customer acquisition cost (CAC) is less than 3x monthly revenue per customer
+- [ ] Payment processing is implemented with proper error handling
+- [ ] Pricing page clearly differentiates tier value propositions
+- [ ] Email sequence captures leads and nurtures them toward conversion
+- [ ] Analytics track conversion funnel from visitor→signup→paid
+- [ ] Refund/cancellation process is documented and tested
 
-## Quick Implementation
+### Product-Market Fit Signals
+- [ ] Organic word-of-mouth referrals (>10% of signups)
+- [ ] Users actively request features (not just complain)
+- [ ] Paid users renew subscriptions (churn <5% monthly)
+- [ ] Free users engage regularly (weekly active users >40%)
+- [ ] Customer support queries are feature requests, not confusion
 
-### Add Payments (5 min with Stripe)
+## NOT-FOR BOUNDARIES
 
-```typescript
-// See references/stripe-integration.md for complete guide
-const session = await stripe.checkout.sessions.create({
-  mode: 'subscription',
-  line_items: [{ price: 'price_xxx', quantity: 1 }],
-  success_url: 'https://yoursite.com/success',
-});
-```
+**This skill is NOT for:**
+- Enterprise B2B sales processes → Use `enterprise-sales-strategist`
+- VC fundraising or pitch decks → Use `startup-pitch-expert` 
+- Large-scale advertising campaigns → Use `digital-marketing-strategist`
+- Affiliate marketing at scale → Use `affiliate-marketing-specialist`
+- Physical product monetization → Use `ecommerce-strategist`
 
-### Add Sponsorship Button
+**Delegate when:**
+- Annual revenue targets >$500k → Need enterprise sales approach
+- Seeking investment capital → Need fundraising expertise  
+- Managing ad spend >$10k/month → Need marketing specialist
+- Complex B2B sales cycles → Need dedicated sales processes
 
-```html
-<a href="https://github.com/sponsors/yourusername">
-  <img src="https://img.shields.io/badge/Sponsor-💖-ea4aaa">
-</a>
-```
-
-### Launch Email Sequence
-
-```
-Day 0: Deliver lead magnet + welcome
-Day 3: Best content piece
-Day 7: Your story/why you built this
-Day 14: Soft pitch
-Day 21: Social proof
-Day 30: Direct pitch with deadline
-```
-
-## Reference Files
-
-| File | Contents |
-|------|----------|
-| `references/pricing-templates.md` | HTML/CSS pricing page templates |
-| `references/email-sequences.md` | Complete email sequence examples |
-| `references/stripe-integration.md` | Full Stripe implementation guide |
-
----
-
-**Covers:** Monetization Strategy | Pricing Psychology | Freemium | Sponsorships | Email Marketing
-
-**Use with:** content-marketer (distribution) | web-design-expert (pricing pages) | product-strategist (positioning)
+**Sweet spot:** Solo developers, small teams, digital products, recurring revenue $0-100k annually

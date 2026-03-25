@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: cost-verification-auditor
 description: Audit LLM token cost estimates against actual API usage. Activate on 'cost verification', 'token estimate accuracy', 'API cost audit', 'estimation variance'. NOT for pricing lookups, budget planning, or cost optimization strategies.
 allowed-tools: Read,Write,Bash
+category: Agent & Orchestration
+tags:
+  - cost-verification
+  - auditing
+  - quality
+  - llm-costs
+  - validation
 ---
 
 # Cost Verification Auditor

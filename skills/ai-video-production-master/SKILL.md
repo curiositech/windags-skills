@@ -1,15 +1,15 @@
 ---
+license: Apache-2.0
 name: ai-video-production-master
 description: Expert in script-to-video production pipelines for Apple Silicon Macs. Specializes in hybrid local/cloud workflows, LoRA training for character consistency, motion graphics generation, and artist commissioning. Activate on 'AI video production', 'script to video', 'video generation pipeline', 'character consistency', 'LoRA training', 'cloud GPU', 'motion graphics', 'Wan I2V', 'InVideo alternative'. NOT for real-time video editing, video compositing (use DaVinci/Premiere), audio production, or 3D modeling (use Blender/Maya).
 allowed-tools: Read,Write,Edit,Bash(python:*,ffmpeg:*,npm:*),WebFetch,mcp__firecrawl__firecrawl_search
-category: AI & Machine Learning
+category: Video & Audio
 tags:
-  - video
-  - ai-generation
-  - lora
-  - cloud-gpu
-  - motion-graphics
-  - comfyui
+  - video-production
+  - ai
+  - automation
+  - content-creation
+  - editing
 pairs-with:
   - skill: sound-engineer
     reason: Audio for AI-generated videos
@@ -19,161 +19,151 @@ pairs-with:
 
 # AI Video Production Master
 
-Expert in script-to-video production pipelines for Apple Silicon Macs. Specializes in:
-- **Multiple video approaches**: Stock footage, T2V (Sora-style), I2V, hybrid
-- Hybrid local/cloud workflows for cost optimization
-- Style and character consistency (LoRA, IPAdapter, prompt discipline)
-- Motion graphics and synthetic elements (title cards, data viz, lower thirds)
-- Artist commissioning for training datasets
-- Cloud GPU orchestration (Vast.ai, RunPod)
+Expert in script-to-video production pipelines for Apple Silicon Macs. Specializes in hybrid local/cloud workflows, style consistency, and motion graphics generation.
 
-## When to Use
+## DECISION POINTS
 
-✅ **USE this skill for:**
-- Script-to-video production pipelines
-- Stock footage assembly (InVideo-style workflows)
-- Text-to-video generation (Sora, Runway, Pika, Kling)
-- Image-to-video animation (Wan I2V, ComfyUI)
-- Cloud GPU orchestration (Vast.ai, RunPod, Lambda)
-- Motion graphics generation (title cards, lower thirds, data viz)
-- LoRA training for character/style consistency
-- Artist commissioning for training datasets
-- Cost optimization between local and cloud processing
+### Method Selection Tree
+```
+Script Analysis:
+├── Content Type = Educational/Corporate/Documentary
+│   ├── Budget < $50/month → Stock Footage Assembly (InVideo-style)
+│   └── Budget > $50/month → Stock + T2V Hybrid
+├── Content Type = Creative/Artistic/Abstract
+│   ├── Timeline < 2 days → Sora/Runway T2V
+│   └── Timeline > 2 days → Custom I2V with LoRA training
+└── Content Type = Brand/Character-focused
+    ├── Existing assets available → I2V animation pipeline
+    └── No assets → Commission artists → I2V pipeline
 
-❌ **DO NOT use for:**
-- Real-time video editing → use DaVinci Resolve, Premiere Pro
-- Video effects/compositing → use After Effects, Fusion
-- Audio production/mixing → use `sound-engineer` skill
-- 3D modeling/animation → use Blender, Maya, or `physics-rendering-expert` skill
-- Static image generation → use `clip-aware-embeddings` or image gen tools
+Quality vs. Cost Decision:
+├── Professional deliverable needed
+│   ├── Use Sora/Runway Gen-3 (premium T2V)
+│   └── Commission custom artwork for I2V
+├── Prototype/test content
+│   ├── Use stock footage + free T2V models
+│   └── Local ComfyUI I2V generation
+└── High volume production
+    ├── Cloud batch processing (Vast.ai)
+    └── Automated stock footage workflows
 
-## Video Generation Approaches
+Error Recovery Tree:
+├── Quality fails at T2V generation
+│   ├── Switch to stock footage + motion graphics overlay
+│   └── Fallback to I2V with commissioned artwork
+├── Cloud GPU timeout/failure
+│   ├── Retry with different provider (Vast.ai → RunPod)
+│   └── Switch to local processing with extended timeline
+└── Style consistency breaks
+    ├── Retrain LoRA with more reference images
+    └── Use IPAdapter + consistent prompt structure
+```
 
-Choose the right approach based on your content:
+### Processing Location Decision Matrix
+| Shot Count | Complexity | Budget | Recommendation |
+|------------|------------|--------|----------------|
+| 1-5 | Simple | Any | Local M4 Max |
+| 6-20 | Medium | <$10 | Stock footage |
+| 6-20 | High | >$10 | Cloud GPU batch |
+| 20+ | Any | Any | Cloud GPU required |
 
-### Stock Footage (Invideo-style) - RECOMMENDED for most content
-Best for: Educational, corporate, explainers, documentaries
-- Uses curated stock libraries (Pexels, Pixabay, Storyblocks)
-- Most professional, reliable results
-- Fast turnaround (~30 min for full video)
-- Script → AI selects matching clips → voiceover + music
+## FAILURE MODES
+
+### Blurry Motion Jitter
+**Symptoms:** Inconsistent frame rates, stuttering motion, temporal artifacts
+**Diagnosis:** Mismatched FPS settings or insufficient motion guidance
+**Fix:** Set consistent 24fps pipeline, add motion strength controls, use higher guidance scale (7-9)
+**Detection Rule:** If temporal consistency score < 0.7 or frame delta > 0.3, apply motion stabilization
+
+### Character Consistency Drift
+**Symptoms:** Character appearance changes between shots, style inconsistency
+**Diagnosis:** Insufficient reference conditioning or LoRA overfitting
+**Fix:** Retrain LoRA with 15-20 reference images, use IPAdapter for face consistency
+**Detection Rule:** If character similarity score < 0.8 between consecutive shots, halt and retrain
+
+### Cost Overrun Spiral
+**Symptoms:** Cloud GPU bills exceed budget by >200%, slow iteration cycles
+**Diagnosis:** No cost monitoring or inefficient batch sizing
+**Fix:** Set hard limits in cloud scripts, optimize batch sizes, use spot instances
+**Detection Rule:** If cost-per-minute exceeds $0.50 or iteration time > 15min, switch to local processing
+
+### Audio Desync Cascade
+**Symptoms:** Lip sync drift, audio-visual timing mismatches
+**Diagnosis:** Variable generation times affecting audio alignment
+**Fix:** Generate all video first, then align audio in post with markers
+**Detection Rule:** If audio offset > 200ms from video markers, re-align with FFmpeg
+
+### Schema Bloat Paralysis
+**Symptoms:** Too many generation options, analysis paralysis, project stalls
+**Diagnosis:** Over-optimization without testing simple approaches first
+**Fix:** Always start with stock footage proof-of-concept, iterate to complexity
+**Detection Rule:** If project planning > 2 hours without generated content, default to stock footage
+
+## WORKED EXAMPLES
+
+### Educational Video: "Quantum Computing Explained"
+**Input:** 3-minute script about quantum computing basics
+
+**Decision Process:**
+1. Content analysis: Educational → Stock footage recommended
+2. Budget check: $30 budget → Use Pexels API + motion graphics
+3. Shot breakdown: 12 shots needed
+4. Quality target: Professional but not cinematic
+
+**Execution:**
 ```bash
-python scripts/stock_video_generator.py --script script.txt --style documentary
+# Step 1: Generate shot list from script
+python scripts/script_analyzer.py --script quantum_script.txt
+# Output: 12 shots identified, 8 require stock footage, 4 need motion graphics
+
+# Step 2: Source stock footage
+python scripts/stock_video_generator.py --shots_file shots.json --style documentary
+# Selected: Laboratory footage, abstract tech visuals, clean backgrounds
+
+# Step 3: Generate motion graphics for complex concepts
+python scripts/motion_graphics_generator.py --type data_viz --concept "quantum_states"
+# Created: Animated diagrams for superposition, entanglement
+
+# Step 4: Assembly and sync
+python scripts/video_assembler.py --footage stock_clips/ --graphics motion/ --audio narration.wav
 ```
 
-### Text-to-Video (Sora-style) - For creative/artistic content
-Best for: Abstract visuals, creative shorts, unique scenes
-- True generative AI (no stock footage)
-- Uses: Sora API, Runway Gen-3, Pika, Kling
-- Cleaner than I2V (no weird image artifacts)
-- Storyboard control for multi-shot narratives
-```bash
-python scripts/t2v_generator.py --prompt "A serene mountain lake at sunset" --provider sora
-```
+**Expert vs. Novice:**
+- Expert: Checked audio levels before graphics generation, chose 16:9 format for platform compatibility
+- Novice would miss: Consistent lighting in stock selection, proper motion graphic duration matching speech pace
 
-### Image-to-Video (I2V) - For animating specific images
-Best for: Animating logos, concept art, specific compositions
-- Animates existing images with subtle motion
-- Can look "weird" if source images are AI-generated
-- Best with clean, professional source images
-```bash
-python scripts/cloud_i2v_batch.py --images ./keyframes --provider vastai
-```
+**Final output:** 3:15 video, cost $0 (free stock), 45 minutes total production time
 
-### Hybrid Approach
-Combine approaches per shot:
-- Shot 1-3: Stock footage (b-roll, establishing)
-- Shot 4-5: T2V (creative transitions)
-- Shot 6-10: Stock footage (talking head, outro)
+## QUALITY GATES
 
-## Key Capabilities
+Video production complete when ALL conditions met:
 
-### 1. Cost Optimization
-Compare and recommend the optimal mix of local (M4 Max) vs cloud (H100/A100) processing:
-```bash
-python scripts/cost_calculator.py --shots 10 --duration 5
-```
+- [ ] Frame rate consistent at 24fps across all segments
+- [ ] Audio levels normalized between -23dB and -18dB LUFS
+- [ ] Visual style maintains consistency (color grading, aspect ratio)
+- [ ] Motion graphics sync with narration within 100ms tolerance
+- [ ] Character/subject consistency score >0.8 across shots
+- [ ] No temporal artifacts (flicker, jitter) in any 5-second segment
+- [ ] Subtitle/caption timing aligned with audio peaks
+- [ ] Export renders without errors in target resolution
+- [ ] File size within platform limits (YouTube: <128GB, social: <4GB)
+- [ ] Backup files stored with version control
 
-### 2. Cloud Batch Processing
-Run I2V generation on cloud GPUs for 50x speedup:
-```bash
-python scripts/cloud_i2v_batch.py --images ./keyframes --provider vastai
-```
+## NOT-FOR BOUNDARIES
 
-### 3. Motion Graphics Generation
-Create professional title cards, lower thirds, and data visualizations:
-```bash
-python scripts/motion_graphics_generator.py --type title --style deep_glow --title "Your Title"
-```
+**This skill should NOT be used for:**
 
-### 4. Style Consistency
-Provide guidance on:
-- LoRA training parameters (rank, alpha, learning rate, steps)
-- IPAdapter + FaceID for character consistency
-- Prompt discipline and trigger words
-- Reference image workflows
+- **Real-time video editing** → Use DaVinci Resolve or Premiere Pro directly
+- **Complex video effects/compositing** → Delegate to After Effects or `physics-rendering-expert` skill
+- **Audio production beyond basic sync** → Use `sound-engineer` skill for mixing, mastering, sound design
+- **3D modeling or complex animation** → Use Blender/Maya or `physics-rendering-expert` skill
+- **Live streaming or broadcast** → Use OBS Studio or broadcast-specific tools
+- **Color grading beyond basic correction** → Use professional colorist workflows
+- **Motion tracking or match moving** → Use specialized tracking software
+- **Multi-camera synchronization** → Use dedicated sync tools like PluralEyes
 
-### 5. Artist Commissioning
-Templates and guidance for:
-- Finding artists (ArtStation, Fiverr, Upwork)
-- Structuring commission requests
-- AI training rights contracts
-- Quality control and review processes
-
-## Files in This Skill
-
-```
-ai-video-production-master/
-├── README.md                          # Comprehensive guide
-├── SKILL.md                           # This file
-├── scripts/
-│   ├── cost_calculator.py             # Cost comparison tool
-│   ├── cloud_i2v_batch.py             # Cloud batch I2V (Vast.ai/RunPod)
-│   ├── stock_video_generator.py       # Stock footage assembly (Invideo-style)
-│   ├── t2v_generator.py               # Text-to-video (Sora/Runway/Pika)
-│   └── motion_graphics_generator.py   # Title cards, lower thirds
-├── workflows/
-│   └── comfyui_i2v_optimized.json     # Optimized ComfyUI workflow
-└── docs/
-    ├── ARTIST_COMMISSIONING_GUIDE.md  # Hiring artists
-    └── contracts/
-        └── artist_commission_template.md  # Contract template
-```
-
-## Quick Reference
-
-### Cost Comparison (10-shot video)
-| Approach | Time | Cost | Best For |
-|----------|------|------|----------|
-| Stock Footage + AI | 30 min | Free-$20/mo | Educational, corporate |
-| Sora (ChatGPT Plus) | 30 min | $20/mo | Creative, unique scenes |
-| Full Local I2V (M4 Max) | 15+ hours | $0 | When you need specific images |
-| Cloud I2V (RTX 4090) | 30 min | ~$0.50 | Batch I2V processing |
-| InVideo Max | 30 min | $48/mo | Full automation |
-| Runway Gen-3 | 30 min | ~$15-25 | High-quality T2V |
-
-### Cloud GPU Pricing
-| Provider | GPU | $/hr | I2V Time/Clip |
-|----------|-----|------|---------------|
-| Vast.ai | H100 80GB | $1.87 | ~2 min |
-| RunPod | H100 80GB | $1.99 | ~2 min |
-| RunPod | A100 80GB | $1.74 | ~3 min |
-| Lambda | H100 | $2.99 | ~2 min |
-
-### Motion Graphics Styles
-- `neo_brutalist` - Raw, glitchy, utilitarian
-- `deep_glow` - Intense light blooms, layered neons
-- `liquid_motion` - Fluid, morphing typography
-- `retro_revival` - 80s/90s grain and neon
-- `glass_morphism` - Frosted glass, depth layers
-
-## Dependencies
-
-Python packages:
-- httpx (for cloud API calls)
-- argparse, json, subprocess (stdlib)
-
-External tools:
-- FFmpeg (video encoding)
-- rsvg-convert or ImageMagick (SVG to PNG)
-- ComfyUI (local generation)
+**Handoff triggers:**
+- If project requires >20 layers of compositing → `physics-rendering-expert`
+- If audio needs custom sound design → `sound-engineer` 
+- If 3D elements need modeling → Blender specialist
+- If real-time performance needed → Use native video editing software

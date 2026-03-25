@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: automatic-stateful-prompt-improver
 description: Automatically intercepts and optimizes prompts using the prompt-learning MCP server. Learns from performance over time via embedding-indexed history. Uses APE, OPRO, DSPy patterns. Activate on "optimize prompt", "improve this prompt", "prompt engineering", or ANY complex task request. Requires prompt-learning MCP server. NOT for simple questions (just answer them), NOT for direct commands (just execute them), NOT for conversational responses (no optimization needed).
 allowed-tools: mcp__prompt-learning__optimize_prompt,mcp__prompt-learning__retrieve_prompts,mcp__prompt-learning__record_feedback,mcp__prompt-learning__suggest_improvements,mcp__prompt-learning__get_analytics,mcp__SequentialThinking__sequentialthinking
 category: AI & Machine Learning
 tags:
-  - prompts
+  - prompt-engineering
   - optimization
-  - learning
-  - embeddings
-  - dspy
+  - stateful
+  - improvement
+  - llm
 pairs-with:
   - skill: skill-coach
     reason: Optimize skill prompts systematically
@@ -18,123 +19,186 @@ pairs-with:
 
 # Automatic Stateful Prompt Improver
 
-## MANDATORY AUTOMATIC BEHAVIOR
-
-**When this skill is active, I MUST follow these rules:**
-
-### Auto-Optimization Triggers
-
-I AUTOMATICALLY call `mcp__prompt-learning__optimize_prompt` BEFORE responding when:
-
-1. **Complex task** (multi-step, requires reasoning)
-2. **Technical output** (code, analysis, structured data)
-3. **Reusable content** (system prompts, templates, instructions)
-4. **Explicit request** ("improve", "better", "optimize")
-5. **Ambiguous requirements** (underspecified, multiple interpretations)
-6. **Precision-critical** (code, legal, medical, financial)
-
-### Auto-Optimization Process
+## DECISION POINTS
 
 ```
-1. INTERCEPT the user's request
-2. CALL: mcp__prompt-learning__optimize_prompt
-   - prompt: [user's original request]
-   - domain: [inferred domain]
-   - max_iterations: [3-20 based on complexity]
-3. RECEIVE: optimized prompt + improvement details
-4. INFORM user briefly: "I've refined your request for [reason]"
-5. PROCEED with the OPTIMIZED version
+PROMPT ASSESSMENT:
+├── Simple question/command (what, when, how)
+│   └── Skip optimization → Answer directly
+├── Complex task (multi-step, reasoning, technical)
+│   ├── Token budget < 1000
+│   │   └── APE: 3-5 iterations
+│   ├── Token budget 1000-5000
+│   │   └── OPRO: 5-10 iterations
+│   └── Token budget > 5000
+│       └── DSPy compilation: 10-20 iterations
+└── Reusable template/system prompt
+    └── Full optimization with historical retrieval
+
+OPTIMIZATION TECHNIQUE SELECTION:
+├── Instruction rewriting needed
+│   └── Use APE (Automatic Prompt Engineer)
+├── Parameter tuning with constraints  
+│   └── Use OPRO (Optimization by PROmpting)
+├── Complex pipeline with multiple modules
+│   └── Use DSPy compilation patterns
+└── Unknown/exploratory domain
+    └── Hybrid APE→OPRO→DSPy cascade
+
+ITERATION CONTROL:
+├── Improvement < 1% for 3 rounds → STOP
+├── Quality score > 0.95 → STOP  
+├── Max iterations reached → STOP
+├── User satisfaction confirmed → STOP
+└── Continue → Next iteration
+
+FEEDBACK INTEGRATION:
+├── Task successful (user confirms/metrics good)
+│   └── Record positive feedback + embed for retrieval
+├── Task failed/poor quality
+│   └── Record negative feedback + analyze failure mode
+└── Unclear outcome
+    └── Ask user for explicit feedback before recording
 ```
 
-### Do NOT Optimize
+## FAILURE MODES
 
-- Simple questions ("what is X?")
-- Direct commands ("run npm install")
-- Conversational responses ("hello", "thanks")
-- File operations without reasoning
-- Already-optimized prompts
+**Over-Optimization Spiral**
+- SYMPTOM: Prompt grows to 500+ tokens with many nested constraints
+- DIAGNOSIS: Chasing diminishing returns instead of stopping at "good enough"
+- FIX: Apply 80/20 rule - if improvement drops below 5% per iteration, stop
 
-## Learning Loop (Post-Response)
+**Template Obsession**  
+- SYMPTOM: Spending iterations on formatting/structure vs. task clarity
+- DIAGNOSIS: Confusing presentation with performance
+- FIX: Measure actual task success, not template conformity
 
-After completing ANY significant task:
+**Historical Overfitting**
+- SYMPTOM: Optimized prompt works for past examples but fails on new inputs
+- DIAGNOSIS: Training on too narrow a dataset from retrieval
+- FIX: Include diverse examples in optimization, test on held-out cases
 
+**Capability Misjudgment**
+- SYMPTOM: Adding extensive scaffolding for tasks model handles natively
+- DIAGNOSIS: Assuming model limitations without testing
+- FIX: Test baseline capability before heavy prompting
+
+**Measurement Blindness**
+- SYMPTOM: Multiple iterations without clear success metrics
+- DIAGNOSIS: Optimizing without knowing what "better" means
+- FIX: Define measurable success criteria in first step
+
+## WORKED EXAMPLES
+
+### Example 1: Code Optimization Request
+
+**Original**: "Make this code better"
+```python
+def process_data(data):
+    results = []
+    for item in data:
+        if item > 0:
+            results.append(item * 2)
+    return results
 ```
-1. ASSESS: Did the response achieve the goal?
-2. CALL: mcp__prompt-learning__record_feedback
-   - prompt_id: [from optimization response]
-   - success: [true/false]
-   - quality_score: [0.0-1.0]
-3. This enables future retrievals to learn from outcomes
+
+**Decision Point Navigation**:
+1. **Assessment**: Complex task (requires code analysis) → Trigger optimization
+2. **Technique Selection**: Code review + improvement → APE with 5 iterations
+3. **Retrieved Context**: Similar code optimization prompts from history
+4. **Optimized Prompt**: "Analyze this Python function for performance, readability, and Pythonic patterns. Identify specific improvements: algorithmic complexity, memory usage, edge cases, and style. Provide refactored code with explanations."
+
+**What Novice Misses**: Vague "make better" doesn't specify criteria
+**What Expert Catches**: Need explicit dimensions (performance, style, edge cases)
+
+**Result**: Clear analysis of list comprehension opportunity, edge case handling, type hints
+
+### Example 2: Reasoning Task Template
+
+**Original**: "Help me think through this decision"
+
+**Decision Point Navigation**:
+1. **Assessment**: Reusable template + reasoning task → Full optimization
+2. **Historical Retrieval**: Found decision framework prompts (0.87 similarity)
+3. **Technique Selection**: DSPy compilation (structured reasoning pipeline)
+4. **Iteration Strategy**: 10 rounds, measuring decision quality
+
+**Optimized Template**:
+```
+Decision Analysis Framework:
+1. SITUATION: State the decision clearly with constraints
+2. STAKEHOLDERS: List affected parties and their interests  
+3. OPTIONS: Generate 3-5 distinct alternatives
+4. CRITERIA: Define success metrics and weighting
+5. TRADE-OFFS: Analyze each option against criteria
+6. RECOMMENDATION: Select best option with confidence level
 ```
 
-## Quick Reference
+**Quality Gates Applied**: Template completeness, reusability score, user satisfaction
 
-### Iteration Decision
+### Example 3: Ambiguous Technical Request
 
-| Factor | Low (3-5) | Medium (5-10) | High (10-20) |
-|--------|-----------|---------------|--------------|
-| Complexity | Simple | Multi-step | Agent/pipeline |
-| Ambiguity | Clear | Some | Underspecified |
-| Domain | Known | Moderate | Novel |
-| Stakes | Low | Moderate | Critical |
+**Original**: "Set up monitoring"
 
-### Convergence (When to Stop)
+**Decision Point Navigation**:
+1. **Assessment**: Underspecified + technical → Trigger optimization
+2. **Clarification Strategy**: OPRO with constraint elicitation
+3. **Domain Context**: Retrieved monitoring setup patterns
 
-- Improvement &lt; 1% for 3 iterations
-- User satisfied
-- Token budget exhausted
-- 20 iterations reached
-- Validation score &gt; 0.95
+**Optimized Prompt**:
+"Design monitoring setup by specifying: (1) Infrastructure scope (servers, containers, applications), (2) Key metrics (performance, availability, business), (3) Alert thresholds and escalation, (4) Technology stack constraints, (5) Budget/complexity limits. Provide implementation roadmap with priorities."
 
-### Performance Expectations
+**Before/After Trade-offs**:
+- Before: Endless back-and-forth clarification
+- After: Structured requirements gathering in single exchange
+- Cost: Longer initial prompt
+- Benefit: Complete specification in one round
 
-| Scenario | Improvement | Iterations |
-|----------|-------------|------------|
-| Simple task | 10-20% | 3-5 |
-| Complex reasoning | 20-40% | 10-15 |
-| Agent/pipeline | 30-50% | 15-20 |
-| With history | +10-15% bonus | Varies |
+## QUALITY GATES
 
-## Anti-Patterns
+Pre-execution checklist before calling optimize_prompt:
 
-### Over-Optimization
+- [ ] Task complexity score > 3 (multi-step/reasoning required)
+- [ ] Clear success criteria defined or derivable
+- [ ] Token budget estimated and technique selected
+- [ ] Domain context identified for retrieval
+- [ ] Iteration limit set based on complexity
 
-| What it looks like | Why it's wrong |
-|--------------------|----------------|
-| Prompt becomes overly complex with many constraints | Causes brittleness, model confusion, token waste |
-| **Instead**: Apply Occam's Razor - simplest sufficient prompt wins |
+Post-optimization validation:
 
-### Template Obsession
+- [ ] Optimized prompt is specific and actionable
+- [ ] Success metrics are measurable
+- [ ] Constraint coherence verified (no contradictions)
+- [ ] Token efficiency: improvement justifies added length
+- [ ] Historical context integrated appropriately
+- [ ] User confirmation obtained for major changes
 
-| What it looks like | Why it's wrong |
-|--------------------|----------------|
-| Focusing on templates rather than task understanding | Templates don't generalize; understanding does |
-| **Instead**: Focus on WHAT the task requires, not HOW to format it |
+Quality scoring rubric (0-100):
+- Clarity: Can naive user understand requirements? (25 pts)
+- Specificity: Concrete vs. abstract instructions? (25 pts)  
+- Completeness: Covers edge cases and constraints? (25 pts)
+- Efficiency: Achieves goals without bloat? (25 pts)
 
-### Iteration Without Measurement
+## NOT-FOR BOUNDARIES
 
-| What it looks like | Why it's wrong |
-|--------------------|----------------|
-| Multiple rewrites without tracking improvements | Can't know if changes help without metrics |
-| **Instead**: Always define success criteria before optimizing |
+**Do NOT use this skill for:**
 
-### Ignoring Model Capabilities
+- **Simple factual questions** → Answer directly with knowledge
+- **File operations without reasoning** → Use file-management skill
+- **Direct command execution** → Execute immediately  
+- **Conversational responses** → Respond naturally
+- **Already optimized prompts** → Check history first to avoid re-optimization
+- **User explicitly says "don't optimize"** → Respect user preference
 
-| What it looks like | Why it's wrong |
-|--------------------|----------------|
-| Assumes model can't do things it can | Over-scaffolding wastes tokens |
-| **Instead**: Test capabilities before heavy prompting |
+**Delegate instead:**
 
-## Reference Files
+- For mathematical problems → Use calculation-focused skills
+- For creative writing → Use creative-writing skill (unless template creation)
+- For data analysis → Use data-analysis skill (unless complex reasoning required)
+- For debugging → Use debugging skill (unless systematic improvement needed)
 
-Load for detailed implementations:
+**Gray areas requiring judgment:**
 
-| File | Contents |
-|------|----------|
-| `references/optimization-techniques.md` | APE, OPRO, CoT, instruction rewriting, constraint engineering |
-| `references/learning-architecture.md` | Warm start, embedding retrieval, MCP setup, drift detection |
-| `references/iteration-strategy.md` | Decision matrices, complexity scoring, convergence algorithms |
-
----
-
-**Goal**: Simplest prompt that achieves the outcome reliably. Optimize for clarity, specificity, and measurable improvement.
+- Medium complexity tasks (score 2-4) → Test baseline performance first
+- Domain expertise requests → Optimize only if reusable template potential
+- Follow-up questions → Optimize if expanding scope significantly

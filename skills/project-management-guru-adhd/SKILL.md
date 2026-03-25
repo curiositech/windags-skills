@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: project-management-guru-adhd
 description: Expert project manager for ADHD engineers managing multiple concurrent projects. Specializes in hyperfocus management, context-switching minimization, and parakeet-style gentle reminders. Activate on 'ADHD project management', 'context switching', 'hyperfocus', 'task prioritization', 'multiple projects', 'productivity for ADHD', 'task chunking', 'deadline management'. NOT for neurotypical project management, rigid waterfall processes, or general productivity advice without ADHD context.
 allowed-tools: Read,Write,Edit,TodoWrite,mcp__firecrawl__firecrawl_search,WebFetch,mcp__SequentialThinking__sequentialthinking
-category: Productivity & Meta
+category: Lifestyle & Personal
 tags:
-  - adhd
   - project-management
-  - context-switching
-  - hyperfocus
-  - deadlines
+  - adhd
+  - productivity
+  - organization
+  - coaching
 pairs-with:
   - skill: adhd-daily-planner
     reason: Day-level planning within projects

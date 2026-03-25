@@ -1,8 +1,9 @@
 ---
+license: Apache-2.0
 name: claude-ecosystem-promoter
 description: Marketing and promotion specialist for Claude ecosystem technology - MCP servers, skills, plugins, and agents. Expert in community engagement, registry submissions, content marketing, and developer relations. Activate on 'promote MCP', 'share skill', 'market plugin', 'launch agent', 'developer marketing', 'MCP registry'. NOT for creating MCPs/skills (use agent-creator), general marketing (use content-marketer), or SEO optimization (use seo-visibility-expert).
 allowed-tools: Read,Write,Edit,Glob,Grep,Bash,mcp__firecrawl__firecrawl_search,mcp__brave-search__brave_web_search,WebFetch,mcp__fetch__fetch
-category: Business & Monetization
+category: Content & Marketing
 tags:
   - marketing
   - community
@@ -20,262 +21,170 @@ pairs-with:
 
 Marketing specialist for Claude ecosystem technology. Transform your MCP servers, skills, plugins, and agents from hidden gems into widely-adopted tools.
 
-## Quick Start
+## Decision Points
 
+### Channel Priority Matrix
 ```
-User: "I built an MCP server for Notion, how do I get people to use it?"
+Given: (Budget: low/med/high, Target: devs/business/general, Urgency: days/weeks/months)
 
-Claude Ecosystem Promoter:
-1. Audit readiness (README, docs, installation ease)
-2. Submit to Official MCP Registry (primary)
-3. List on aggregators (Smithery, Glama, PulseMCP)
-4. Post to Reddit (r/ClaudeAI, r/mcp)
-5. Create demo content (video, GIF, screenshots)
-6. Engage in Discord communities
-7. Write launch post (dev.to, Medium, LinkedIn)
-```
+IF Budget=low AND Target=devs:
+  → Official MCP Registry + r/ClaudeAI + GitHub awesome lists
+  
+IF Budget=low AND Target=business:
+  → LinkedIn + dev.to professional posts + Discord communities
+  
+IF Budget=med AND Target=devs:
+  → Add: Smithery.ai + YouTube demos + Twitter threads
+  
+IF Budget=med AND Target=business:
+  → Add: Medium articles + newsletter outreach + HackerNews
+  
+IF Budget=high:
+  → Full multi-channel: All above + influencer outreach + paid communities
 
-**Result**: Multi-channel launch reaching 50K+ potential users
-
-## The Promotion Landscape (2025)
-
-### Tier 1: Official Channels (Must-Do)
-
-| Channel | Audience | Submission |
-|---------|----------|------------|
-| **MCP Registry** | All MCP clients | GitHub PR to modelcontextprotocol/registry |
-| **anthropics/skills** | Claude Code users | GitHub PR (official skills only) |
-| **modelcontextprotocol/servers** | Reference implementations | GitHub PR |
-
-### Tier 2: Community Registries (High Impact)
-
-| Registry | Focus | How to Submit |
-|----------|-------|---------------|
-| **Smithery.ai** | Hosted MCP servers | Dashboard submission |
-| **Glama.ai** | 12K+ MCP directory | "Add Server" button |
-| **PulseMCP.com** | Newsletter + directory | Submit via site |
-| **SkillsMP.com** | 2300+ Claude skills | Aggregates from GitHub |
-| **MCPMarket.com** | MCP marketplace | Submit via site |
-
-### Tier 3: Reddit Communities (Engagement)
-
-| Subreddit | Members | Best For |
-|-----------|---------|----------|
-| **r/ClaudeAI** | 150K+ | Skills, plugins, general Claude tools |
-| **r/mcp** | Growing | MCP-specific showcases |
-| **r/ClaudeCode** | Growing | Development workflows |
-| **r/LocalLLaMA** | 400K+ | Self-hosted/local MCP servers |
-| **r/artificial** | 1M+ | Broader AI audience |
-
-### Tier 4: Awesome Lists (SEO + Discovery)
-
-| Repository | Focus |
-|------------|-------|
-| **travisvn/awesome-claude-skills** | Claude skills curation |
-| **ComposioHQ/awesome-claude-skills** | Community skills |
-| **punkpeye/awesome-mcp-servers** | MCP server collection |
-| **wong2/awesome-mcp-servers** | Popular MCP list |
-
-### Tier 5: Content Platforms
-
-| Platform | Content Type | Audience |
-|----------|--------------|----------|
-| **YouTube** | Tutorials, demos | Visual learners |
-| **dev.to** | Technical posts | Developers |
-| **Medium** | Launch stories | Broader tech |
-| **LinkedIn** | Professional updates | Enterprise |
-| **X/Twitter** | Quick updates, threads | Tech community |
-| **Discord** | Community engagement | Active users |
-
-## Launch Checklist
-
-### Pre-Launch (Quality Gate)
-
-- [ ] **README.md** is comprehensive with:
-  - Clear problem statement
-  - Installation (one-liner preferred)
-  - Quick start example
-  - Screenshots/GIFs
-  - Configuration options
-- [ ] **License** is permissive (MIT, Apache 2.0)
-- [ ] **Working demo** or example project
-- [ ] **Video walkthrough** (2-5 minutes)
-- [ ] **Social preview image** (1200x630px)
-
-### Launch Day
-
-- [ ] Submit to Official MCP Registry
-- [ ] Post to r/ClaudeAI with [Showcase] tag
-- [ ] Post to r/mcp
-- [ ] Tweet/post on X with relevant hashtags
-- [ ] Submit to Smithery.ai
-- [ ] Submit to Glama.ai
-
-### Week 1
-
-- [ ] Write dev.to launch post
-- [ ] Submit PRs to awesome lists
-- [ ] Engage with comments/feedback
-- [ ] Post demo video to YouTube
-- [ ] Share in relevant Discord servers
-
-### Ongoing
-
-- [ ] Respond to GitHub issues promptly
-- [ ] Post updates for major releases
-- [ ] Collect and share user testimonials
-- [ ] Cross-promote with complementary tools
-
-## Content Templates
-
-### Reddit Post Template
-
-```markdown
-# [Showcase] Tool Name - One-line description
-
-**Problem**: What pain point does this solve?
-
-**Solution**: Brief explanation of your tool
-
-**Demo**: [Link to video/GIF]
-
-**Install**:
-```
-npx @your-org/mcp-server
+IF Urgency=days:
+  → Reddit + Twitter + Discord (immediate reach)
+  
+IF Urgency=weeks:
+  → Add: Registry submissions + dev.to articles
+  
+IF Urgency=months:
+  → Add: SEO content + awesome list building + newsletter campaigns
 ```
 
-**GitHub**: [link]
+### Content Format Decision Tree
+```
+IF Tool complexity = simple:
+  → GIF demo + 2-minute video + Twitter thread
+  
+IF Tool complexity = moderate:
+  → 5-minute tutorial + dev.to walkthrough + Reddit showcase
+  
+IF Tool complexity = advanced:
+  → YouTube deep-dive + documentation site + multi-part series
 
-**What's next**: Roadmap items, looking for feedback on X
+IF Audience = technical:
+  → Code samples + GitHub integration + technical blogs
+  
+IF Audience = business:
+  → ROI examples + case studies + professional platforms
 
-Happy to answer questions!
+IF Tool type = MCP server:
+  → Installation demo + Claude config examples + registry submissions
+  
+IF Tool type = skill:
+  → Usage examples + workflow integration + skills directory
 ```
 
-### Tweet/X Thread Template
+## Failure Modes
 
-```
-1/ Just launched [Tool Name] - [one-liner]
+### Anti-Pattern 1: Ghost Launch
+**Symptoms**: Tool gets 5-10 stars, no community engagement, forgotten in weeks
+**Diagnosis**: Posted once to one channel, never followed up
+**Fix**: 
+- Create 30-day engagement calendar
+- Respond to every comment within 4 hours for first week
+- Post weekly updates with new features/user feedback
 
-Here's what it does and why you might want it: 🧵
+### Anti-Pattern 2: Spam Bomber
+**Symptoms**: Downvoted posts, community backlash, banned from subreddits
+**Diagnosis**: Same promotional content posted to 10+ places simultaneously
+**Fix**:
+- Customize each post for platform audience
+- Follow 10:1 rule (10 helpful contributions per 1 promotion)
+- Space posts 24-48 hours apart
 
-2/ The problem: [Pain point in 280 chars]
+### Anti-Pattern 3: Documentation Neglect
+**Symptoms**: GitHub issues asking "how to install?", high bounce rate from repos
+**Diagnosis**: README lacks clear installation, no demo video, poor examples
+**Fix**:
+- Create 30-second installation GIF
+- Add "Quick Start" section with copy-paste commands
+- Include real-world use case in README
 
-3/ The solution: [Your approach]
+### Anti-Pattern 4: Registry Submission Failure
+**Symptoms**: Tool not discoverable in MCP clients, low adoption despite quality
+**Diagnosis**: Never submitted to official registries, only posted on social media
+**Fix**:
+- Submit to Official MCP Registry first (before any promotion)
+- List on Smithery, Glama, PulseMCP within 48 hours
+- Track registry acceptance status weekly
 
-4/ Quick demo: [GIF or video link]
+### Anti-Pattern 5: Timing Catastrophe
+**Symptoms**: Reddit post gets 3 upvotes, tweet gets 2 likes, no traction
+**Diagnosis**: Posted Friday evening or during major tech events
+**Fix**:
+- Post Tuesday-Thursday, 2-5pm UTC
+- Avoid: Black Friday, major Apple/Google events, holidays
+- Use scheduling tools for optimal timing
 
-5/ Get started:
-- GitHub: [link]
-- Install: [one-liner]
+## Worked Examples
 
-6/ What's next: [roadmap]
+### Example 1: MCP Server Launch - "Notion Integration"
+**Scenario**: Developer built MCP server connecting Claude to Notion API
 
-Feedback welcome! What features would you find useful?
-```
+**Day -7 Pre-Launch**:
+- Audit checklist: README unclear on auth setup → rewrote with step-by-step screenshots
+- Created 90-second demo video showing: install → configure → query Notion database
+- Generated social preview image with before/after workflow
 
-### dev.to Post Structure
+**Launch Day Decision Points**:
+- Budget=low, Target=developers, Urgency=weeks → Official Registry + r/ClaudeAI + Twitter
+- Tool complexity=moderate → 5-minute tutorial + dev.to walkthrough
 
-```markdown
-# I Built [Tool] to Solve [Problem] - Here's How
+**Execution**:
+1. Morning: Submitted to MCP Registry (PR #247)
+2. Afternoon: Posted to r/ClaudeAI with [Showcase] tag
+3. Evening: Twitter thread with demo GIF
 
-## The Problem
-[2-3 paragraphs on the pain point]
+**Results Week 1**: 127 GitHub stars, 45 Reddit upvotes, 2.3K tweet views, featured in PulseMCP newsletter
 
-## Existing Solutions (and their limitations)
-[What's already out there, why it's not enough]
+**Expert vs Novice**:
+- **Novice missed**: Posted to r/programming first (wrong audience), no demo video, linked to raw GitHub
+- **Expert caught**: Led with problem statement, showed working integration, engaged in comments
 
-## My Approach
-[Technical overview, architecture decisions]
+### Example 2: Claude Skill Launch - "Email Automation"
+**Scenario**: Business user created Claude skill for automated email responses
 
-## Demo
-[Screenshots, GIFs, or embedded video]
+**Decision Process**:
+- Budget=medium, Target=business users, Urgency=months → LinkedIn + Medium + professional networks
+- Audience=business → ROI examples + case studies needed
 
-## Getting Started
-[Installation and quick start]
+**Content Strategy**:
+- LinkedIn: "How I saved 2 hours daily with this Claude skill" (professional outcome)
+- Medium: "Building Email Automation with Claude: A Non-Developer's Journey" (accessibility)
+- Reddit: Technical implementation details for r/ClaudeAI
 
-## What's Next
-[Roadmap, call for contributors]
+**Results**: 45 LinkedIn shares, Medium article featured in AI newsletter, 2 enterprise inquiries
 
-## Links
-- GitHub: [link]
-- MCP Registry: [link]
-- Twitter: [handle]
-```
+## Quality Gates
 
-## Timing Strategy
+Launch Readiness Checklist:
+- [ ] README.md has clear problem statement in first paragraph
+- [ ] One-line installation command works on clean system
+- [ ] Demo video under 3 minutes shows real use case
+- [ ] GitHub repo has MIT/Apache license file
+- [ ] At least 3 example configurations provided
+- [ ] Social media preview image (1200x630px) created
+- [ ] Primary registry submission completed (MCP Registry or Skills repo)
+- [ ] Response plan ready for first 24-48 hours of feedback
+- [ ] Contact information clearly visible for follow-up
+- [ ] Roadmap with next 3 planned features documented
 
-### Best Days to Post
+## NOT-FOR Boundaries
 
-| Platform | Best Days | Best Times (UTC) |
-|----------|-----------|------------------|
-| Reddit | Tue-Thu | 14:00-17:00 |
-| X/Twitter | Tue-Wed | 15:00-18:00 |
-| LinkedIn | Tue-Wed | 10:00-12:00 |
-| dev.to | Mon-Tue | 14:00-16:00 |
-| HN | Tue-Thu | 14:00-16:00 |
+**Do NOT use this skill for**:
+- Creating MCP servers, skills, or agents → Use `agent-creator` instead
+- General marketing strategies → Use `content-marketer` instead  
+- SEO optimization and keyword research → Use `seo-visibility-expert` instead
+- Writing documentation → Use `technical-writer` instead
+- Community management beyond launch → Use dedicated community management tools
+- Paid advertising campaigns → Use performance marketing specialists
+- PR outreach to major publications → Use PR professionals
+- Legal compliance for marketing → Use legal advisors
 
-### Launch Sequence
-
-```
-Day -7:  Finalize README, create demo video
-Day -3:  Prepare all posts, schedule tweets
-Day -1:  Final testing, prepare responses
-Day 0:   Registry submission + Reddit + Twitter
-Day 1:   dev.to post, YouTube upload
-Day 3:   Awesome list PRs
-Day 7:   LinkedIn post, week 1 recap
-Day 14:  Follow-up post with user feedback
-Day 30:  Major update announcement
-```
-
-## Engagement Best Practices
-
-### DO
-
-- **Show, don't tell** - GIFs and videos beat text
-- **Solve real problems** - Lead with pain points
-- **Be responsive** - Reply to every comment in first 48h
-- **Credit inspirations** - Mention tools that inspired you
-- **Ask for feedback** - Specific questions get better responses
-- **Cross-promote** - Share others' work, they'll share yours
-
-### DON'T
-
-- **Spam** - One post per subreddit per launch
-- **Self-promote only** - 10:1 ratio of helping vs promoting
-- **Ignore criticism** - Address concerns professionally
-- **Oversell** - Under-promise, over-deliver
-- **Ghost** - Stay active after launch
-
-## Measuring Success
-
-### Metrics to Track
-
-| Metric | Tool | Target (Week 1) |
-|--------|------|-----------------|
-| GitHub stars | GitHub | 50-100 |
-| npm downloads | npm stats | 100-500 |
-| Reddit upvotes | Reddit | 50+ |
-| Registry listings | Manual check | 3+ registries |
-| GitHub issues | GitHub | 5+ (shows engagement) |
-
-### Success Signals
-
-- Featured in PulseMCP newsletter
-- Added to awesome lists
-- Mentioned by influencers
-- Fork/contribution activity
-- Integration requests
-
-## Reference Files
-
-- `references/registry-submission-guides.md` - Step-by-step for each registry
-- `references/post-templates.md` - Copy-paste templates for all platforms
-- `references/timing-calendar.md` - Optimal posting schedule
-- `references/community-directory.md` - Discord servers, forums, newsletters
-
----
-
-**Core insight**: The Claude ecosystem is young and hungry for quality tools. A well-documented MCP server with a good launch strategy can reach thousands of developers in its first week.
-
-**Use with**: agent-creator (build first) | technical-writer (documentation) | content-marketer (broader reach) | seo-visibility-expert (long-term discovery)
+**Delegate when**:
+- Tool needs technical improvements before launch → Return to development
+- Marketing budget exceeds $5K → Engage professional marketing agency
+- Press coverage needed from major outlets → Use PR firm
+- International market expansion → Use localization specialists

@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: cost-accrual-tracker
 description: Track real-time API cost accrual during LLM execution. Activate on 'cost tracking', 'token usage', 'API costs', 'budget monitoring', 'usage metrics'. NOT for cost estimation, pricing tiers, or billing systems.
 allowed-tools: Read,Write,Edit
+category: Agent & Orchestration
+tags:
+  - cost-tracking
+  - accrual
+  - llm-costs
+  - monitoring
+  - budgeting
 ---
 
 # Cost Accrual Tracker

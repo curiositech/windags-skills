@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: recovery-education-writer
 description: Write neuroscientific, peer-oriented drug education content that roots experiences in body/brain mechanisms. Use when creating educational articles, explaining neurological phenomena, demystifying recovery challenges, or answering "why does this happen?" questions. Activates for harm reduction content, psychoeducation, recovery science writing, and content that reduces shame through understanding.
 allowed-tools: Read,Write,Edit,WebSearch
-category: Lifestyle & Personal
+category: Recovery & Wellness
 tags:
   - recovery
   - education
-  - neuroscience
-  - harm-reduction
-  - psychoeducation
+  - writing
+  - content
+  - awareness
 ---
 
 # Recovery Education Writer

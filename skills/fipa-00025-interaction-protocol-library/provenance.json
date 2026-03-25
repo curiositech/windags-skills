@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "FIPA-00025-Interaction-Protocol-Library.pdf",
+    "path": "batch_weak_subsystems/fipa/FIPA-00025-Interaction-Protocol-Library.pdf",
+    "chars": 60292,
+    "tokens_approx": 15073
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T05:38:39.215951Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 19200,
+        "output": 25298
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T05:38:39.227834Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1941,
+        "output": 3233
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 568.3765661716461,
+  "generated_at": "2026-02-24T05:38:39.236897Z"
+}

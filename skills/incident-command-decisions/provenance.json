@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "A_discussion_of_decision_making_applied.pdf",
+    "path": "../batch_ndm_remaining/A_discussion_of_decision_making_applied.pdf",
+    "chars": 60751,
+    "tokens_approx": 15187
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T13:57:21.731170Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 19256,
+        "output": 26890
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T13:57:21.740296Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1968,
+        "output": 3511
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 664.1842260360718,
+  "generated_at": "2026-02-24T13:57:21.748055Z"
+}

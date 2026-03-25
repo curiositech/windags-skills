@@ -1,507 +1,258 @@
 ---
+license: Apache-2.0
 name: rest-api-design
 description: Design REST API endpoints with Zod validation and OpenAPI documentation. Use when creating new API routes, validating request/response schemas, or updating API documentation. Activates for endpoint design, schema validation, error handling, and API docs.
 allowed-tools: Read,Write,Edit,Bash(npm:*,npx:*)
-category: Code Quality & Testing
+category: Backend & Infrastructure
 tags:
-  - api
-  - code
-  - validation
-  - documentation
+  - rest
+  - api-design
+  - http
+  - endpoints
+  - best-practices
 ---
 
 # REST API Design
 
-This skill helps you design and implement REST API endpoints following project patterns with Zod validation and OpenAPI documentation.
+Design REST API endpoints that follow HTTP semantics and handle edge cases gracefully.
 
-## When to Use
+## Decision Points
 
-✅ **USE this skill for:**
-- Creating new REST API endpoints with Next.js App Router
-- Designing request/response schemas with Zod
-- Implementing proper error handling and status codes
-- Adding rate limiting and authentication
-- Generating OpenAPI documentation
-
-❌ **DO NOT use for:**
-- GraphQL APIs → different paradigm entirely
-- Cloudflare Workers → use `cloudflare-worker-dev` skill
-- Supabase Edge Functions → use Supabase docs
-- WebSocket/real-time APIs → different patterns
-
-## API Route Structure
+### HTTP Method Selection
 
 ```
-src/app/api/
-├── auth/           # Authentication endpoints
-├── check-in/       # Daily check-in CRUD
-├── chat/           # AI coaching chat
-├── journal/        # Journal entries
-├── admin/          # Admin-only endpoints
-└── health/         # Health check
+Does the request read data without side effects?
+├─ YES → GET
+│  └─ Never mutate state. Cache-safe.
+└─ NO → Does it create a new resource?
+   ├─ YES → Server assigns ID?
+   │  ├─ YES → POST to collection (/orders)
+   │  └─ NO → PUT to specific path (/orders/123)
+   └─ NO → Does it replace entire resource?
+      ├─ YES → PUT to item (/orders/123)
+      │  └─ Send full representation
+      └─ NO → Does it update specific fields?
+         ├─ YES → PATCH to item (/orders/123)
+         │  └─ Send only changed fields
+         └─ NO → DELETE the resource
+            └─ Must be idempotent
 ```
 
-## Standard Route Template
+### Status Code Selection
+
+```
+Operation succeeded?
+├─ YES → Returning data?
+│  ├─ YES → 200 OK
+│  ├─ Created resource? → 201 Created + Location header
+│  ├─ Async processing? → 202 Accepted + status URL
+│  └─ No content? → 204 No Content
+└─ NO → Client error or server error?
+   ├─ CLIENT → Malformed request?
+   │  ├─ Bad JSON/headers → 400 Bad Request
+   │  ├─ Valid syntax, bad data → 422 Unprocessable Entity
+   │  ├─ No auth → 401 Unauthorized
+   │  ├─ Insufficient permissions → 403 Forbidden
+   │  ├─ Resource missing → 404 Not Found
+   │  ├─ Conflict/duplicate → 409 Conflict
+   │  └─ Rate limited → 429 Too Many Requests
+   └─ SERVER → Code threw?
+      ├─ YES → 500 Internal Server Error
+      ├─ Dependency down? → 502 Bad Gateway
+      └─ Overloaded? → 503 Service Unavailable
+```
+
+### Pagination Strategy
+
+```
+Data volume?
+├─ < 100 items → No pagination needed
+├─ 100-10k items → Offset-based
+│  └─ ?page=1&limit=20
+└─ > 10k or real-time → Cursor-based
+   └─ ?cursor=abc&limit=50
+```
+
+### Resource Nesting
+
+```
+Resource relationship?
+├─ Independent resource → Top-level (/orders)
+├─ Owned by parent → One level nesting (/users/123/orders)
+└─ Deeper hierarchy needed?
+   └─ STOP → Flatten with query params
+      └─ /comments?postId=123 not /posts/123/comments
+```
+
+## Failure Modes
+
+### 1. **Verbs-in-URLs Syndrome**
+- **Symptoms**: `/getUsers`, `/createOrder`, `/deleteItem/5`
+- **Detection**: URL path contains action words (get, create, delete, update)
+- **Fix**: HTTP method IS the verb. Use nouns: `GET /users`, `POST /orders`, `DELETE /items/5`
+
+### 2. **Deep Nesting Hell**
+- **Symptoms**: `/users/1/posts/2/comments/3/likes/4`
+- **Detection**: More than 2 path segments with IDs
+- **Fix**: Flatten to `/likes?commentId=3`. If resource has global ID, make it top-level
+
+### 3. **Status Code Soup**
+- **Symptoms**: `{"error": "Not found"}` with HTTP 200, or `{"success": false}` with 200
+- **Detection**: Error responses use 200 status with error in body
+- **Fix**: HTTP status code IS the outcome signal. Use 404, 422, 409, etc.
+
+### 4. **Pagination Inconsistency**
+- **Symptoms**: `/users?page=1` but `/posts?offset=0&count=20`
+- **Detection**: Different pagination params across endpoints
+- **Fix**: Standardize on ONE pattern. Document in API guidelines. Apply everywhere
+
+### 5. **POST Double-Submit Vulnerability** 
+- **Symptoms**: User clicks twice, gets duplicate orders. Network retry creates duplicates
+- **Detection**: POST endpoints have no idempotency protection
+- **Fix**: Accept `Idempotency-Key` header. Cache response by `(userId, key)` for 24h
+
+### 6. **Schema Over-Nesting**
+- **Symptoms**: `{"data": {"result": {"items": [{"item": {"value": 123}}]}}}`
+- **Detection**: More than 2 levels of nesting in response objects
+- **Fix**: Flatten structure. Use consistent envelope: `{"data": [...], "meta": {}}`
+
+### 7. **Missing Error Details**
+- **Symptoms**: `{"error": "Validation failed"}` with no field-level info
+- **Detection**: 422 responses lack specific field errors
+- **Fix**: Include `details` array with `path` and `message` for each validation failure
+
+### 8. **Unbounded Responses**
+- **Symptoms**: `GET /users` returns all 50,000 users in one response
+- **Detection**: Collection endpoints with no pagination or limits
+- **Fix**: Default pagination (limit=20). Max limit (100). Never return unbounded arrays
+
+## Worked Examples
+
+### Scenario: E-commerce Order Management API
+
+**Requirements**: Create orders, list user orders, update shipping address, cancel orders.
+
+**Step 1: Method Selection**
+- List orders: Reading data → `GET /orders`
+- Create order: Creating resource → `POST /orders` 
+- Update address: Partial update → `PATCH /orders/{id}`
+- Cancel order: Action → Model as resource → `POST /orders/{id}/cancellation`
+
+**Step 2: Handle Edge Cases**
 
 ```typescript
-// src/app/api/[feature]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
-import { getSession } from '@/lib/auth';
-import { createRateLimiter } from '@/lib/rate-limit';
-import { logPHIAccess } from '@/lib/hipaa/audit';
-import { db } from '@/db';
-
-// 1. Define schemas
-const RequestSchema = z.object({
-  field: z.string().min(1).max(1000),
-  optional: z.string().optional(),
-  enumField: z.enum(['option1', 'option2']),
-  number: z.number().int().positive(),
-});
-
-const ResponseSchema = z.object({
-  id: z.string(),
-  createdAt: z.string().datetime(),
-});
-
-// 2. Configure rate limiter
-const rateLimiter = createRateLimiter({
-  windowMs: 60000,    // 1 minute
-  maxRequests: 30,    // 30 requests per window
-  keyPrefix: 'api:feature',
-});
-
-// 3. Implement handlers
-export async function GET(request: NextRequest) {
-  // Auth check
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-
-  // Rate limit
-  const rateLimitResult = await rateLimiter.check(session.userId);
-  if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded' },
-      { status: 429, headers: rateLimitResult.headers }
-    );
-  }
-
-  // Query data
-  const data = await db.query.features.findMany({
-    where: eq(features.userId, session.userId),
-  });
-
-  // Audit log (if PHI)
-  await logPHIAccess(session.userId, 'feature', null, 'LIST');
-
-  return NextResponse.json(data);
+// POST /orders - Creation
+{
+  "items": [{"productId": "prod_1", "quantity": 2}],
+  "shippingAddress": {...},
+  "idempotencyKey": "uuid-12345"  // Prevent double-submit
 }
 
-export async function POST(request: NextRequest) {
-  // Auth check
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-
-  // Rate limit
-  const rateLimitResult = await rateLimiter.check(session.userId);
-  if (!rateLimitResult.allowed) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded' },
-      { status: 429, headers: rateLimitResult.headers }
-    );
-  }
-
-  // Parse and validate body
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: 'Invalid JSON' },
-      { status: 400 }
-    );
-  }
-
-  const parsed = RequestSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: 'Validation failed',
-        details: parsed.error.issues.map(i => ({
-          path: i.path.join('.'),
-          message: i.message,
-        })),
-      },
-      { status: 400 }
-    );
-  }
-
-  // Create resource
-  const [created] = await db.insert(features).values({
-    id: generateId(),
-    userId: session.userId,
-    ...parsed.data,
-    createdAt: new Date(),
-  }).returning();
-
-  // Audit log
-  await logPHIAccess(session.userId, 'feature', created.id, 'CREATE');
-
-  return NextResponse.json(created, { status: 201 });
+// Success: 201 Created + Location header
+{
+  "id": "ord_123",
+  "status": "pending",
+  "total": 59.98,
+  "createdAt": "2024-01-15T10:30:00Z"
 }
-```
 
-## Zod Schema Patterns
+// Duplicate: 409 Conflict (idempotency key reused within 24h)
+{
+  "error": "Order already exists with this idempotency key",
+  "code": "DUPLICATE_ORDER",
+  "existingOrderId": "ord_123"
+}
 
-### Basic Types
-
-```typescript
-import { z } from 'zod';
-
-const Schema = z.object({
-  // Strings
-  name: z.string().min(1).max(100),
-  email: z.string().email(),
-  url: z.string().url(),
-  uuid: z.string().uuid(),
-
-  // Numbers
-  count: z.number().int().positive(),
-  rating: z.number().min(1).max(5),
-  price: z.number().nonnegative(),
-
-  // Booleans
-  isActive: z.boolean(),
-
-  // Dates
-  date: z.string().datetime(),
-  dateOnly: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-
-  // Enums
-  status: z.enum(['pending', 'approved', 'denied']),
-
-  // Arrays
-  tags: z.array(z.string()).min(1).max(10),
-
-  // Optional fields
-  notes: z.string().optional(),
-  metadata: z.record(z.string()).optional(),
-
-  // Nullable
-  deletedAt: z.string().datetime().nullable(),
-});
-```
-
-### Advanced Patterns
-
-```typescript
-// Discriminated unions
-const EventSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('click'), x: z.number(), y: z.number() }),
-  z.object({ type: z.literal('keypress'), key: z.string() }),
-]);
-
-// Refinements
-const PasswordSchema = z.string()
-  .min(12, 'Password must be at least 12 characters')
-  .regex(/[A-Z]/, 'Must contain uppercase')
-  .regex(/[a-z]/, 'Must contain lowercase')
-  .regex(/[0-9]/, 'Must contain number')
-  .regex(/[^A-Za-z0-9]/, 'Must contain special character');
-
-// Transform
-const DateSchema = z.string()
-  .datetime()
-  .transform(str => new Date(str));
-
-// Preprocess (coerce types)
-const NumberFromString = z.preprocess(
-  val => typeof val === 'string' ? parseInt(val, 10) : val,
-  z.number()
-);
-```
-
-### Query Parameter Validation
-
-```typescript
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-
-  const QuerySchema = z.object({
-    page: z.coerce.number().int().positive().default(1),
-    limit: z.coerce.number().int().min(1).max(100).default(20),
-    sort: z.enum(['asc', 'desc']).default('desc'),
-    status: z.enum(['all', 'active', 'archived']).optional(),
-  });
-
-  const query = QuerySchema.safeParse({
-    page: searchParams.get('page'),
-    limit: searchParams.get('limit'),
-    sort: searchParams.get('sort'),
-    status: searchParams.get('status'),
-  });
-
-  if (!query.success) {
-    return NextResponse.json(
-      { error: 'Invalid query parameters', details: query.error.issues },
-      { status: 400 }
-    );
-  }
-
-  const { page, limit, sort, status } = query.data;
-  // Use validated params...
+// Invalid data: 422 Unprocessable Entity
+{
+  "error": "Validation failed",
+  "code": "VALIDATION_ERROR", 
+  "details": [
+    {"path": "items[0].quantity", "message": "Must be positive integer"},
+    {"path": "shippingAddress.zipCode", "message": "Invalid format"}
+  ]
 }
 ```
 
-## Error Response Format
+**Step 3: Pagination & Filtering**
 
 ```typescript
-// Standard error response
-interface APIError {
-  error: string;           // Human-readable message
-  code?: string;           // Machine-readable code
-  details?: ErrorDetail[]; // Validation details
-}
-
-interface ErrorDetail {
-  path: string;
-  message: string;
-}
-
-// Error responses
-return NextResponse.json(
-  { error: 'Not found', code: 'NOT_FOUND' },
-  { status: 404 }
-);
-
-return NextResponse.json(
-  {
-    error: 'Validation failed',
-    code: 'VALIDATION_ERROR',
-    details: [
-      { path: 'email', message: 'Invalid email format' },
-    ],
+// GET /orders?status=pending&page=2&limit=10&sort=createdAt:desc
+{
+  "data": [
+    {"id": "ord_124", "status": "pending", "total": 29.99, ...},
+    {"id": "ord_123", "status": "pending", "total": 59.98, ...}
+  ],
+  "pagination": {
+    "page": 2,
+    "limit": 10, 
+    "total": 156,
+    "totalPages": 16
   },
-  { status: 400 }
-);
+  "filters": {
+    "status": "pending",
+    "sort": "createdAt:desc"
+  }
+}
 ```
 
-## HTTP Status Codes
-
-| Code | Use Case |
-|------|----------|
-| 200 | Successful GET, PUT, PATCH |
-| 201 | Successful POST (created) |
-| 204 | Successful DELETE (no content) |
-| 400 | Invalid request/validation error |
-| 401 | Not authenticated |
-| 403 | Not authorized (authenticated but forbidden) |
-| 404 | Resource not found |
-| 409 | Conflict (duplicate, etc.) |
-| 429 | Rate limit exceeded |
-| 500 | Server error |
-
-## OpenAPI Documentation
-
-Update `docs/openapi.yaml` when adding endpoints:
-
-```yaml
-paths:
-  /api/feature:
-    get:
-      summary: List features
-      tags: [Features]
-      security:
-        - cookieAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 20
-            maximum: 100
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Feature'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    post:
-      summary: Create feature
-      tags: [Features]
-      security:
-        - cookieAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateFeatureRequest'
-      responses:
-        '201':
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Feature'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-components:
-  schemas:
-    Feature:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-      required: [id, name, createdAt]
-
-    CreateFeatureRequest:
-      type: object
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 100
-      required: [name]
-
-  responses:
-    Unauthorized:
-      description: Not authenticated
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-                example: Unauthorized
-
-    ValidationError:
-      description: Validation failed
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              error:
-                type: string
-              details:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    path:
-                      type: string
-                    message:
-                      type: string
-```
-
-## Route Handler Patterns
-
-### Dynamic Routes
+**Step 4: State Transitions**
 
 ```typescript
-// src/app/api/feature/[id]/route.ts
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+// PATCH /orders/ord_123 - Update shipping
+{"shippingAddress": {"street": "123 New St"}}
 
-  // Validate ID format
-  if (!isValidUUID(id)) {
-    return NextResponse.json(
-      { error: 'Invalid ID format' },
-      { status: 400 }
-    );
-  }
+// Success if order is pending: 200 OK
+{"id": "ord_123", "status": "pending", "shippingAddress": {...}}
 
-  const item = await db.query.features.findFirst({
-    where: eq(features.id, id),
-  });
+// Error if already shipped: 409 Conflict  
+{
+  "error": "Cannot modify shipped order",
+  "code": "ORDER_ALREADY_SHIPPED",
+  "currentStatus": "shipped"
+}
 
-  if (!item) {
-    return NextResponse.json(
-      { error: 'Not found' },
-      { status: 404 }
-    );
-  }
+// POST /orders/ord_123/cancellation - Cancel order
+{"reason": "Changed mind"}
 
-  return NextResponse.json(item);
+// Success: 201 Created
+{
+  "id": "canc_456", 
+  "orderId": "ord_123",
+  "reason": "Changed mind",
+  "refundAmount": 59.98,
+  "createdAt": "2024-01-15T11:00:00Z"
 }
 ```
 
-### Pagination
+**What novice misses**: Uses `DELETE /orders/123` for cancellation (loses cancel reason/refund data). Returns 200 for all errors. No idempotency protection.
 
-```typescript
-interface PaginatedResponse<T> {
-  data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+**What expert catches**: Models cancellation as resource creation. Uses proper status codes. Protects against double-submit. Validates state transitions.
 
-async function getPaginated(page: number, limit: number) {
-  const offset = (page - 1) * limit;
+## Quality Gates
 
-  const [data, [{ count }]] = await Promise.all([
-    db.query.features.findMany({
-      limit,
-      offset,
-      orderBy: desc(features.createdAt),
-    }),
-    db.select({ count: count() }).from(features),
-  ]);
+- [ ] Every endpoint uses nouns in paths (no verbs like `/getUsers`)
+- [ ] Consistent HTTP method usage (GET=read, POST=create, PATCH=partial update)  
+- [ ] All mutation endpoints return proper status codes (201/204/409/422, never 200 for errors)
+- [ ] Collection endpoints have pagination with consistent params across API
+- [ ] Error responses include `error`, `code`, and `details` fields in standard envelope
+- [ ] POST endpoints that create resources accept `Idempotency-Key` header
+- [ ] Resource nesting limited to 2 levels maximum (/users/123/orders, not deeper)
+- [ ] All endpoints documented with request/response examples including error cases
+- [ ] Rate limiting strategy defined (requests per minute by endpoint type)
+- [ ] Authentication requirements specified per endpoint (public/authenticated/admin)
 
-  return {
-    data,
-    pagination: {
-      page,
-      limit,
-      total: count,
-      totalPages: Math.ceil(count / limit),
-    },
-  };
-}
-```
+## NOT-FOR Boundaries
 
-## References
+**Don't use REST API design for**:
+- GraphQL APIs → Use `graphql-schema-design` skill
+- WebSocket/SSE real-time APIs → Use `realtime-api-design` skill  
+- Platform-specific APIs (Vercel Edge, Cloudflare Workers) → Use platform-specific skills
+- Internal RPC between microservices → Use `grpc-design` or message queues
+- File upload/download APIs → Use `file-api-design` skill for multipart handling
 
-- [Zod Documentation](https://zod.dev)
-- [Next.js Route Handlers](https://nextjs.org/docs/app/building-your-application/routing/route-handlers)
-- [OpenAPI Specification](https://swagger.io/specification/)
-- [Dub.co Zod Validation](https://dub.co/blog/zod-api-validation)
+**Delegate to other skills**:
+- Database schema design → Use `database-design` skill
+- Authentication implementation → Use `auth-implementation` skill
+- OpenAPI documentation → Use `openapi-documentation` skill
+- Performance optimization → Use `api-performance` skill

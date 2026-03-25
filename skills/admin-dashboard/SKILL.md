@@ -1,8 +1,9 @@
 ---
+license: Apache-2.0
 name: admin-dashboard
 description: Extend and modify the admin dashboard, developer portal, and operations console. Use when adding new admin tabs, metrics, monitoring features, or internal tools. Activates for dashboard development, analytics, user management, and internal tooling.
 allowed-tools: Read,Write,Edit,Bash(npm:*,npx:*)
-category: Productivity & Meta
+category: Frontend & UI
 tags:
   - dashboard
   - admin
@@ -13,271 +14,189 @@ tags:
 
 This skill helps you extend the admin dashboard and build internal tools following the established patterns.
 
-## Architecture Overview
+## DECISION POINTS
+
+### When to Add Tab vs Modify Endpoint vs Create New Tool
 
 ```
-/admin     - Admin Dashboard (user metrics, access control, audit)
-/dev       - Developer Portal (docs, code browser, feature map) [PLANNED]
-/ops       - Operations Console (infrastructure, logs, incidents) [PLANNED]
+Adding New Admin Functionality:
+├─ User needs read-only data view?
+│  ├─ Data exists in current API? → Modify existing tab
+│  ├─ New data type needed? → Add new tab + new endpoint
+│  └─ Complex analytics required? → Create dedicated analytics tab
+│
+├─ User needs to modify system data?
+│  ├─ Simple CRUD operations? → Add management tab
+│  ├─ Bulk operations needed? → Create operations console tab
+│  └─ Multi-step workflow? → Build wizard component
+│
+├─ Internal developer tooling?
+│  ├─ Code inspection/docs? → Add to /dev portal
+│  ├─ System monitoring? → Add to /ops console
+│  └─ User support tools? → Add to admin dashboard
+│
+└─ External user functionality?
+   → STOP: Use frontend-development skill instead
 ```
 
-See `docs/ADMIN-DEVELOPER-SUITE.md` for the full design specification.
+### Tab Content Implementation Strategy
 
-## Current Admin Dashboard Structure
+```
+Tab Complexity Assessment:
+├─ Simple stats display (< 5 metrics)?
+│  → Use StatCard grid pattern
+│
+├─ Data table with filtering?
+│  ├─ < 1000 rows? → Client-side filtering
+│  └─ > 1000 rows? → Server-side pagination + search
+│
+├─ Real-time monitoring?
+│  ├─ Updates every 30s+? → Use SWR with refresh interval
+│  └─ Updates every 5s-? → Use WebSocket connection
+│
+└─ Interactive controls?
+   ├─ Simple toggles/buttons? → Inline actions
+   └─ Complex forms? → Modal dialogs + confirmation flows
+```
 
-Location: `src/app/admin/page.tsx`
+## FAILURE MODES
 
-### Existing Tabs
+### 1. Database Query Performance Death Spiral
+**Symptom:** Admin dashboard times out or loads slowly (>5 seconds)
+**Detection:** Monitor /api/admin/* response times >3s
+**Fix:** Add database indexes, implement pagination, cache aggregated stats
+```sql
+-- BAD: Full table scan
+SELECT COUNT(*) FROM pageViews WHERE userId = ?
 
-| Tab | Purpose | Data Source |
-|-----|---------|-------------|
-| Overview | Quick stats (users, check-ins, messages) | `/api/admin/stats` |
-| Funnel | User engagement waterfall | `/api/admin/stats` |
-| Page Views | Analytics by page path | `/api/admin/stats` |
-| Users | User roster with activity | `/api/admin/stats` |
-| Access Requests | Pending/approved/denied requests | `/api/admin/access-requests` |
-| Allowed Emails | Email whitelist management | `/api/admin/allowed-emails` |
-| Email Templates | Preview system emails | Local data |
+-- GOOD: Use indexed timestamp ranges
+SELECT COUNT(*) FROM pageViews WHERE createdAt > NOW() - INTERVAL 24 HOUR
+```
 
-### Planned Tabs (from design)
-
-| Tab | Purpose | Status |
-|-----|---------|--------|
-| Production Health | API latency, Core Web Vitals | Pending |
-| Error Tracking | HIPAA-safe error aggregation | Pending |
-| External Services | Anthropic, DB, Push status | Pending |
-| AI Analytics | Conversation metrics, tokens | Pending |
-| Audit Logs | HIPAA compliance viewer | Pending |
-
-## Adding a New Admin Tab
-
-### 1. Create the Tab Content Component
-
+### 2. Stale Cache Showing Wrong Data
+**Symptom:** Admin sees outdated metrics that don't match recent activity
+**Detection:** User reports stats don't change after known actions
+**Fix:** Implement cache invalidation on data mutations, add "Last Updated" timestamps
 ```typescript
-// In src/app/admin/page.tsx, add a new tab component
-
-function ProductionHealthTab() {
-  const [metrics, setMetrics] = useState<APIMetrics | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchMetrics() {
-      const res = await fetch('/api/admin/metrics');
-      const data = await res.json();
-      setMetrics(data);
-      setLoading(false);
-    }
-    fetchMetrics();
-  }, []);
-
-  if (loading) return <div>Loading...</div>;
-
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Uptime" value={metrics.uptime} />
-        <StatCard label="Avg Latency" value={`${metrics.avgLatency}ms`} />
-        <StatCard label="Errors (24h)" value={metrics.errorCount} />
-        <StatCard label="Active Users" value={metrics.activeUsers} />
-      </div>
-      {/* More content */}
-    </div>
-  );
-}
+// Add cache busting to mutations
+await updateUserData(userId);
+await revalidateTag('admin-stats'); // Clear cache
 ```
 
-### 2. Add the Tab to the Tab List
-
+### 3. Missing Audit Logging
+**Symptom:** Admin actions aren't logged in auditLog table
+**Detection:** Check auditLog entries for admin actions in past 24h
+**Fix:** Add logAdminAction() calls to ALL admin endpoints
 ```typescript
-const tabs = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'health', label: 'Production Health' }, // NEW
-  { id: 'funnel', label: 'Funnel' },
-  // ...
-];
+// Required in every admin endpoint
+await logAdminAction(admin.id, AuditAction.USER_DATA_VIEW, 'users', userId);
 ```
 
-### 3. Add the Tab Content Renderer
-
+### 4. HIPAA Violation Data Exposure
+**Symptom:** PHI visible in error messages, logs, or aggregated views
+**Detection:** Error contains user email/phone/medical data
+**Fix:** Sanitize all error responses, use hashed identifiers in admin views
 ```typescript
-function renderTabContent(tabId: string) {
-  switch (tabId) {
-    case 'overview':
-      return <OverviewTab stats={stats} />;
-    case 'health':
-      return <ProductionHealthTab />; // NEW
-    // ...
-  }
-}
+// BAD: Exposes user email
+{ error: "User john@email.com not found" }
+
+// GOOD: Uses anonymous identifiers
+{ error: "User ID hash_123abc not found" }
 ```
 
-## Creating Admin API Endpoints
-
-### Pattern: Admin Stats Endpoint
-
+### 5. Admin Privilege Escalation
+**Symptom:** Regular users can access admin endpoints
+**Detection:** Non-admin user receives admin data instead of 403
+**Fix:** Add requireAdmin() check as first line of every admin endpoint
 ```typescript
-// src/app/api/admin/metrics/route.ts
-import { requireAdmin } from '@/db/secure-db';
-import { createRateLimiter } from '@/lib/rate-limit';
-import { logAdminAction } from '@/lib/hipaa/audit';
-
-const rateLimiter = createRateLimiter({
-  windowMs: 60000,
-  maxRequests: 60,
-  keyPrefix: 'admin:metrics'
-});
-
 export async function GET(request: Request) {
-  // 1. Check admin access
-  const admin = await requireAdmin();
-  if (!admin) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
+  const admin = await requireAdmin(); // Must be FIRST
+  if (!admin) return Response.json({ error: 'Forbidden' }, { status: 403 });
+  // ... rest of handler
+}
+```
 
-  // 2. Apply rate limiting
-  const rateLimitResult = await rateLimiter.check(admin.id);
-  if (!rateLimitResult.allowed) {
-    return Response.json(
-      { error: 'Rate limit exceeded' },
-      { status: 429, headers: rateLimitResult.headers }
-    );
-  }
+## WORKED EXAMPLES
 
-  // 3. Log admin action
-  await logAdminAction(
-    admin.id,
-    AuditAction.ADMIN_STATS_VIEW,
-    'metrics',
-    null
-  );
+### Adding Production Health Monitoring Tab
 
-  // 4. Fetch and return data
-  const metrics = await getAPIMetrics();
+**Scenario:** Add real-time API health monitoring with latency metrics, error rates, and service status.
+
+**1. Decision Point Navigation:**
+- User needs real-time monitoring → Use SWR with 30s refresh
+- System data, not user data → Add to admin dashboard
+- New data type (API metrics) → Create new tab + endpoint
+
+**2. Implementation Steps:**
+
+Create endpoint with required patterns:
+```typescript
+// src/app/api/admin/health/route.ts
+export async function GET(request: Request) {
+  const admin = await requireAdmin(); // Security first
+  if (!admin) return Response.json({ error: 'Forbidden' }, { status: 403 });
+  
+  const rateLimitResult = await rateLimiter.check(admin.id); // Rate limiting
+  if (!rateLimitResult.allowed) return Response.json({}, { status: 429 });
+  
+  await logAdminAction(admin.id, 'HEALTH_VIEW', 'metrics', null); // Audit
+  
+  const metrics = await getHealthMetrics(); // Data fetch
   return Response.json(metrics);
 }
 ```
 
-## Key Patterns
-
-### StatCard Component
-
+Create tab component:
 ```typescript
-function StatCard({
-  label,
-  value,
-  trend,
-  status
-}: {
-  label: string;
-  value: string | number;
-  trend?: 'up' | 'down' | 'neutral';
-  status?: 'good' | 'warning' | 'error';
-}) {
+function ProductionHealthTab() {
+  const { data: health, error } = useSWR('/api/admin/health', fetcher, {
+    refreshInterval: 30000 // Real-time updates
+  });
+  
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <div className="text-sm text-muted-foreground">{label}</div>
-      <div className="text-2xl font-bold">{value}</div>
-      {trend && <TrendIndicator direction={trend} />}
-      {status && <StatusBadge status={status} />}
+    <div className="space-y-6">
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="API Uptime" value="99.9%" status="good" />
+        <StatCard label="Avg Latency" value="45ms" trend="down" />
+        <StatCard label="Error Rate" value="0.1%" status="warning" />
+        <StatCard label="Active Services" value="12/12" status="good" />
+      </div>
     </div>
   );
 }
 ```
 
-### Data Fetching Pattern
+**3. Expert vs Novice Differences:**
+- **Novice misses:** Audit logging, rate limiting, HIPAA-safe error handling
+- **Expert catches:** Cache invalidation strategy, performance monitoring setup, proper error boundaries
 
-```typescript
-// Use SWR or React Query for real-time updates
-import useSWR from 'swr';
+## QUALITY GATES
 
-function useAdminMetrics() {
-  const { data, error, isLoading } = useSWR(
-    '/api/admin/metrics',
-    fetcher,
-    { refreshInterval: 30000 } // Refresh every 30s
-  );
+- [ ] Admin access control: requireAdmin() check passes with admin user, fails with regular user
+- [ ] Rate limiting: Endpoint returns 429 when rate limit exceeded (60 req/min default)
+- [ ] Audit logging: Admin action logged to auditLog table with correct action type
+- [ ] Performance baseline: Tab loads in <2 seconds with realistic data volume
+- [ ] HIPAA compliance: No PHI exposed in error messages or debug output
+- [ ] Data validation: Invalid requests return proper 400 errors with safe messages
+- [ ] Cache behavior: Data updates within 30 seconds of backend changes
+- [ ] Error boundaries: UI gracefully handles API failures without crashing
+- [ ] Mobile responsive: Tab layout works on tablet-sized screens (768px+)
+- [ ] Real-time updates: Auto-refresh works without memory leaks over 10+ minutes
 
-  return { metrics: data, error, isLoading };
-}
-```
+## NOT-FOR BOUNDARIES
 
-### HIPAA-Safe Error Display
+**Do NOT use this skill for:**
 
-```typescript
-// Never show user-specific error details
-function ErrorList({ errors }: { errors: AggregatedError[] }) {
-  return (
-    <div>
-      {errors.map(error => (
-        <div key={error.hash}>
-          <span className="font-mono">{error.type}</span>
-          <span>{error.path}</span>
-          <span>{error.count} occurrences</span>
-          <span>{error.affectedUsers} users</span>
-          {/* NO user IDs, NO error messages with PHI */}
-        </div>
-      ))}
-    </div>
-  );
-}
-```
+- **External user-facing features** → Use `frontend-development` instead
+- **Authentication/login flows** → Use `auth-security` instead  
+- **Database schema changes** → Use `database-operations` instead
+- **Email/notification systems** → Use `communications` instead
+- **API rate limiting configuration** → Use `backend-api` instead
+- **HIPAA compliance setup** → Use `security-compliance` instead
+- **Performance optimization** → Use `optimization` instead
 
-## Database Tables for Admin Features
-
-Existing tables:
-- `adminUsers` - Admin role assignments
-- `allowedEmails` - Email whitelist
-- `accessRequests` - Access request queue
-- `auditLog` - HIPAA audit trail
-- `pageViews` - Navigation analytics
-
-Planned tables (from design):
-- `api_metrics` - API timing data
-- `app_errors` - Aggregated errors
-- `service_health` - External service status
-- `conversation_analytics` - AI chat metadata
-- `incidents` - Incident tracking
-
-## Access Control
-
-```typescript
-// Always use requireAdmin() for admin routes
-import { requireAdmin } from '@/db/secure-db';
-
-// For super-admin only features
-const admin = await requireAdmin();
-if (admin.role !== 'super_admin') {
-  return Response.json({ error: 'Super admin required' }, { status: 403 });
-}
-```
-
-## Testing Admin Features
-
-```typescript
-// Mock admin authentication for tests
-vi.mock('@/db/secure-db', () => ({
-  requireAdmin: vi.fn().mockResolvedValue({
-    id: 'test-admin',
-    role: 'admin'
-  })
-}));
-
-describe('Admin Metrics Endpoint', () => {
-  it('returns metrics for authenticated admin', async () => {
-    const response = await GET(mockRequest);
-    expect(response.status).toBe(200);
-  });
-
-  it('returns 403 for non-admin', async () => {
-    vi.mocked(requireAdmin).mockResolvedValueOnce(null);
-    const response = await GET(mockRequest);
-    expect(response.status).toBe(403);
-  });
-});
-```
-
-## Design Resources
-
-- Full design spec: `docs/ADMIN-DEVELOPER-SUITE.md`
-- Design system: Use existing components from `src/components/ui/`
-- Colors: Follow therapeutic palette (navy, teal, coral, cream)
+**Delegate to other skills when:**
+- Adding public user features → `frontend-development`
+- Modifying user authentication → `auth-security`
+- Creating new API endpoints for external use → `backend-api`
+- Setting up monitoring infrastructure → `devops-infrastructure`

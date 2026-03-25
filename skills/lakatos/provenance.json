@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Lakatos.pdf",
+    "path": "../texts/unprocessed/Lakatos.pdf",
+    "chars": 48426,
+    "tokens_approx": 12106
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-25T23:32:15.658649Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 16772,
+        "output": 26948
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-25T23:32:15.668870Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1864,
+        "output": 2948
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 613.3041291236877,
+  "generated_at": "2026-02-25T23:32:15.677405Z"
+}

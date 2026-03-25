@@ -1,0 +1,52 @@
+{
+  "source": {
+    "file": "Klein-1998-Sources-of-Power.pdf",
+    "path": "batch_weak_subsystems/Klein-1998-Sources-of-Power.pdf",
+    "chars": 723215,
+    "tokens_approx": 180803
+  },
+  "extractions": [
+    {
+      "model": "claude-haiku-4-5-20251001",
+      "model_version": "haiku-4.5",
+      "pass": "notes",
+      "timestamp": "2026-02-24T05:50:24.348916Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "chapter-notes",
+      "tokens": {
+        "input": 164466,
+        "output": 54631
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "synthesis",
+      "timestamp": "2026-02-24T05:50:24.358946Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "chapter-notes",
+      "tokens": {
+        "input": 56380,
+        "output": 27015
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T05:50:24.367979Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "chapter-notes",
+      "tokens": {
+        "input": 1266,
+        "output": 3015
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 1444.1006820201874,
+  "generated_at": "2026-02-24T05:50:24.376929Z"
+}

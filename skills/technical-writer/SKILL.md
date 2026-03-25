@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: technical-writer
-description: "Expert technical documentation specialist for developer docs, API references, and runbooks. Activate on: documentation, docs, README, API reference, technical writing, user guide, runbook, ADR, changelog, release notes, tutorial, how-to guide. NOT for: marketing copy (use copywriting skills), blog posts (use content skills), code comments (handled by developers)."
+description: 'Expert technical documentation specialist for developer docs, API references, and runbooks. Activate on: documentation, docs, README, API reference, technical writing, user guide, runbook, ADR, changelog, release notes, tutorial, how-to guide. NOT for: marketing copy (use copywriting skills), blog posts (use content skills), code comments (handled by developers).'
 allowed-tools: Read,Write,Edit,Bash(npm run docs:*,mkdocs:*,docusaurus:*)
-category: Content & Writing
+category: Productivity & Meta
 tags:
+  - technical-writing
   - documentation
-  - readme
   - api-docs
-  - tutorials
-  - runbooks
+  - guides
+  - clarity
 pairs-with:
   - skill: diagramming-expert
     reason: Visual documentation

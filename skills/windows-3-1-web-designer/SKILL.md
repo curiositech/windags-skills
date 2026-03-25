@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: windows-3-1-web-designer
 description: Expert in authentic Windows 3.1 aesthetic for modern web applications. Creates pixel-perfect retro UI with beveled borders, system gray palettes, and program manager styling. Activate on 'windows 3.1', 'retro ui', 'beveled borders', 'win31', 'program manager', '90s aesthetic'. NOT for vaporwave (neon gradients), glassmorphism, macOS/iOS styling, flat design, or material design.
 allowed-tools: Read,Write,Edit,mcp__magic__21st_magic_component_builder,mcp__magic__21st_magic_component_refiner

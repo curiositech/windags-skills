@@ -1,8 +1,16 @@
 ---
+license: Apache-2.0
 name: terraform-iac-expert
 version: 1.0.0
-category: devops
-tags: [terraform, iac, infrastructure, aws, gcp, azure, opentofu]
+category: DevOps & Infrastructure
+tags:
+  - terraform
+  - iac
+  - infrastructure
+  - aws
+  - gcp
+  - azure
+  - opentofu
 ---
 
 # Terraform IaC Expert
@@ -11,373 +19,182 @@ tags: [terraform, iac, infrastructure, aws, gcp, azure, opentofu]
 
 Expert in Infrastructure as Code using Terraform and OpenTofu. Specializes in module design, state management, multi-cloud deployments, and CI/CD integration. Handles complex infrastructure patterns including multi-environment setups, remote state backends, and secure secrets management.
 
-## When to Use
+## Decision Points
 
-- Setting up new Terraform projects and workspaces
-- Designing reusable Terraform modules
-- Managing state files and remote backends
-- Implementing multi-environment (dev/staging/prod) infrastructure
-- Migrating existing infrastructure to Terraform
-- Troubleshooting state drift and plan failures
-- Integrating Terraform with CI/CD pipelines
-- Implementing security best practices (secrets, IAM, policies)
+### When to Migrate State vs Full Rebuild
+```
+Resource Change Assessment:
+├── Breaking changes to core resources (VPC, networks)?
+│   ├── Yes → Full rebuild with blue-green deployment
+│   └── No → Continue to state migration assessment
+├── State file corruption or drift > 20% resources?
+│   ├── Yes → Import strategy: selective rebuild of drifted resources
+│   └── No → Standard state migration
+├── Cost of downtime > $10k/hour?
+│   ├── Yes → Blue-green with gradual migration
+│   └── No → Direct migration with maintenance window
+└── Team expertise level?
+    ├── Junior → Use Terraform Cloud migration tools
+    └── Senior → Manual state manipulation acceptable
+```
 
-## Capabilities
+### Module vs Inline Resource Decision
+```
+Resource Complexity:
+├── Will this pattern be used > 2 times?
+│   ├── Yes → Create module
+│   └── No → Continue evaluation
+├── Configuration > 50 lines?
+│   ├── Yes → Module for maintainability
+│   └── No → Inline acceptable
+├── Needs input validation?
+│   ├── Yes → Module with validation blocks
+│   └── No → Can remain inline
+└── Cross-team sharing required?
+    ├── Yes → Published module with versioning
+    └── No → Local module sufficient
+```
 
-### Project Structure
-- Module-based architecture design
-- Workspace vs directory structure strategies
-- Variable and output organization
-- Provider configuration and version constraints
-- Backend configuration for remote state
+### Environment Strategy Selection
+```
+Team Size & Structure:
+├── < 5 engineers, single team?
+│   ├── Yes → Workspace-based environments
+│   └── No → Continue evaluation
+├── Multiple teams, shared infrastructure?
+│   ├── Yes → Directory-based with remote state sharing
+│   └── No → Hybrid approach
+├── Need environment-specific backends?
+│   ├── Yes → Directory-based mandatory
+│   └── No → Workspaces viable
+└── Complex promotion workflows?
+    ├── Yes → Terragrunt with directory structure
+    └── No → Native Terraform sufficient
+```
 
-### Module Development
-- Reusable module patterns
-- Input validation and type constraints
-- Output design for module composition
-- Local modules vs registry modules
-- Module versioning and publishing
+## Failure Modes
 
-### State Management
-- Remote state backends (S3, GCS, Azure Blob, Terraform Cloud)
-- State locking mechanisms
-- State migration and manipulation
-- Import existing resources
-- Handling state drift
+### State Corruption Spiral
+**Symptoms:** "Error acquiring the state lock", terraform refresh shows massive drift, apply fails with "resource already exists"
+**Root Cause:** Concurrent operations without proper locking or force-unlock used incorrectly
+**Fix:** 
+1. Verify no concurrent operations: `terraform force-unlock LOCK_ID`
+2. Compare state with reality: `terraform refresh`  
+3. Import missing resources: `terraform import resource.name existing_id`
+4. Remove phantom resources: `terraform state rm resource.phantom`
 
-### Multi-Environment Patterns
-- Workspace-based environments
-- Directory-based environments
-- Terragrunt for DRY infrastructure
-- Environment-specific variables
-- Promotion workflows
+### Schema Version Drift
+**Symptoms:** "provider registry.terraform.io/hashicorp/aws: required_version" errors, resources show perpetual changes in plan
+**Root Cause:** Team members using different provider versions or Terraform versions
+**Fix:**
+1. Pin provider versions in terraform block: `version = "~> 5.0"`
+2. Use .terraform-version file for tfenv
+3. Run terraform init -upgrade on all environments
+4. Update state schema: `terraform state replace-provider`
 
-### Security
-- Sensitive variable handling
-- IAM role design for Terraform
-- Policy as Code (Sentinel, OPA)
-- Secrets management integration (Vault, AWS Secrets Manager)
-- Least privilege principles
+### Module Input Explosion
+**Symptoms:** Module has >20 input variables, complex nested object variables, frequent "unsupported attribute" errors
+**Root Cause:** Over-abstracting modules trying to handle every use case
+**Fix:**
+1. Split into focused modules (max 15 variables each)
+2. Use sensible defaults with variable validation
+3. Create specialized modules vs generic ones
+4. Use locals block for complex transformations
 
-### CI/CD Integration
-- GitHub Actions for Terraform
-- Atlantis for PR-based workflows
-- Terraform Cloud/Enterprise
-- Plan/Apply automation
-- Cost estimation integration
+### Remote State Reference Loops
+**Symptoms:** "Cycle" errors during plan, "depends_on contains dependencies that cannot be determined before apply"
+**Root Cause:** Circular dependencies between state files or environments
+**Fix:**
+1. Map dependency graph on paper first
+2. Extract shared resources to separate state file
+3. Use data sources instead of remote state when possible
+4. Implement dependency inversion (shared->env specific)
 
-## Dependencies
+### Secrets Leakage Through State
+**Symptoms:** Sensitive values visible in terraform.tfstate, state file contains passwords/keys in plaintext
+**Root Cause:** Not marking outputs as sensitive, storing secrets in variables instead of data sources
+**Fix:**
+1. Mark all sensitive outputs: `sensitive = true`
+2. Use data sources for secrets: `data "aws_secretsmanager_secret"`
+3. Enable state file encryption at rest
+4. Rotate any exposed secrets immediately
 
-Works well with:
-- `aws-solutions-architect` - AWS resource patterns
-- `kubernetes-orchestrator` - K8s infrastructure
-- `github-actions-pipeline-builder` - CI/CD automation
-- `site-reliability-engineer` - Production infrastructure
+## Worked Examples
 
-## Examples
+### Complete Infrastructure Migration from Existing AWS Resources
 
-### Project Structure
+**Scenario:** Migrating manually-created production AWS infrastructure (VPC, EKS cluster, RDS) to Terraform management.
+
+**Step 1 - Assessment and Planning**
+```bash
+# Discover existing resources
+aws ec2 describe-vpcs --filters "Name=tag:Environment,Values=prod"
+aws eks describe-cluster --name prod-cluster
+aws rds describe-db-instances --db-instance-identifier prod-db
+```
+
+Expert catches: Check for dependencies between resources, identify non-standard configurations that need special handling.
+Novice misses: Not documenting existing resource relationships before starting.
+
+**Step 2 - State Structure Decision**
+Following decision tree → Multiple teams + shared infrastructure = Directory-based approach
 ```
 terraform/
-├── modules/
-│   ├── vpc/
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   └── outputs.tf
-│   ├── eks/
-│   └── rds/
-├── environments/
-│   ├── dev/
-│   │   ├── main.tf
-│   │   ├── variables.tf
-│   │   ├── terraform.tfvars
-│   │   └── backend.tf
-│   ├── staging/
-│   └── prod/
-└── shared/
-    └── provider.tf
+├── shared/          # VPC, networking
+├── data/            # RDS, ElastiCache  
+├── compute/         # EKS cluster
+└── applications/    # App-specific resources
 ```
 
-### Root Module with Locals
-```hcl
-# environments/prod/main.tf
-terraform {
-  required_version = ">= 1.5.0"
-
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-
-  backend "s3" {
-    bucket         = "mycompany-terraform-state"
-    key            = "prod/terraform.tfstate"
-    region         = "us-west-2"
-    encrypt        = true
-    dynamodb_table = "terraform-locks"
-  }
-}
-
-locals {
-  environment = "prod"
-  project     = "myapp"
-
-  common_tags = {
-    Environment = local.environment
-    Project     = local.project
-    ManagedBy   = "terraform"
-  }
-}
-
-module "vpc" {
-  source = "../../modules/vpc"
-
-  environment = local.environment
-  cidr_block  = "10.0.0.0/16"
-  tags        = local.common_tags
-}
-
-module "eks" {
-  source = "../../modules/eks"
-
-  environment       = local.environment
-  vpc_id            = module.vpc.vpc_id
-  private_subnet_ids = module.vpc.private_subnet_ids
-  cluster_version   = "1.29"
-  tags              = local.common_tags
-}
-```
-
-### Reusable Module with Validation
-```hcl
-# modules/vpc/variables.tf
-variable "environment" {
-  type        = string
-  description = "Environment name (dev, staging, prod)"
-
-  validation {
-    condition     = contains(["dev", "staging", "prod"], var.environment)
-    error_message = "Environment must be dev, staging, or prod."
-  }
-}
-
-variable "cidr_block" {
-  type        = string
-  description = "VPC CIDR block"
-
-  validation {
-    condition     = can(cidrhost(var.cidr_block, 0))
-    error_message = "Must be a valid CIDR block."
-  }
-}
-
-variable "availability_zones" {
-  type        = list(string)
-  description = "List of AZs to use"
-  default     = ["us-west-2a", "us-west-2b", "us-west-2c"]
-}
-
-variable "enable_nat_gateway" {
-  type        = bool
-  description = "Enable NAT Gateway for private subnets"
-  default     = true
-}
-
-variable "tags" {
-  type        = map(string)
-  description = "Tags to apply to all resources"
-  default     = {}
-}
-```
-
-### Module with Dynamic Blocks
-```hcl
-# modules/security-group/main.tf
-resource "aws_security_group" "this" {
-  name        = var.name
-  description = var.description
-  vpc_id      = var.vpc_id
-
-  dynamic "ingress" {
-    for_each = var.ingress_rules
-    content {
-      from_port   = ingress.value.from_port
-      to_port     = ingress.value.to_port
-      protocol    = ingress.value.protocol
-      cidr_blocks = ingress.value.cidr_blocks
-      description = ingress.value.description
-    }
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(var.tags, {
-    Name = var.name
-  })
-}
-```
-
-### Remote State Data Source
-```hcl
-# Reference another environment's state
-data "terraform_remote_state" "shared" {
-  backend = "s3"
-
-  config = {
-    bucket = "mycompany-terraform-state"
-    key    = "shared/terraform.tfstate"
-    region = "us-west-2"
-  }
-}
-
-# Use outputs from shared state
-resource "aws_instance" "app" {
-  ami           = data.terraform_remote_state.shared.outputs.base_ami_id
-  instance_type = "t3.medium"
-  subnet_id     = data.terraform_remote_state.shared.outputs.private_subnet_id
-}
-```
-
-### GitHub Actions CI/CD
-```yaml
-# .github/workflows/terraform.yml
-name: Terraform
-
-on:
-  pull_request:
-    paths:
-      - 'terraform/**'
-  push:
-    branches: [main]
-    paths:
-      - 'terraform/**'
-
-env:
-  TF_VERSION: 1.6.0
-  AWS_REGION: us-west-2
-
-jobs:
-  plan:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-      id-token: write  # For OIDC
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::123456789:role/terraform-github-actions
-          aws-region: ${{ env.AWS_REGION }}
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Terraform Init
-        working-directory: terraform/environments/prod
-        run: terraform init
-
-      - name: Terraform Plan
-        working-directory: terraform/environments/prod
-        run: terraform plan -out=tfplan
-
-      - name: Upload Plan
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: terraform/environments/prod/tfplan
-
-  apply:
-    needs: plan
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: production
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::123456789:role/terraform-github-actions
-          aws-region: ${{ env.AWS_REGION }}
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Download Plan
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: terraform/environments/prod
-
-      - name: Terraform Apply
-        working-directory: terraform/environments/prod
-        run: terraform apply -auto-approve tfplan
-```
-
-### Import Existing Resources
+**Step 3 - Import Strategy**
 ```bash
-# Import existing AWS resource into state
-terraform import aws_s3_bucket.existing my-existing-bucket
+# Start with shared infrastructure (VPC first)
+cd terraform/shared
+terraform import aws_vpc.main vpc-12345678
+terraform import aws_subnet.private[0] subnet-abcd1234
+terraform import aws_subnet.private[1] subnet-efgh5678
 
-# Import using for_each key
-terraform import 'aws_iam_user.users["alice"]' alice
-
-# Generate configuration from import (Terraform 1.5+)
-terraform plan -generate-config-out=generated.tf
+# Generate configuration to match
+terraform show -json | jq '.values.root_module.resources[] | select(.type=="aws_vpc")'
 ```
 
-### Handling Sensitive Values
-```hcl
-# Reference secrets from AWS Secrets Manager
-data "aws_secretsmanager_secret_version" "db_password" {
-  secret_id = "prod/db/password"
-}
+Expert catches: Import in dependency order (VPC → subnets → route tables → gateways).
+Novice misses: Importing resources in wrong order causing dependency conflicts.
 
-resource "aws_db_instance" "main" {
-  # ... other config ...
-  password = data.aws_secretsmanager_secret_version.db_password.secret_string
-}
+**Step 4 - Validation and Safety Gates**
+```bash
+# Verify no changes after import
+terraform plan  # Should show "No changes"
 
-# Mark outputs as sensitive
-output "db_connection_string" {
-  value     = "postgres://admin:${aws_db_instance.main.password}@${aws_db_instance.main.endpoint}"
-  sensitive = true
-}
+# Test in non-prod first
+cd ../terraform/shared-staging
+terraform plan -var-file=staging.tfvars
 ```
 
-## Best Practices
+## Quality Gates
 
-1. **Use remote state** - Never store state locally for team projects
-2. **Enable state locking** - Prevent concurrent modifications
-3. **Version pin providers** - Use `~>` constraints, not `>=`
-4. **Separate environments** - Use directories or workspaces, not branches
-5. **Module everything reusable** - But don't over-abstract
-6. **Validate inputs** - Use variable validation blocks
-7. **Use data sources** - Reference existing resources instead of hardcoding
-8. **Tag all resources** - Apply consistent tags for cost tracking
-9. **Review plans carefully** - Especially for destroy operations
+- [ ] terraform plan shows zero changes after import/migration
+- [ ] All sensitive outputs marked with `sensitive = true`
+- [ ] Provider versions pinned with `~>` constraints (not `>=`)
+- [ ] Remote state backend configured with encryption and locking
+- [ ] terraform validate passes on all modules
+- [ ] No hardcoded values (all environment differences in variables)
+- [ ] Cost estimation reviewed (>$1000/month needs approval)
+- [ ] Security scan passed (checkov/tfsec/terrascan)
+- [ ] Backup of existing infrastructure state/config completed
+- [ ] Rollback plan documented and tested in staging
 
-## Common Pitfalls
+## NOT-FOR Boundaries
 
-- **State file conflicts** - Multiple people running terraform simultaneously
-- **Hardcoded values** - Not using variables for environment differences
-- **Circular dependencies** - Resources depending on each other
-- **Missing dependencies** - Not using `depends_on` when implicit deps aren't enough
-- **Large state files** - Not breaking up large infrastructure
-- **Secrets in state** - State contains sensitive values, encrypt at rest
-- **Provider version drift** - Different team members using different versions
-- **Not using -target carefully** - Can cause drift, use sparingly
+**This skill should NOT be used for:**
+- **Application deployment** → Use `kubernetes-orchestrator` or `docker-specialist` instead
+- **Application code building** → Use `github-actions-pipeline-builder` instead  
+- **Container orchestration** → Use `kubernetes-orchestrator` instead
+- **Database schema management** → Use `database-architect` instead
+- **SSL certificate management** → Use `site-reliability-engineer` instead
+
+**Delegate to other skills when:**
+- Need application-level monitoring → `site-reliability-engineer`
+- Need Kubernetes manifest generation → `kubernetes-orchestrator`  
+- Need cloud cost optimization strategies → `aws-solutions-architect`
+- Need security policy implementation → `security-specialist`

@@ -1,4 +1,5 @@
 ---
+license: BSL-1.1
 name: dag-skill-registry
 description: Central catalog of available skills with metadata, capabilities, and performance history. Provides skill discovery and lookup services. Activate on 'skill registry', 'list skills', 'skill catalog', 'available skills', 'skill metadata'. NOT for matching skills to tasks (use dag-semantic-matcher) or ranking (use dag-capability-ranker).
 allowed-tools:
@@ -7,7 +8,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-category: DAG Framework
+category: Agent & Orchestration
 tags:
   - dag
   - registry
@@ -23,362 +24,163 @@ pairs-with:
     reason: Supplies skills for node assignment
 ---
 
-You are a DAG Skill Registry, the central catalog of all available skills. You maintain metadata about skills, their capabilities, performance history, and relationships. You provide discovery and lookup services for other DAG components.
+You are a DAG Skill Registry, the central catalog of all available skills. You maintain metadata, provide discovery services, and track performance history.
 
-## Core Responsibilities
+## DECISION POINTS
 
-### 1. Skill Cataloging
-- Maintain comprehensive skill metadata
-- Track skill capabilities and limitations
-- Store performance history and statistics
+### When to use each lookup strategy:
 
-### 2. Discovery Services
-- Provide skill lookup by ID, category, or capability
-- Support fuzzy and semantic search
-- Return ranked results based on relevance
+**Exact ID Lookup** (use when):
+```
+IF you have specific skill ID AND need definitive metadata
+→ Use direct registry.get(id)
+→ Latency: <1ms, Precision: 100%
 
-### 3. Relationship Tracking
-- Map skill dependencies and pairings
-- Track complementary skills
-- Identify skill substitutes and alternatives
-
-### 4. Performance Tracking
-- Record skill execution metrics
-- Track success/failure rates
-- Monitor resource usage patterns
-
-## Skill Metadata Schema
-
-```typescript
-interface SkillMetadata {
-  // Identity
-  id: string;
-  name: string;
-  version: string;
-  description: string;
-
-  // Classification
-  category: string;
-  tags: string[];
-  capabilities: Capability[];
-
-  // Requirements
-  allowedTools: string[];
-  requiredContext: string[];
-  resourceRequirements: ResourceRequirements;
-
-  // Relationships
-  pairsWith: SkillPairing[];
-  substitutes: string[];
-  dependencies: string[];
-
-  // Performance
-  stats: SkillStats;
-
-  // Source
-  source: 'built-in' | 'community' | 'custom';
-  path: string;
-  lastUpdated: Date;
-}
-
-interface Capability {
-  name: string;
-  description: string;
-  confidence: number;  // 0-1 how well skill handles this
-}
-
-interface SkillPairing {
-  skillId: string;
-  reason: string;
-  strength: 'required' | 'recommended' | 'optional';
-}
-
-interface SkillStats {
-  totalExecutions: number;
-  successRate: number;
-  averageDuration: number;
-  averageTokens: number;
-  lastExecuted: Date;
-}
+ELIF you have partial ID OR fuzzy spelling
+→ Use fuzzy string matching on skill IDs
+→ Latency: 5-10ms, Precision: 80-95%
 ```
 
-## Registry Operations
+**Tag-based Search** (use when):
+```
+IF you know category/domain but not specific skill
+→ Query by tags or category
+→ Latency: 10-50ms, Precision: 60-80%
 
-### Register Skill
+ELIF you need skills with specific capabilities
+→ Query capability index first, then filter
+→ Latency: 20-100ms, Precision: 70-90%
+```
 
+**Capability Search** (use when):
+```
+IF you need functional matching (what can skill do)
+→ Use capability confidence scores > 0.7
+→ Latency: 50-200ms, Precision: 50-75%
+
+ELIF you need performance-filtered results
+→ Add stats filters (success rate, token limits)
+→ Latency: 100-300ms, Precision: 85-95%
+```
+
+### Registry update decision tree:
+```
+IF skill file timestamp > registry entry timestamp
+→ Parse and validate skill file
+  → IF validation passes: Update registry + rebuild indexes
+  → ELSE: Log error, keep existing entry
+
+ELIF new skill registration conflicts with existing ID
+→ IF new version > existing version: Replace
+→ ELIF new version = existing version: Reject with error
+→ ELSE: Store as historical version
+```
+
+## FAILURE MODES
+
+**1. Stale Metadata Syndrome**
+- **Detection**: `skill.lastUpdated < file.lastModified` OR performance stats frozen for >30 days
+- **Symptoms**: Registry returns outdated capability scores, missing new dependencies, incorrect performance data
+- **Fix**: Force registry refresh from skill files, validate all timestamps, rebuild capability indexes
+
+**2. Inconsistent Statistics Drift**
+- **Detection**: `successRate > 1.0` OR `averageTokens < 0` OR `totalExecutions` decreasing between updates
+- **Symptoms**: Performance-based queries return nonsensical results, execution tracking fails
+- **Fix**: Reset corrupted stats to baseline, implement bounds checking on stat updates, audit execution recording pipeline
+
+**3. Missing Dependency Cascade**
+- **Detection**: Skill references `pairsWith` or `dependencies` that don't exist in registry
+- **Symptoms**: Related skill queries return empty results, dependency validation fails
+- **Fix**: Validate all skill references during registration, implement cascade cleanup for removed skills, maintain dependency graph consistency
+
+**4. Index Fragmentation Bloat**
+- **Detection**: Query latency >500ms for simple lookups OR index size > 10x skill count
+- **Symptoms**: Registry searches become unusably slow, memory usage explodes
+- **Fix**: Rebuild all indexes from scratch, implement incremental index updates, add index size monitoring
+
+**5. Circular Dependency Web**
+- **Detection**: Skill A pairs-with B pairs-with C pairs-with A (cycle detection in relationship graph)
+- **Symptoms**: Related skill traversal never terminates, recommendation engine loops
+- **Fix**: Run topological sort validation, break cycles at weakest pairing strength, implement max traversal depth limits
+
+## WORKED EXAMPLES
+
+### Example 1: Skill Version Upgrade with Conflict Detection
+
+**Scenario**: Upgrading `code-reviewer` skill from v1.2 to v2.0 with breaking API changes
+
+**Step 1: Conflict Detection**
 ```typescript
-function registerSkill(
-  registry: SkillRegistry,
-  skill: SkillMetadata
-): void {
-  // Validate skill metadata
-  validateSkillMetadata(skill);
+const existing = registry.skills.get('code-reviewer');
+// existing.version = '1.2.0', incoming.version = '2.0.0'
 
-  // Check for duplicates
-  if (registry.skills.has(skill.id)) {
-    const existing = registry.skills.get(skill.id);
-    if (existing.version >= skill.version) {
-      throw new Error(`Skill ${skill.id} v${skill.version} already registered`);
+if (hasDependents(registry, 'code-reviewer')) {
+  const dependents = findSkillsDependingOn(registry, 'code-reviewer');
+  // Returns: ['pull-request-analyzer', 'security-scanner']
+  
+  for (const dependent of dependents) {
+    if (!isCompatibleVersion(dependent.dependencies['code-reviewer'], '2.0.0')) {
+      // pull-request-analyzer requires code-reviewer ^1.0.0 - INCOMPATIBLE
+      flagVersionConflict(dependent.id, 'code-reviewer', '2.0.0');
     }
   }
-
-  // Index by various keys
-  registry.skills.set(skill.id, skill);
-  indexByCategory(registry, skill);
-  indexByTags(registry, skill);
-  indexByCapabilities(registry, skill);
-
-  // Update relationship graph
-  updateRelationshipGraph(registry, skill);
 }
 ```
 
-### Lookup Skills
+**Expert Decision**: Stage the upgrade, notify dependent skill owners
+**Novice Miss**: Would directly replace v1.2 with v2.0, breaking dependent skills
 
+### Example 2: Circular Dependency Detection During Registration
+
+**Scenario**: Registering `api-designer` that pairs with `database-modeler` which already pairs with `api-designer`
+
+**Step 1: Relationship Graph Validation**
 ```typescript
-interface SkillQuery {
-  id?: string;
-  category?: string;
-  tags?: string[];
-  capabilities?: string[];
-  minSuccessRate?: number;
-  maxTokens?: number;
-}
+const newSkill = parseSkill('api-designer');
+// newSkill.pairsWith = [{ skillId: 'database-modeler', strength: 'recommended' }]
 
-function querySkills(
-  registry: SkillRegistry,
-  query: SkillQuery
-): SkillMetadata[] {
-  let results = Array.from(registry.skills.values());
-
-  if (query.id) {
-    results = results.filter(s => s.id === query.id);
-  }
-
-  if (query.category) {
-    results = results.filter(s => s.category === query.category);
-  }
-
-  if (query.tags?.length) {
-    results = results.filter(s =>
-      query.tags.some(tag => s.tags.includes(tag))
-    );
-  }
-
-  if (query.capabilities?.length) {
-    results = results.filter(s =>
-      query.capabilities.some(cap =>
-        s.capabilities.some(c => c.name === cap)
-      )
-    );
-  }
-
-  if (query.minSuccessRate) {
-    results = results.filter(s =>
-      s.stats.successRate >= query.minSuccessRate
-    );
-  }
-
-  if (query.maxTokens) {
-    results = results.filter(s =>
-      s.stats.averageTokens <= query.maxTokens
-    );
-  }
-
-  return results;
+const cycles = detectCycles(registry.relationshipGraph, newSkill);
+if (cycles.length > 0) {
+  // Found cycle: api-designer → database-modeler → api-designer
+  
+  // Resolution strategy: Break at weakest link
+  const weakestPairing = findWeakestPairing(cycles[0]);
+  // database-modeler → api-designer has strength 'optional'
+  
+  demotePairing('database-modeler', 'api-designer', 'substitute');
 }
 ```
 
-### Get Related Skills
+**Expert Decision**: Break cycle by converting bidirectional pairing to unidirectional
+**Novice Miss**: Would allow circular reference, causing infinite loops in relationship traversal
 
-```typescript
-function getRelatedSkills(
-  registry: SkillRegistry,
-  skillId: string
-): RelatedSkills {
-  const skill = registry.skills.get(skillId);
-  if (!skill) return { pairs: [], substitutes: [], dependents: [] };
+## QUALITY GATES
 
-  return {
-    pairs: skill.pairsWith.map(p => ({
-      skill: registry.skills.get(p.skillId),
-      reason: p.reason,
-      strength: p.strength,
-    })),
-    substitutes: skill.substitutes.map(id =>
-      registry.skills.get(id)
-    ).filter(Boolean),
-    dependents: findSkillsDependingOn(registry, skillId),
-  };
-}
-```
+Registry operations are complete when:
 
-## Capability Index
+- [ ] All skill files parsed without validation errors
+- [ ] No missing dependencies in `pairsWith` or `dependencies` arrays  
+- [ ] All capability indexes rebuilt and consistent with skill metadata
+- [ ] Performance statistics within valid bounds (rates 0-1, positive integers)
+- [ ] No circular dependencies detected in relationship graph
+- [ ] Registry export validates against schema
+- [ ] Query latency <100ms for exact ID lookup, <500ms for capability search
+- [ ] All skill timestamps match source file timestamps
+- [ ] Memory usage <10MB per 100 skills in registry
+- [ ] Backup registry file written successfully
 
-```typescript
-interface CapabilityIndex {
-  // Maps capability name to skills that have it
-  byCapability: Map<string, SkillMetadata[]>;
+## NOT-FOR BOUNDARIES
 
-  // Maps category to skills
-  byCategory: Map<string, SkillMetadata[]>;
+**This skill should NOT be used for:**
 
-  // Maps tag to skills
-  byTag: Map<string, SkillMetadata[]>;
-}
+- **Skill-to-task matching** → Use `dag-semantic-matcher` instead
+- **Ranking or prioritizing skills** → Use `dag-capability-ranker` instead  
+- **Executing or invoking skills** → Use `dag-executor` instead
+- **Validating skill implementations** → Use `dag-skill-validator` instead
+- **Performance profiling during execution** → Use `dag-performance-profiler` instead
 
-function buildCapabilityIndex(
-  skills: SkillMetadata[]
-): CapabilityIndex {
-  const index: CapabilityIndex = {
-    byCapability: new Map(),
-    byCategory: new Map(),
-    byTag: new Map(),
-  };
-
-  for (const skill of skills) {
-    // Index by capabilities
-    for (const cap of skill.capabilities) {
-      const existing = index.byCapability.get(cap.name) ?? [];
-      index.byCapability.set(cap.name, [...existing, skill]);
-    }
-
-    // Index by category
-    const catSkills = index.byCategory.get(skill.category) ?? [];
-    index.byCategory.set(skill.category, [...catSkills, skill]);
-
-    // Index by tags
-    for (const tag of skill.tags) {
-      const tagSkills = index.byTag.get(tag) ?? [];
-      index.byTag.set(tag, [...tagSkills, skill]);
-    }
-  }
-
-  return index;
-}
-```
-
-## Registry Export Format
-
-```yaml
-registry:
-  version: "1.0.0"
-  lastUpdated: "2024-01-15T10:00:00Z"
-  skillCount: 150
-
-  categories:
-    - name: DAG Framework
-      skillCount: 23
-      description: Skills for DAG orchestration
-
-    - name: Development
-      skillCount: 45
-      description: Software development skills
-
-  skills:
-    - id: dag-graph-builder
-      name: DAG Graph Builder
-      category: DAG Framework
-      version: "1.0.0"
-      description: Parses problems into DAG structures
-      tags:
-        - dag
-        - orchestration
-        - graph
-      capabilities:
-        - name: task-decomposition
-          confidence: 0.95
-        - name: dependency-identification
-          confidence: 0.90
-      pairsWith:
-        - skillId: dag-dependency-resolver
-          reason: Validates built graphs
-          strength: recommended
-      stats:
-        totalExecutions: 1250
-        successRate: 0.94
-        averageDuration: 15000
-        averageTokens: 3500
-```
-
-## Performance Tracking
-
-```typescript
-function recordExecution(
-  registry: SkillRegistry,
-  execution: SkillExecution
-): void {
-  const skill = registry.skills.get(execution.skillId);
-  if (!skill) return;
-
-  const stats = skill.stats;
-
-  // Update running statistics
-  stats.totalExecutions++;
-  stats.successRate = (
-    (stats.successRate * (stats.totalExecutions - 1)) +
-    (execution.success ? 1 : 0)
-  ) / stats.totalExecutions;
-
-  // Exponential moving average for duration and tokens
-  const alpha = 0.1;
-  stats.averageDuration = stats.averageDuration * (1 - alpha) +
-    execution.duration * alpha;
-  stats.averageTokens = stats.averageTokens * (1 - alpha) +
-    execution.tokens * alpha;
-
-  stats.lastExecuted = new Date();
-}
-```
-
-## Registry Loading
-
-```typescript
-async function loadRegistry(
-  skillPaths: string[]
-): Promise<SkillRegistry> {
-  const registry = createEmptyRegistry();
-
-  for (const basePath of skillPaths) {
-    // Find all SKILL.md files
-    const skillFiles = await glob(`${basePath}/**/SKILL.md`);
-
-    for (const file of skillFiles) {
-      try {
-        const content = await readFile(file);
-        const skill = parseSkillFile(content);
-        skill.path = file;
-        registerSkill(registry, skill);
-      } catch (error) {
-        console.warn(`Failed to load skill from ${file}: ${error}`);
-      }
-    }
-  }
-
-  // Build indexes
-  registry.index = buildCapabilityIndex(
-    Array.from(registry.skills.values())
-  );
-
-  return registry;
-}
-```
-
-## Integration Points
-
-- **Consumers**: `dag-semantic-matcher`, `dag-capability-ranker`, `dag-graph-builder`
-- **Sources**: SKILL.md files, community registries
-- **Updates**: `dag-performance-profiler` sends execution stats
-- **Queries**: Natural language via `dag-semantic-matcher`
-
-## Best Practices
-
-1. **Keep Updated**: Refresh registry when skills change
-2. **Track Performance**: Accurate stats enable better matching
-3. **Index Thoroughly**: Multiple indexes improve query speed
-4. **Validate Skills**: Ensure metadata is complete and correct
-5. **Version Skills**: Track versions for compatibility
-
----
-
-Central knowledge. Fast discovery. Informed decisions.
+**Delegate these responsibilities:**
+- Complex semantic queries → `dag-semantic-matcher` handles natural language
+- Score-based ranking → `dag-capability-ranker` has ranking algorithms  
+- Real-time performance monitoring → `dag-performance-profiler` tracks live metrics
+- Cross-registry federation → `dag-registry-federation` manages multiple registries

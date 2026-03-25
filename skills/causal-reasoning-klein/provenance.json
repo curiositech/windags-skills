@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Causal_Reasoning_Initial_Report_of_a_Nat.pdf",
+    "path": "../batch_ndm_remaining/Causal_Reasoning_Initial_Report_of_a_Nat.pdf",
+    "chars": 36230,
+    "tokens_approx": 9057
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T14:19:44.433680Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 11741,
+        "output": 27592
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T14:19:44.443402Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 2101,
+        "output": 3919
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 650.1984322071075,
+  "generated_at": "2026-02-24T14:19:44.451707Z"
+}

@@ -1,26 +1,32 @@
 ---
+license: Apache-2.0
 name: code-architecture
-description: Application architecture patterns and code organization — clean architecture, hexagonal architecture, feature-based structure, dependency inversion, module boundaries, SOLID principles at module
-  scale. Activate on "clean architecture", "hexagonal architecture", "feature-based structure", "dependency inversion", "module boundaries", "architecture pattern", "folder structure", "fat controller",
-  "circular dependency", "IoC container". NOT for microservice decomposition (use microservices-patterns) or database schema design (use database-design-patterns).
+description: Application architecture patterns and code organization — clean architecture, hexagonal architecture, feature-based structure, dependency inversion, module boundaries, SOLID principles at module scale. Activate on "clean architecture", "hexagonal architecture", "feature-based structure", "dependency inversion", "module boundaries", "architecture pattern", "folder structure", "fat controller", "circular dependency", "IoC container". NOT for microservice decomposition (use microservices-patterns) or database schema design (use database-design-patterns).
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob
 metadata:
   category: Code Quality & Testing
   tags:
-  - code
-  - architecture
-  - clean-architecture
-  - hexagonal-architecture
-  - feature-based-structure
+    - code
+    - architecture
+    - clean-architecture
+    - hexagonal-architecture
+    - feature-based-structure
   pairs-with:
-  - skill: refactoring-surgeon
-    reason: Refactoring implements the architectural patterns that code-architecture prescribes
-  - skill: monorepo-management
-    reason: Monorepo workspace boundaries enforce architectural module separation
-  - skill: microservices-patterns
-    reason: Service decomposition decisions depend on application architecture patterns
-  - skill: typescript-advanced-patterns
-    reason: TypeScript type system features enforce architectural boundaries at compile time
+    - skill: refactoring-surgeon
+      reason: Refactoring implements the architectural patterns that code-architecture prescribes
+    - skill: monorepo-management
+      reason: Monorepo workspace boundaries enforce architectural module separation
+    - skill: microservices-patterns
+      reason: Service decomposition decisions depend on application architecture patterns
+    - skill: typescript-advanced-patterns
+      reason: TypeScript type system features enforce architectural boundaries at compile time
+category: Backend & Infrastructure
+tags:
+  - architecture
+  - design-patterns
+  - clean-code
+  - structure
+  - organization
 ---
 
 # Code Architecture

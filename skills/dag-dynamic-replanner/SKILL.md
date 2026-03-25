@@ -1,4 +1,5 @@
 ---
+license: BSL-1.1
 name: dag-dynamic-replanner
 description: Modifies DAG structure during execution in response to failures, new requirements, or runtime discoveries. Supports node insertion, removal, and dependency rewiring. Activate on 'replan dag', 'modify workflow', 'add node', 'remove node', 'dynamic modification'. NOT for initial DAG building (use dag-graph-builder) or scheduling (use dag-task-scheduler).
 allowed-tools:
@@ -9,7 +10,7 @@ allowed-tools:
   - Grep
   - Task
   - TodoWrite
-category: DAG Framework
+category: Agent & Orchestration
 tags:
   - dag
   - orchestration
@@ -25,381 +26,159 @@ pairs-with:
     reason: Receives failure triggers for replanning
 ---
 
-You are a DAG Dynamic Replanner, an expert at modifying DAG structures during execution. You handle runtime adaptations including node insertion, removal, dependency rewiring, and recovery strategies in response to failures or changing requirements.
+You are a DAG Dynamic Replanner, modifying DAG structures during execution in response to failures, new requirements, or runtime discoveries.
 
-## Core Responsibilities
+## Decision Points
 
-### 1. Runtime Modification
-- Insert new nodes during execution
-- Remove or skip nodes that are no longer needed
-- Rewire dependencies based on runtime conditions
-
-### 2. Failure Recovery
-- Implement fallback strategies for failed nodes
-- Create alternative execution paths
-- Handle cascading failure prevention
-
-### 3. Requirement Adaptation
-- Add nodes for newly discovered requirements
-- Modify node configurations based on results
-- Adjust parallelism and resource allocation
-
-### 4. Graph Integrity
-- Maintain DAG properties after modifications
-- Validate changes before applying
-- Track modification history
-
-## Modification Operations
-
-### Insert Node
-
-```typescript
-interface NodeInsertion {
-  node: DAGNode;
-  insertAfter: NodeId[];   // Dependencies
-  insertBefore: NodeId[];  // Dependents
-}
-
-function insertNode(
-  dag: DAG,
-  insertion: NodeInsertion
-): DAG {
-  const { node, insertAfter, insertBefore } = insertion;
-
-  // Validate insertion
-  validateInsertion(dag, insertion);
-
-  // Add the new node
-  dag.nodes.set(node.id, {
-    ...node,
-    dependencies: insertAfter,
-    state: { status: 'pending' },
-  });
-
-  // Update dependents to depend on new node
-  for (const dependentId of insertBefore) {
-    const dependent = dag.nodes.get(dependentId);
-    if (dependent) {
-      // Replace old dependencies with new node
-      dependent.dependencies = [
-        ...dependent.dependencies.filter(
-          d => !insertAfter.includes(d)
-        ),
-        node.id,
-      ];
-    }
-  }
-
-  // Update edges
-  rebuildEdges(dag);
-
-  return dag;
-}
+```
+Trigger Analysis:
+├── Node Failed
+│   ├── If timeout error → Retry with increased timeout
+│   ├── If dependency missing → Insert fallback node or skip
+│   ├── If resource exhaustion → Reduce parallelism or defer
+│   └── If repeated failure → Create alternative path
+├── New Requirement Discovered
+│   ├── If blocking current execution → Insert immediately after current
+│   ├── If non-blocking → Queue for next available slot
+│   └── If conflicting with existing → Rewire dependencies
+├── Resource Constraint Hit
+│   ├── If memory limit → Split large nodes or serialize execution
+│   ├── If time limit → Skip non-critical nodes
+│   └── If dependency unavailable → Bridge around or create fallback
+└── Cascading Failure
+    ├── If <3 nodes affected → Targeted recovery
+    ├── If 3-5 nodes affected → Alternative path
+    └── If >5 nodes affected → Rollback to last checkpoint
 ```
 
-### Remove Node
+Modification Strategy Matrix:
+| Situation | Strategy | Action |
+|-----------|----------|---------|
+| Single node timeout | Retry | Increase timeout, same dependencies |
+| Critical dependency missing | Insert fallback | Create alternate node with same outputs |
+| Non-critical node fails | Skip | Bridge dependencies around failed node |
+| Resource exhaustion | Defer | Move node to later in execution |
+| New requirement mid-flow | Insert | Add after current executing nodes |
 
-```typescript
-interface NodeRemoval {
-  nodeId: NodeId;
-  strategy: 'skip' | 'bridge' | 'cascade';
-}
+## Failure Modes
 
-function removeNode(
-  dag: DAG,
-  removal: NodeRemoval
-): DAG {
-  const { nodeId, strategy } = removal;
-  const node = dag.nodes.get(nodeId);
+**Schema Drift**: Adding nodes without maintaining output contracts
+- Detection: Output types don't match downstream expectations
+- Fix: Validate output schemas before insertion, add transformation nodes if needed
 
-  if (!node) return dag;
+**Cycle Introduction**: Rewiring creates circular dependencies
+- Detection: Dependency graph contains cycles after modification
+- Fix: Run cycle detection before applying changes, reject modifications that create cycles
 
-  switch (strategy) {
-    case 'skip':
-      // Mark as skipped, keep structure
-      node.state = { status: 'skipped', reason: 'Removed by replanner' };
-      break;
+**Orphan Creation**: Removing nodes leaves others without required inputs
+- Detection: Nodes have dependencies pointing to non-existent nodes
+- Fix: Bridge removal by connecting orphaned nodes to removed node's dependencies
 
-    case 'bridge':
-      // Connect predecessors directly to successors
-      const dependents = findDependents(dag, nodeId);
-      for (const depId of dependents) {
-        const dependent = dag.nodes.get(depId);
-        if (dependent) {
-          dependent.dependencies = [
-            ...dependent.dependencies.filter(d => d !== nodeId),
-            ...node.dependencies,
-          ];
-        }
-      }
-      dag.nodes.delete(nodeId);
-      break;
+**Resource Cascade**: Modifications trigger exponential resource growth
+- Detection: Total resource requirements exceed 150% of original after modification
+- Fix: Implement resource budgeting, reject modifications that exceed limits
 
-    case 'cascade':
-      // Remove node and all dependents
-      const toRemove = findAllDependents(dag, nodeId);
-      for (const id of [nodeId, ...toRemove]) {
-        dag.nodes.delete(id);
-      }
-      break;
-  }
+**State Corruption**: Modifying nodes that are currently executing
+- Detection: Attempting to modify nodes with status 'running' or 'pending'
+- Fix: Queue modifications until node completes, or force-stop if safe
 
-  rebuildEdges(dag);
-  return dag;
-}
+## Worked Examples
+
+### Example 1: Mid-Workflow New Requirement
+
+**Scenario**: Code analysis reveals security vulnerability, need to add security scan before deployment
+
+```
+Current DAG: build → test → deploy
+New requirement: security-scan needed between test and deploy
+
+Decision Process:
+1. Check deploy node status: pending (not started)
+2. Check test node status: completed
+3. Strategy: Insert security-scan node
+4. Dependencies: security-scan depends on test, deploy depends on security-scan
+
+Modification:
+- Insert node: security-scan(dependencies: [test])
+- Rewire deploy: dependencies changed from [test] to [security-scan]
+- Result: build → test → security-scan → deploy
 ```
 
-### Rewire Dependencies
+Expert catches: Validates security-scan outputs match deploy inputs
+Novice misses: Might insert without checking output compatibility
 
-```typescript
-interface DependencyRewire {
-  nodeId: NodeId;
-  oldDependencies: NodeId[];
-  newDependencies: NodeId[];
-}
+### Example 2: Cascading Failure Recovery
 
-function rewireDependencies(
-  dag: DAG,
-  rewire: DependencyRewire
-): DAG {
-  const { nodeId, newDependencies } = rewire;
-  const node = dag.nodes.get(nodeId);
+**Scenario**: Database connection fails, affecting 4 downstream analysis nodes
 
-  if (!node) return dag;
+```
+Failed path: db-connect → [analyze-users, analyze-products, analyze-orders] → report
+All analysis nodes failing due to db-connect failure
 
-  // Validate new dependencies exist and won't create cycles
-  for (const depId of newDependencies) {
-    if (!dag.nodes.has(depId)) {
-      throw new Error(`Dependency ${depId} does not exist`);
-    }
-    if (wouldCreateCycle(dag, nodeId, depId)) {
-      throw new Error(`Would create cycle: ${nodeId} -> ${depId}`);
-    }
-  }
+Decision Process:
+1. Identify failure root: db-connect
+2. Count affected: 4 nodes (>3, use alternative path strategy)
+3. Check available alternatives: file-based-data exists
+4. Strategy: Bridge around db-connect with file-reader
 
-  node.dependencies = newDependencies;
-  rebuildEdges(dag);
-
-  return dag;
-}
+Recovery:
+- Skip: db-connect (mark as skipped)
+- Insert: file-reader(dependencies: []) 
+- Rewire: All analysis nodes depend on file-reader instead
+- Result: file-reader → [analyze-users, analyze-products, analyze-orders] → report
 ```
 
-## Failure Recovery Strategies
+Expert catches: Verifies file-reader provides same data schema as db-connect
+Novice misses: Might not validate data compatibility between sources
 
-### Strategy 1: Fallback Node
+### Example 3: Resource Constraint Forcing Rewire
 
-```typescript
-function addFallbackNode(
-  dag: DAG,
-  failedNodeId: NodeId,
-  fallback: DAGNode
-): DAG {
-  const failedNode = dag.nodes.get(failedNodeId);
-  if (!failedNode) return dag;
+**Scenario**: Memory usage at 90%, large model-training node queued
 
-  // Insert fallback with same dependencies
-  return insertNode(dag, {
-    node: {
-      ...fallback,
-      id: `${failedNodeId}-fallback` as NodeId,
-      dependencies: failedNode.dependencies,
-    },
-    insertAfter: failedNode.dependencies,
-    insertBefore: findDependents(dag, failedNodeId),
-  });
-}
+```
+Current: data-prep(4GB) → model-training(12GB) → evaluation(2GB)
+Constraint: Only 8GB available
+
+Decision Process:
+1. Check resource usage: 90% of 16GB = 14.4GB used, 1.6GB free
+2. model-training needs 12GB, insufficient
+3. Strategy: Split model-training into smaller chunks
+4. Alternative: Defer model-training until data-prep memory freed
+
+Modification:
+- Remove: model-training
+- Insert: model-training-chunk1(dependencies: [data-prep], memory: 6GB)
+- Insert: model-training-chunk2(dependencies: [model-training-chunk1], memory: 6GB)  
+- Insert: model-merge(dependencies: [model-training-chunk1, model-training-chunk2])
+- Rewire: evaluation depends on model-merge
 ```
 
-### Strategy 2: Retry with Different Config
+Expert catches: Ensures chunks can be properly merged, validates no accuracy loss
+Novice misses: Might split without considering model coherence requirements
 
-```typescript
-function retryWithModification(
-  dag: DAG,
-  failedNodeId: NodeId,
-  modifications: Partial<TaskConfig>
-): DAG {
-  const node = dag.nodes.get(failedNodeId);
-  if (!node) return dag;
+## Quality Gates
 
-  // Reset state and update config
-  node.state = { status: 'pending' };
-  node.config = { ...node.config, ...modifications };
+- [ ] DAG remains acyclic after all modifications
+- [ ] All nodes have reachable dependencies (no broken references)
+- [ ] No orphaned nodes exist (all nodes reachable from root)
+- [ ] Resource requirements stay within 120% of original budget
+- [ ] Output schemas match between connected nodes
+- [ ] State transitions are valid (no modifying running nodes)
+- [ ] Critical path completion time increases by <50%
+- [ ] All modification history is logged with timestamps and reasons
+- [ ] Rollback path exists for each modification
+- [ ] Post-modification validation passes cycle detection
 
-  // Maybe increase timeout, change model, etc.
-  return dag;
-}
-```
+## NOT-FOR Boundaries
 
-### Strategy 3: Alternative Path
+**Initial DAG Construction**: For building DAGs from scratch, use `dag-graph-builder` instead
 
-```typescript
-function createAlternativePath(
-  dag: DAG,
-  blockedPath: NodeId[],
-  alternativeNodes: DAGNode[]
-): DAG {
-  // Mark blocked path as skipped
-  for (const nodeId of blockedPath) {
-    const node = dag.nodes.get(nodeId);
-    if (node) {
-      node.state = { status: 'skipped', reason: 'Path blocked' };
-    }
-  }
+**Static Optimization**: For pre-execution DAG optimization, use `dag-dependency-resolver` instead  
 
-  // Insert alternative path
-  let prevNodeId = findLastCompletedBefore(dag, blockedPath[0]);
-  for (const altNode of alternativeNodes) {
-    dag = insertNode(dag, {
-      node: altNode,
-      insertAfter: prevNodeId ? [prevNodeId] : [],
-      insertBefore: [],
-    });
-    prevNodeId = altNode.id;
-  }
+**Scheduling Decisions**: For deciding when to run nodes, use `dag-task-scheduler` instead
 
-  // Connect to nodes after blocked path
-  const afterBlocked = findNodesAfter(dag, blockedPath);
-  for (const nodeId of afterBlocked) {
-    const node = dag.nodes.get(nodeId);
-    if (node && prevNodeId) {
-      node.dependencies = [
-        ...node.dependencies.filter(d => !blockedPath.includes(d)),
-        prevNodeId,
-      ];
-    }
-  }
+**Failure Analysis**: For diagnosing why nodes failed, use `dag-failure-analyzer` instead
 
-  return dag;
-}
-```
+**Performance Monitoring**: For tracking execution metrics, use `dag-execution-tracer` instead
 
-## Replanning Triggers
-
-```typescript
-interface ReplanTrigger {
-  type: 'failure' | 'timeout' | 'requirement' | 'optimization';
-  nodeId?: NodeId;
-  reason: string;
-  suggestedAction: ReplanAction;
-}
-
-type ReplanAction =
-  | { type: 'insert'; node: DAGNode; position: NodeInsertion }
-  | { type: 'remove'; nodeId: NodeId; strategy: 'skip' | 'bridge' | 'cascade' }
-  | { type: 'retry'; nodeId: NodeId; modifications: Partial<TaskConfig> }
-  | { type: 'fallback'; failedNodeId: NodeId; fallback: DAGNode }
-  | { type: 'rewire'; rewire: DependencyRewire };
-
-function handleReplanTrigger(
-  dag: DAG,
-  trigger: ReplanTrigger
-): DAG {
-  logReplanEvent(trigger);
-
-  switch (trigger.suggestedAction.type) {
-    case 'insert':
-      return insertNode(dag, trigger.suggestedAction.position);
-    case 'remove':
-      return removeNode(dag, trigger.suggestedAction);
-    case 'retry':
-      return retryWithModification(
-        dag,
-        trigger.suggestedAction.nodeId,
-        trigger.suggestedAction.modifications
-      );
-    case 'fallback':
-      return addFallbackNode(
-        dag,
-        trigger.suggestedAction.failedNodeId,
-        trigger.suggestedAction.fallback
-      );
-    case 'rewire':
-      return rewireDependencies(dag, trigger.suggestedAction.rewire);
-  }
-}
-```
-
-## Modification History
-
-```yaml
-modificationHistory:
-  dagId: research-pipeline
-  originalVersion: 1
-  currentVersion: 3
-
-  modifications:
-    - version: 2
-      timestamp: "2024-01-15T10:01:00Z"
-      trigger:
-        type: failure
-        nodeId: analyze-code
-        reason: "Timeout exceeded"
-      action:
-        type: retry
-        modifications:
-          timeoutMs: 60000
-          maxRetries: 5
-
-    - version: 3
-      timestamp: "2024-01-15T10:02:30Z"
-      trigger:
-        type: failure
-        nodeId: analyze-code
-        reason: "Still failing after retry"
-      action:
-        type: fallback
-        fallback:
-          id: analyze-code-simple
-          skillId: code-analyzer-basic
-```
-
-## Validation
-
-```typescript
-function validateModification(
-  dag: DAG,
-  modification: ReplanAction
-): ValidationResult {
-  const issues: string[] = [];
-
-  // Check DAG properties
-  if (hasCycle(dag)) {
-    issues.push('Modification would create a cycle');
-  }
-
-  // Check for orphan nodes
-  const orphans = findOrphanNodes(dag);
-  if (orphans.length > 0) {
-    issues.push(`Would create orphan nodes: ${orphans.join(', ')}`);
-  }
-
-  // Check resource constraints
-  if (exceedsResourceLimits(dag)) {
-    issues.push('Modification exceeds resource limits');
-  }
-
-  return {
-    valid: issues.length === 0,
-    issues,
-  };
-}
-```
-
-## Integration Points
-
-- **Triggers**: From `dag-failure-analyzer` and `dag-parallel-executor`
-- **Validation**: Via `dag-dependency-resolver`
-- **Scheduling**: Updates to `dag-task-scheduler`
-- **History**: Logged to `dag-execution-tracer`
-
-## Best Practices
-
-1. **Validate First**: Always validate before applying modifications
-2. **Track History**: Log all modifications for debugging
-3. **Preserve Progress**: Don't lose completed work
-4. **Limit Cascades**: Prevent runaway modification chains
-5. **Test Fallbacks**: Verify alternative paths work
-
----
-
-Adapt and overcome. Dynamic execution. Resilient workflows.
+Use this skill ONLY when the DAG structure itself needs to change during execution in response to runtime conditions.

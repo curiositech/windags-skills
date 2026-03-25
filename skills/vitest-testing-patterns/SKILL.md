@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: vitest-testing-patterns
 description: Write tests using Vitest and React Testing Library. Use when creating unit tests, component tests, integration tests, or mocking dependencies. Activates for test file creation, mock patterns, coverage, and testing best practices.
 allowed-tools: Read,Write,Edit,Bash(npm:*,npx:*)
@@ -13,380 +14,154 @@ tags:
 
 # Vitest Testing Patterns
 
-This skill helps you write effective tests using Vitest and React Testing Library following project conventions.
+Write effective tests using Vitest and React Testing Library following project conventions.
 
-## When to Use
+## Decision Points
 
-✅ **USE this skill for:**
-- Writing unit tests for utilities and functions
-- Creating component tests with React Testing Library
-- Setting up mocks for API calls, databases, or external services
-- Integration testing patterns
-- Understanding test coverage and CI setup
+**If testing authentication flows:**
+- If API route: Mock `getSession()` → test 401/200 responses
+- If component with auth hook: Mock `useAuth` → test loading/authenticated/unauthenticated states
+- If utility function: Mock auth service → test token validation logic
 
-❌ **DO NOT use for:**
-- Jest-specific patterns → similar but check Jest docs for differences
-- End-to-end testing → use Playwright or Cypress skills
-- Performance testing → use dedicated performance tools
-- API contract testing → use OpenAPI/Pact patterns
+**If testing async operations:**
+- If API calls: Use `waitFor()` for state changes, mock fetch/axios
+- If user interactions: Use `userEvent.setup()` + `await user.click()`
+- If timers/debouncing: Use `vi.useFakeTimers()` + `vi.advanceTimersByTime()`
 
-## Test Infrastructure
+**If testing form interactions:**
+- If simple inputs: Use `getByRole('textbox')` + `userEvent.type()`
+- If complex forms: Use `getByLabelText()` for accessibility
+- If validation: Test both valid submission and error states
 
-**Configuration**: `vitest.config.ts`
-- Environment: jsdom
-- Setup file: `src/test/setup.ts`
-- Coverage: v8 provider
+**If testing error boundaries:**
+- If component errors: Mock dependency to throw → verify error UI
+- If network errors: Mock fetch rejection → test error handling
+- If validation errors: Submit invalid data → verify error messages
 
-**Commands**:
-```bash
-npm test              # Watch mode
-npm run test:run      # Single run
-npm run test:coverage # With coverage
-```
+**If choosing mock strategy:**
+- If external API: Mock at module level (`vi.mock('@/lib/api')`)
+- If database queries: Mock ORM methods with chained returns
+- If React hooks: Mock hook module, return test data
+- If utilities: Mock implementation, verify calls with correct args
 
-## File Organization
+## Failure Modes
 
-```
-src/
-├── app/api/__tests__/        # API route tests
-├── components/__tests__/     # Component tests
-├── lib/__tests__/            # Library/utility tests
-└── lib/{feature}/__tests__/  # Feature-specific tests
-```
+**Mock Pollution**: Tests affect each other due to shared mock state
+- Detection: Random test failures when run together but pass individually
+- Fix: Add `vi.clearAllMocks()` in `beforeEach()` or `afterEach()`
 
-Name tests as `{name}.test.ts` or `{name}.test.tsx`.
+**Over-Mocking**: Mocking too much implementation detail, tests become brittle
+- Detection: Tests break on refactors that don't change behavior
+- Fix: Mock at boundaries (API calls, external services), not internal functions
 
-## Core Testing Patterns
+**Async Race Conditions**: Tests fail sporadically due to timing issues
+- Detection: Intermittent failures with "element not found" or timeout errors
+- Fix: Use `waitFor()` or `findBy*` queries instead of `getBy*` for async content
 
-### 1. API Route Tests
+**Query Priority Violations**: Using low-priority queries when accessible ones exist
+- Detection: Tests use `getByTestId` or `querySelector` for interactive elements
+- Fix: Replace with `getByRole('button')`, `getByLabelText()`, etc.
 
-```typescript
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { GET, POST } from '../route';
-import { NextRequest } from 'next/server';
+**Mock Implementation Drift**: Mocks don't match real API changes
+- Detection: Tests pass but integration fails in production
+- Fix: Create shared mock factories, update mocks when API changes
 
-// Mock dependencies
-vi.mock('@/lib/auth', () => ({
-  getSession: vi.fn(),
-}));
+## Worked Example
 
-vi.mock('@/db', () => ({
-  db: {
-    select: vi.fn().mockReturnThis(),
-    from: vi.fn().mockReturnThis(),
-    where: vi.fn().mockResolvedValue([]),
-  },
-}));
-
-describe('GET /api/feature', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('returns 401 when not authenticated', async () => {
-    vi.mocked(getSession).mockResolvedValue(null);
-
-    const request = new NextRequest('http://localhost/api/feature');
-    const response = await GET(request);
-
-    expect(response.status).toBe(401);
-  });
-
-  it('returns data when authenticated', async () => {
-    vi.mocked(getSession).mockResolvedValue({ userId: 'user-123' });
-    vi.mocked(db.select).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockResolvedValue([{ id: '1', name: 'Test' }]),
-      }),
-    });
-
-    const request = new NextRequest('http://localhost/api/feature');
-    const response = await GET(request);
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data).toHaveLength(1);
-  });
-});
-```
-
-### 2. Component Tests
+Testing a form component with validation and API submission:
 
 ```typescript
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { FeatureComponent } from '../FeatureComponent';
-
-// Mock hooks
+// 1. SETUP - Mock dependencies at module level
 vi.mock('@/hooks/useAuth', () => ({
   useAuth: vi.fn().mockReturnValue({
-    user: { id: 'user-123', name: 'Test User' },
+    user: { id: 'user-123' },
     isLoading: false,
   }),
 }));
 
-describe('FeatureComponent', () => {
-  it('renders loading state', () => {
-    vi.mocked(useAuth).mockReturnValueOnce({
-      user: null,
-      isLoading: true,
-    });
+vi.mock('@/lib/api', () => ({
+  submitForm: vi.fn(),
+}));
 
-    render(<FeatureComponent />);
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+// 2. DECISION - Component test with form interaction
+describe('ContactForm', () => {
+  beforeEach(() => {
+    vi.clearAllMocks(); // Prevent mock pollution
   });
 
-  it('handles user interaction', async () => {
+  it('handles successful form submission', async () => {
+    // 3. SETUP - Configure mocks for success case
+    const mockSubmit = vi.mocked(submitForm);
+    mockSubmit.mockResolvedValue({ success: true });
+    
     const user = userEvent.setup();
-    const onSubmit = vi.fn();
+    render(<ContactForm />);
 
-    render(<FeatureComponent onSubmit={onSubmit} />);
-
-    await user.type(screen.getByRole('textbox'), 'Test input');
+    // 4. DECISION - Use accessible queries (getByLabelText vs getByTestId)
+    await user.type(screen.getByLabelText(/name/i), 'John Doe');
+    await user.type(screen.getByLabelText(/email/i), 'john@example.com');
+    
+    // 5. ACTION - Submit form
     await user.click(screen.getByRole('button', { name: /submit/i }));
 
-    expect(onSubmit).toHaveBeenCalledWith('Test input');
-  });
-
-  it('displays error state', async () => {
-    vi.mocked(fetch).mockRejectedValueOnce(new Error('Network error'));
-
-    render(<FeatureComponent />);
-
+    // 6. DECISION - Use waitFor for async state changes
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/error/i);
+      expect(screen.getByText(/success/i)).toBeInTheDocument();
     });
-  });
-});
-```
 
-### 3. Library/Utility Tests
-
-```typescript
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { processData, formatDate } from '../utils';
-
-describe('processData', () => {
-  it('transforms input correctly', () => {
-    const input = { raw: 'data' };
-    const result = processData(input);
-
-    expect(result).toEqual({
-      processed: true,
-      data: 'DATA',
+    // 7. VERIFY - Mock was called with correct data
+    expect(mockSubmit).toHaveBeenCalledWith({
+      name: 'John Doe',
+      email: 'john@example.com',
     });
   });
 
-  it('throws on invalid input', () => {
-    expect(() => processData(null)).toThrow('Invalid input');
-  });
-});
+  it('displays validation errors', async () => {
+    // Expert catches: Test error state, not just happy path
+    const user = userEvent.setup();
+    render(<ContactForm />);
 
-describe('formatDate', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2025-01-15T10:00:00Z'));
-  });
+    // Submit empty form
+    await user.click(screen.getByRole('button', { name: /submit/i }));
 
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('formats relative dates', () => {
-    const yesterday = new Date('2025-01-14T10:00:00Z');
-    expect(formatDate(yesterday)).toBe('yesterday');
+    // Verify validation errors appear
+    expect(screen.getByText(/name is required/i)).toBeInTheDocument();
+    expect(screen.getByText(/email is required/i)).toBeInTheDocument();
+    
+    // Verify API was not called with invalid data
+    expect(submitForm).not.toHaveBeenCalled();
   });
 });
 ```
 
-## Mocking Patterns
+**Novice misses:** Testing only happy path, using `getByTestId`, not cleaning mocks
+**Expert catches:** Error states, accessible queries, mock verification, async handling
 
-### Module Mocking
+## Quality Gates
 
-```typescript
-// Mock entire module
-vi.mock('@/lib/auth', () => ({
-  getSession: vi.fn(),
-  requireAuth: vi.fn(),
-}));
+- [ ] All async operations use `waitFor()` or `findBy*` queries
+- [ ] Mocks are cleared between tests (`vi.clearAllMocks()` in hooks)
+- [ ] Interactive elements tested with `getByRole()` or `getByLabelText()`
+- [ ] Both happy path and error states covered for each component
+- [ ] Mock functions verified with `toHaveBeenCalledWith()` for critical calls
+- [ ] No `act()` warnings in test output
+- [ ] Test names describe behavior, not implementation ("submits form" not "calls handleSubmit")
+- [ ] Coverage includes edge cases (empty states, loading states, error boundaries)
+- [ ] User interactions use `userEvent` not `fireEvent`
+- [ ] External dependencies mocked at module level, not inline
 
-// Mock with partial implementation
-vi.mock('date-fns', async () => {
-  const actual = await vi.importActual('date-fns');
-  return {
-    ...actual,
-    format: vi.fn(() => '2025-01-15'),
-  };
-});
+## NOT-FOR Boundaries
 
-// Mock default export (like Anthropic SDK)
-vi.mock('@anthropic-ai/sdk', () => ({
-  default: class MockAnthropic {
-    messages = {
-      create: vi.fn().mockResolvedValue({
-        content: [{ type: 'text', text: 'Mock response' }],
-        usage: { input_tokens: 10, output_tokens: 20 },
-      }),
-    };
-  },
-}));
-```
+**❌ DO NOT use for:**
+- End-to-end testing → Use `playwright-testing` skill instead
+- Performance testing → Use `performance-testing` skill instead
+- API contract testing → Use `openapi-testing` skill instead
+- Visual regression testing → Use `visual-testing` skill instead
+- Load testing → Use dedicated load testing tools
 
-### Function Mocking
-
-```typescript
-// Create mock function
-const mockFn = vi.fn();
-
-// Set return values
-mockFn.mockReturnValue('sync value');
-mockFn.mockResolvedValue('async value');
-mockFn.mockRejectedValue(new Error('Failed'));
-
-// One-time behavior
-mockFn.mockReturnValueOnce('first call only');
-
-// Custom implementation
-mockFn.mockImplementation((arg) => arg.toUpperCase());
-
-// Verify calls
-expect(mockFn).toHaveBeenCalled();
-expect(mockFn).toHaveBeenCalledTimes(2);
-expect(mockFn).toHaveBeenCalledWith('expected', 'args');
-```
-
-### Chained Mock Pattern (Drizzle ORM)
-
-```typescript
-vi.mock('@/db', () => ({
-  db: {
-    select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ id: '1' }]),
-          }),
-        }),
-      }),
-    }),
-    insert: vi.fn().mockReturnValue({
-      values: vi.fn().mockReturnValue({
-        returning: vi.fn().mockResolvedValue([{ id: 'new-1' }]),
-      }),
-    }),
-  },
-}));
-```
-
-### Timer Mocking
-
-```typescript
-describe('debounced function', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('debounces calls', async () => {
-    const callback = vi.fn();
-    const debounced = debounce(callback, 300);
-
-    debounced();
-    debounced();
-    debounced();
-
-    expect(callback).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(300);
-
-    expect(callback).toHaveBeenCalledTimes(1);
-  });
-});
-```
-
-## Query Priorities
-
-Use queries in this order (most to least preferred):
-
-1. **getByRole** - Accessible queries (buttons, links, headings)
-2. **getByLabelText** - Form fields with labels
-3. **getByPlaceholderText** - Inputs with placeholders
-4. **getByText** - Non-interactive elements
-5. **getByTestId** - Last resort (data-testid)
-
-```typescript
-// Preferred
-screen.getByRole('button', { name: /submit/i });
-screen.getByRole('heading', { level: 1 });
-screen.getByLabelText(/email/i);
-
-// Avoid unless necessary
-screen.getByTestId('submit-button');
-```
-
-## Async Patterns
-
-```typescript
-// Wait for element to appear
-await waitFor(() => {
-  expect(screen.getByText('Loaded')).toBeInTheDocument();
-});
-
-// Find (built-in waitFor)
-const element = await screen.findByText('Loaded');
-
-// Wait for element to disappear
-await waitFor(() => {
-  expect(screen.queryByText('Loading')).not.toBeInTheDocument();
-});
-```
-
-## Test Cleanup
-
-```typescript
-import { cleanup } from '@testing-library/react';
-
-afterEach(() => {
-  cleanup();            // React cleanup (automatic with setup.ts)
-  vi.clearAllMocks();   // Reset mock call counts
-  vi.resetAllMocks();   // Reset mocks to initial state
-  vi.restoreAllMocks(); // Restore original implementations
-});
-```
-
-## Accessibility Testing
-
-```typescript
-import { axe, toHaveNoViolations } from 'jest-axe';
-
-expect.extend(toHaveNoViolations);
-
-it('has no accessibility violations', async () => {
-  const { container } = render(<Component />);
-  const results = await axe(container);
-  expect(results).toHaveNoViolations();
-});
-```
-
-## Common Matchers
-
-```typescript
-// jest-dom matchers (from setup.ts)
-expect(element).toBeInTheDocument();
-expect(element).toBeVisible();
-expect(element).toBeDisabled();
-expect(element).toHaveTextContent('text');
-expect(element).toHaveAttribute('href', '/path');
-expect(element).toHaveClass('active');
-expect(input).toHaveValue('input value');
-```
-
-## References
-
-- [Vitest Mocking Guide](https://vitest.dev/guide/mocking)
-- [React Testing Library](https://testing-library.com/docs/react-testing-library/intro)
-- [Testing Library Queries](https://testing-library.com/docs/queries/about)
+**✅ USE this skill for:**
+- Unit tests for utilities and pure functions
+- Component tests with React Testing Library
+- Integration tests within a single module
+- Mock patterns for external dependencies
+- Test setup and configuration

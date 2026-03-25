@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: github-actions-pipeline-builder
 description: Build production CI/CD pipelines with GitHub Actions. Implements matrix builds, caching, deployments, testing, security scanning. Use for automated testing, deployments, release workflows. Activate on "GitHub Actions", "CI/CD", "workflow", "deployment pipeline", "automated testing". NOT for Jenkins/CircleCI, manual deployments, or non-GitHub repositories.
 allowed-tools: Read,Write,Edit,Bash
+category: DevOps & Infrastructure
+tags:
+  - github-actions
+  - ci-cd
+  - pipeline
+  - automation
+  - workflows
 ---
 
 # GitHub Actions Pipeline Builder

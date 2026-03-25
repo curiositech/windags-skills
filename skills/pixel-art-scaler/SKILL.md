@@ -1,7 +1,16 @@
 ---
+license: Apache-2.0
 name: pixel-art-scaler
 description: Deterministic pixel art upscaling using EPX/Scale2x, hq2x/hq4x, and xBR algorithms that add valid sub-pixels through pattern recognition. Activate on 'pixel art scaling', 'EPX', 'Scale2x', 'hq2x', 'hq4x', 'xBR', 'retro game upscaling'. NOT for AI/ML upscaling, photo enlargement, or simple nearest-neighbor.
 allowed-tools: Read,Write,Bash(python3:*,pip:*)
+category: Design & Creative
+tags:
+  - pixel
+  - art
+  - scaler
+  - rest
+  - ai
+  - ml
 ---
 
 # Pixel Art Scaler

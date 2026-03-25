@@ -1,26 +1,31 @@
 ---
+license: Apache-2.0
 name: monorepo-management
-description: Monorepo tooling, task orchestration, and workspace architecture for JavaScript/TypeScript repositories. Use when setting up Turborepo, Nx, pnpm workspaces, or npm workspaces; designing package
-  boundaries; configuring remote caching; optimizing CI for affected packages; managing versioning with Changesets; or untangling circular dependencies. Activate on "monorepo", "turborepo", "nx", "pnpm
-  workspace", "task pipeline", "remote cache", "changesets", "CODEOWNERS", "circular dependency", "affected packages", "workspace". NOT for git submodules or multi-repo federation strategies, non-JavaScript
-  monorepos (Bazel, Pants, Buck), or single-package repository setup.
+description: Monorepo tooling, task orchestration, and workspace architecture for JavaScript/TypeScript repositories. Use when setting up Turborepo, Nx, pnpm workspaces, or npm workspaces; designing package boundaries; configuring remote caching; optimizing CI for affected packages; managing versioning with Changesets; or untangling circular dependencies. Activate on "monorepo", "turborepo", "nx", "pnpm workspace", "task pipeline", "remote cache", "changesets", "CODEOWNERS", "circular dependency", "affected packages", "workspace". NOT for git submodules or multi-repo federation strategies, non-JavaScript monorepos (Bazel, Pants, Buck), or single-package repository setup.
 allowed-tools: Read,Write,Edit,Grep,Glob,Bash
 metadata:
   category: DevOps & Site Reliability
   tags:
+    - monorepo
+    - management
+    - turborepo
+    - nx
+  pairs-with:
+    - skill: dependency-management
+      reason: Workspace-level dependency hoisting and version alignment are monorepo-specific challenges
+    - skill: git-workflow-expert
+      reason: Monorepo git strategies (sparse checkout, path-based triggers) differ from single-repo workflows
+    - skill: github-actions-pipeline-builder
+      reason: Monorepo CI requires path-filtered workflows and build caching across workspaces
+    - skill: code-architecture
+      reason: Module boundaries and dependency direction rules define monorepo workspace structure
+category: DevOps & Infrastructure
+tags:
   - monorepo
-  - management
   - turborepo
   - nx
-  pairs-with:
-  - skill: dependency-management
-    reason: Workspace-level dependency hoisting and version alignment are monorepo-specific challenges
-  - skill: git-workflow-expert
-    reason: Monorepo git strategies (sparse checkout, path-based triggers) differ from single-repo workflows
-  - skill: github-actions-pipeline-builder
-    reason: Monorepo CI requires path-filtered workflows and build caching across workspaces
-  - skill: code-architecture
-    reason: Module boundaries and dependency direction rules define monorepo workspace structure
+  - workspace
+  - package-management
 ---
 
 # Monorepo Management

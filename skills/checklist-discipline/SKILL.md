@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: checklist-discipline
 description: Design and implement systematic checklists that reduce errors by 30-50% in complex, high-stakes domains (medicine, aviation, construction, finance). NOT for simple tasks or when comprehensive instruction is needed.
 allowed-tools: Read
+category: Productivity & Meta
+tags:
+  - checklists
+  - discipline
+  - process
+  - quality
+  - methodology
 ---
 
 # Checklist Discipline

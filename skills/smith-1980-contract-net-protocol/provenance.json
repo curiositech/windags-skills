@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Smith-1980-Contract-Net-Protocol.pdf",
+    "path": "batch_weak_subsystems/Smith-1980-Contract-Net-Protocol.pdf",
+    "chars": 7985,
+    "tokens_approx": 1996
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T05:34:04.073464Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 4934,
+        "output": 20521
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T05:34:04.083364Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1683,
+        "output": 3339
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 463.81681299209595,
+  "generated_at": "2026-02-24T05:34:04.092860Z"
+}

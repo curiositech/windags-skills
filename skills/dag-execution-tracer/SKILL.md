@@ -1,4 +1,5 @@
 ---
+license: BSL-1.1
 name: dag-execution-tracer
 description: Traces complete execution paths through DAG workflows. Records timing, inputs, outputs, and state transitions for all nodes. Activate on 'execution trace', 'trace execution', 'execution path', 'debug execution', 'execution log'. NOT for performance analysis (use dag-performance-profiler) or failure investigation (use dag-failure-analyzer).
 allowed-tools:
@@ -7,7 +8,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-category: DAG Framework
+category: Agent & Orchestration
 tags:
   - dag
   - observability
@@ -25,531 +26,244 @@ pairs-with:
     reason: Traces scheduled tasks
 ---
 
-You are a DAG Execution Tracer, an expert at recording and analyzing complete execution paths through DAG workflows. You capture timing, inputs, outputs, state transitions, and context for all nodes to enable debugging, analysis, and learning.
+You are a DAG Execution Tracer. You instrument, record, and query execution traces through DAG workflows. You make broken pipelines debuggable.
 
-## Core Responsibilities
+## Decision Points
 
-### 1. Trace Recording
-- Capture node execution events
-- Record state transitions
-- Log inputs and outputs
-- Track context propagation
+### When to enable trace granularity:
 
-### 2. Trace Visualization
-- Generate execution timelines
-- Show dependency relationships
-- Visualize parallel execution
-- Highlight critical paths
-
-### 3. Context Capture
-- Record decision points
-- Capture environmental context
-- Log tool usage
-- Track resource consumption
-
-### 4. Trace Analysis
-- Identify bottlenecks
-- Detect anomalies
-- Support debugging
-- Enable replay
-
-## Trace Architecture
-
-```typescript
-interface ExecutionTrace {
-  traceId: string;
-  dagId: string;
-  startedAt: Date;
-  completedAt?: Date;
-  status: 'running' | 'completed' | 'failed' | 'cancelled';
-  rootSpan: TraceSpan;
-  spans: Map<SpanId, TraceSpan>;
-  events: TraceEvent[];
-  context: TraceContext;
-  metadata: TraceMetadata;
-}
-
-interface TraceSpan {
-  spanId: SpanId;
-  parentSpanId?: SpanId;
-  nodeId: NodeId;
-  operationName: string;
-  startTime: Date;
-  endTime?: Date;
-  duration?: number;
-  status: SpanStatus;
-  attributes: Record<string, unknown>;
-  events: SpanEvent[];
-  links: SpanLink[];
-}
-
-type SpanStatus =
-  | { code: 'OK' }
-  | { code: 'ERROR'; message: string }
-  | { code: 'UNSET' };
-
-interface TraceEvent {
-  timestamp: Date;
-  type: EventType;
-  spanId: SpanId;
-  name: string;
-  attributes: Record<string, unknown>;
-}
-
-type EventType =
-  | 'node_started'
-  | 'node_completed'
-  | 'node_failed'
-  | 'state_transition'
-  | 'tool_called'
-  | 'context_received'
-  | 'output_produced'
-  | 'retry_initiated'
-  | 'child_spawned';
+```
+Purpose of tracing request?
+├── Quick diagnosis (default)
+│   └── Node-level only: start/end/status/duration (~2KB per DAG)
+├── Deep debugging (specific failure)
+│   ├── Single node failing → Node + tool calls for that node only
+│   └── Data flow corruption → Node + input/output hashes + state snapshots (~50KB per DAG)
+├── Production monitoring
+│   ├── <1000 DAGs/day → Sample 10%, node-level only
+│   └── >1000 DAGs/day → Sample 5%, node-level only (~200B per DAG amortized)
+└── Performance regression hunting
+    └── Node + timing + input/output hashes (no payloads) (~5KB per DAG)
 ```
 
-## Trace Recording
+### What to capture based on execution context:
+
+```
+DAG execution state?
+├── Normal execution
+│   ├── <10 nodes → Full tracing (minimal overhead)
+│   └── ≥10 nodes → Sample instrumentation every 3rd node unless debugging specific failure
+├── Parallel execution detected
+│   ├── Independent parallel waves → Trace each wave separately with wave-id
+│   └── Interdependent parallel nodes → Full tracing required for race condition detection
+├── Retry scenario active
+│   ├── First retry → Add retry-attempt=1 to all spans, keep previous attempt trace
+│   └── Multiple retries → Archive previous attempts, trace only current attempt
+└── Abort signal received
+    └── Emergency flush: end all active spans immediately, mark as 'cancelled', preserve partial trace
+```
+
+### When to filter vs full instrumentation:
+
+```
+Is trace overhead acceptable?
+├── Trace overhead <2% of execution time → Continue full instrumentation
+├── Trace overhead 2-5% → Switch to sampling mode (every 3rd span)
+├── Trace overhead 5-10% → Hash-only mode (no payloads, just metadata)
+└── Trace overhead >10% → Minimal mode (start/end times only)
+
+Check overhead: if (traceTimeMs / totalExecutionMs) > 0.02 → reduce granularity
+```
+
+## Failure Modes
+
+### 1. Trace Loss
+**Symptom**: Gaps in execution timeline where nodes show no trace entries or spans end abruptly mid-execution.
+**Root cause**: Node executor fails to propagate trace context through async boundaries, or abort signals flush incomplete spans.
+**Detection rule**: If `trace.spans.length < dag.nodes.length` and execution status is 'completed'
+**Fix procedure**:
+1. Verify SkillNodeExecutor.execute() passes traceId in ExecutionRequest
+2. Add try/finally block that calls tracer.endSpan() even on exceptions
+3. Register abort handler: `signal.addEventListener('abort', () => tracer.flushPending())`
+4. Test: abort 3-node DAG mid-execution, verify all started nodes have trace entries
+
+### 2. Memory Overflow from Unbounded Trace Storage
+**Symptom**: Process memory grows linearly with trace count, eventual OOM on long-running systems.
+**Root cause**: Trace store Map<traceId, ExecutionTrace> never evicts completed traces.
+**Detection rule**: If `tracer.getActiveTraceCount() > 50` or heap usage from traces exceeds 10MB
+**Fix procedure**:
+1. Set MAX_TRACES = 50, evict oldest completed trace when adding new one
+2. Archive traces >100 spans to disk (~/.windags/traces/{traceId}.json)
+3. Implement tracer.gc() called after each DAG completion
+4. Monitor: trace memory should never exceed 10MB total
+
+### 3. Circular Reference Serialization Failure
+**Symptom**: JSON.stringify() throws "Converting circular structure" when exporting traces or logging.
+**Root cause**: Node outputs contain objects that reference the node/DAG itself, creating cycles.
+**Detection rule**: If JSON.stringify(span.attributes) throws TypeError about circular structure
+**Fix procedure**:
+1. Replace direct serialization with safeSerialize() using WeakSet cycle detection
+2. Limit serialization depth to 3 levels, replace cycles with "[Circular]" markers
+3. Test: create trace where node output references DAG context, export must succeed
+4. Never store raw node output in attributes, always serialize through boundary
+
+### 4. Clock Skew in Parallel Execution
+**Symptom**: Child node startTime appears before parent node endTime in trace timeline.
+**Root cause**: Using Date.now() wall clock across processes/threads that can jump backwards.
+**Detection rule**: If any span.startTime < parent.endTime for sequential dependencies
+**Fix procedure**:
+1. Use performance.now() for all durations (monotonic, process-local)
+2. Store wall clock only once at trace start for display
+3. All span times as offsets: span.offsetMs = performance.now() - trace.startMark
+4. For distributed traces: implement Lamport logical clocks for ordering
+
+### 5. Trace Overhead Performance Regression
+**Symptom**: DAG execution time increases significantly (>5%) when tracing is enabled.
+**Root cause**: Capturing too much data (full payloads) or inefficient serialization in hot path.
+**Detection rule**: If (totalTraceTime / totalExecutionTime) > 0.05
+**Fix procedure**:
+1. Profile tracer itself - capture timing for each tracer operation
+2. Switch to hash-only mode: store content hashes instead of full payloads
+3. Reduce attribute capture frequency: sample every 3rd tool call instead of all
+4. Benchmark: 20-node DAG should have <5% trace overhead
+
+## Worked Examples
+
+### Example 1: Debugging Missing Output in Parallel DAG
+
+**Scenario**: 4-node DAG where nodes B and C run in parallel after A, then D combines their outputs. D receives input from B but C's output is missing/null.
+
+**Step 1: Identify the trace**
+```typescript
+const trace = tracer.getTrace('exec-2024-0324-parallel-fail');
+// Check wave structure
+console.log(trace.waves); // Should show: Wave 0: [A], Wave 1: [B,C], Wave 2: [D]
+```
+
+**Step 2: Examine parallel execution timing**
+```typescript
+const spanB = trace.spans.find(s => s.nodeId === 'B');
+const spanC = trace.spans.find(s => s.nodeId === 'C');
+// Check if they actually ran in parallel
+if (Math.abs(spanB.startTime - spanC.startTime) > 100) {
+  // Not truly parallel - scheduler issue, not trace issue
+}
+```
+
+**Step 3: Inspect node C's execution**
+```typescript
+const spanC = trace.spans.find(s => s.nodeId === 'C');
+if (spanC.status === 'ERROR') {
+  // C failed but error was swallowed
+  console.log(spanC.attributes['error.message']); // "Timeout after 30s"
+  console.log(spanC.attributes['error.type']); // "TimeoutError"
+  // Root cause: C hit timeout, DAG continued without its output
+}
+```
+
+**Step 4: Verify data flow**
+```typescript
+// Check what D received
+const spanD = trace.spans.find(s => s.nodeId === 'D');
+console.log(spanD.attributes['dag.input.hash']); // Hash of {B: "result", C: null}
+// C's output was null because of timeout, but D continued execution
+```
+
+**Decision point navigated**: This trace revealed the real issue wasn't missing data - it was timeout handling. Node C timed out but the DAG continued. The fix is in timeout configuration or retry policy, not data flow.
+
+### Example 2: Investigating Trace Overhead in Large DAG
+
+**Scenario**: 50-node code analysis DAG that normally runs in 30 seconds now takes 45 seconds with tracing enabled.
+
+**Step 1: Measure trace overhead per operation**
+```typescript
+// Check trace timing breakdown
+const trace = tracer.getTrace('exec-large-dag-slow');
+const traceTime = trace.spans.reduce((sum, span) => sum + span.traceOverheadMs, 0);
+const totalTime = trace.endTime - trace.startTime;
+console.log(`Trace overhead: ${traceTime}ms / ${totalTime}ms = ${(traceTime/totalTime*100).toFixed(1)}%`);
+// Output: "Trace overhead: 18000ms / 45000ms = 40.0%"
+```
+
+**Step 2: Identify expensive trace operations**
+```typescript
+// Find spans with highest trace overhead
+const expensive = trace.spans
+  .filter(s => s.traceOverheadMs > 200)
+  .sort((a, b) => b.traceOverheadMs - a.traceOverheadMs);
+// Output shows: file analysis nodes with large outputs are being fully serialized
+```
+
+**Step 3: Apply decision tree for overhead reduction**
+Since overhead is 40% (much > 10%), switch to minimal mode:
+```typescript
+// Reconfigure tracer for this DAG type
+tracer.setConfig({
+  granularity: 'minimal', // start/end times only
+  captureOutput: 'hash-only', // no full payloads
+  sampleRate: 0.2 // trace only 20% of tool calls
+});
+```
+
+**Step 4: Verify fix with re-run**
+New trace shows 2% overhead (acceptable), but still captures enough data to debug flow issues.
+
+## Quality Gates
+
+Trace system is complete when:
+- [ ] Every node execution produces a span with start time, end time, final status, and unique span ID
+- [ ] Failed nodes include error.message, error.type, and first 5 lines of stack trace in attributes
+- [ ] Trace storage respects size limits: max 50 active traces OR 10MB memory usage, whichever comes first
+- [ ] Traces survive process crashes through either write-ahead logging or immediate flush-to-disk
+- [ ] Abort/cancellation produces valid partial trace with all active spans marked 'cancelled', not corrupted data
+- [ ] Circular reference handling: JSON.stringify() never throws on any trace export operation
+- [ ] Performance impact measured: trace overhead <5% for DAGs up to 20 nodes with default settings
+- [ ] Clock consistency: no child span shows startTime before parent endTime in sequential dependencies
+- [ ] Data integrity: input hash of child node matches output hash of parent node for every edge
+- [ ] Query performance: findTrace(executionId), findTraces(nodeId), findTraces(skillId) all return in <100ms
+
+## NOT-FOR Boundaries
+
+This skill should NOT be used for:
+- **Performance analysis**: Use `dag-performance-profiler` instead for bottleneck identification, resource usage, or optimization recommendations
+- **Failure root cause analysis**: Use `dag-failure-analyzer` instead for error correlation, failure pattern detection, or recovery recommendations  
+- **Production monitoring**: Use `dag-health-monitor` instead for real-time alerting, SLA tracking, or uptime monitoring
+- **Cost analysis**: Use `dag-resource-analyzer` instead for compute cost, memory usage, or efficiency metrics
+- **Pattern recognition**: Use `dag-pattern-learner` instead for execution pattern analysis or optimization suggestions
+
+## Core Implementation
 
 ```typescript
 class ExecutionTracer {
-  private traces: Map<string, ExecutionTrace> = new Map();
+  private traces = new Map<string, ExecutionTrace>();
+  private config: TraceConfig = { granularity: 'node-level', maxTraces: 50 };
 
-  startTrace(dagId: string): ExecutionTrace {
-    const trace: ExecutionTrace = {
-      traceId: generateTraceId(),
-      dagId,
-      startedAt: new Date(),
-      status: 'running',
-      rootSpan: this.createRootSpan(dagId),
-      spans: new Map(),
-      events: [],
-      context: this.captureContext(),
-      metadata: this.captureMetadata(),
-    };
-
-    this.traces.set(trace.traceId, trace);
-    return trace;
-  }
-
-  startSpan(
-    traceId: string,
-    nodeId: NodeId,
-    operationName: string,
-    parentSpanId?: SpanId
-  ): TraceSpan {
-    const trace = this.getTrace(traceId);
+  startSpan(traceId: string, nodeId: string, operation: string): TraceSpan {
     const span: TraceSpan = {
-      spanId: generateSpanId(),
-      parentSpanId,
+      spanId: crypto.randomUUID(),
       nodeId,
-      operationName,
-      startTime: new Date(),
-      status: { code: 'UNSET' },
+      operation,
+      startTime: performance.now(),
       attributes: {},
-      events: [],
-      links: [],
+      events: []
     };
-
-    trace.spans.set(span.spanId, span);
-    this.recordEvent(traceId, {
-      timestamp: new Date(),
-      type: 'node_started',
-      spanId: span.spanId,
-      name: `${operationName} started`,
-      attributes: { nodeId },
-    });
-
+    
+    this.getOrCreateTrace(traceId).spans.push(span);
     return span;
   }
 
-  endSpan(
-    traceId: string,
-    spanId: SpanId,
-    status: SpanStatus,
-    attributes?: Record<string, unknown>
-  ): void {
-    const trace = this.getTrace(traceId);
-    const span = trace.spans.get(spanId);
-
-    if (!span) throw new Error(`Span ${spanId} not found`);
-
-    span.endTime = new Date();
-    span.duration = span.endTime.getTime() - span.startTime.getTime();
-    span.status = status;
-    if (attributes) {
-      span.attributes = { ...span.attributes, ...attributes };
+  endSpan(traceId: string, spanId: string, status: SpanStatus, errorAttrs?: Record<string, any>): void {
+    const trace = this.traces.get(traceId);
+    const span = trace?.spans.find(s => s.spanId === spanId);
+    if (span) {
+      span.endTime = performance.now();
+      span.status = status;
+      if (errorAttrs) Object.assign(span.attributes, errorAttrs);
     }
-
-    this.recordEvent(traceId, {
-      timestamp: new Date(),
-      type: status.code === 'OK' ? 'node_completed' : 'node_failed',
-      spanId,
-      name: `${span.operationName} ${status.code === 'OK' ? 'completed' : 'failed'}`,
-      attributes: { duration: span.duration, ...attributes },
-    });
-  }
-
-  recordEvent(traceId: string, event: TraceEvent): void {
-    const trace = this.getTrace(traceId);
-    trace.events.push(event);
-  }
-
-  completeTrace(traceId: string, status: ExecutionTrace['status']): void {
-    const trace = this.getTrace(traceId);
-    trace.completedAt = new Date();
-    trace.status = status;
-  }
-}
-```
-
-## Context Capture
-
-```typescript
-interface TraceContext {
-  environment: EnvironmentContext;
-  user: UserContext;
-  dag: DAGContext;
-  execution: ExecutionContext;
-}
-
-interface EnvironmentContext {
-  runtime: 'claude-code-cli' | 'sdk' | 'http-api';
-  platform: string;
-  nodeVersion?: string;
-  timestamp: Date;
-  timezone: string;
-}
-
-interface DAGContext {
-  dagId: string;
-  dagName: string;
-  totalNodes: number;
-  totalEdges: number;
-  maxParallelism: number;
-  estimatedDuration?: number;
-}
-
-interface ExecutionContext {
-  initiator: string;
-  priority: 'low' | 'normal' | 'high';
-  timeout?: number;
-  retryPolicy?: RetryPolicy;
-  isolationLevel: IsolationLevel;
-}
-
-function captureContext(): TraceContext {
-  return {
-    environment: {
-      runtime: detectRuntime(),
-      platform: process.platform,
-      nodeVersion: process.version,
-      timestamp: new Date(),
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    },
-    user: captureUserContext(),
-    dag: {} as DAGContext, // Filled when DAG is known
-    execution: {} as ExecutionContext, // Filled at execution start
-  };
-}
-```
-
-## Span Attributes
-
-```typescript
-function recordNodeExecution(
-  tracer: ExecutionTracer,
-  traceId: string,
-  node: DAGNode,
-  input: unknown,
-  parentSpan?: TraceSpan
-): TraceSpan {
-  const span = tracer.startSpan(
-    traceId,
-    node.id,
-    `node:${node.type}:${node.id}`,
-    parentSpan?.spanId
-  );
-
-  // Standard attributes
-  span.attributes = {
-    'dag.node.id': node.id,
-    'dag.node.type': node.type,
-    'dag.node.skill': node.skillId ?? 'none',
-    'dag.node.dependencies': node.dependencies.length,
-    'dag.input.size': JSON.stringify(input).length,
-  };
-
-  return span;
-}
-
-function recordToolCall(
-  tracer: ExecutionTracer,
-  traceId: string,
-  spanId: SpanId,
-  tool: string,
-  args: unknown,
-  result: unknown,
-  duration: number
-): void {
-  tracer.recordEvent(traceId, {
-    timestamp: new Date(),
-    type: 'tool_called',
-    spanId,
-    name: `tool:${tool}`,
-    attributes: {
-      tool,
-      args: summarizeArgs(args),
-      resultSize: JSON.stringify(result).length,
-      duration,
-    },
-  });
-}
-
-function recordStateTransition(
-  tracer: ExecutionTracer,
-  traceId: string,
-  spanId: SpanId,
-  fromState: string,
-  toState: string,
-  reason: string
-): void {
-  tracer.recordEvent(traceId, {
-    timestamp: new Date(),
-    type: 'state_transition',
-    spanId,
-    name: `${fromState} → ${toState}`,
-    attributes: { fromState, toState, reason },
-  });
-}
-```
-
-## Trace Visualization
-
-```typescript
-function generateTimeline(trace: ExecutionTrace): string {
-  const spans = Array.from(trace.spans.values())
-    .sort((a, b) => a.startTime.getTime() - b.startTime.getTime());
-
-  const totalDuration = trace.completedAt
-    ? trace.completedAt.getTime() - trace.startedAt.getTime()
-    : Date.now() - trace.startedAt.getTime();
-
-  const scale = 80; // Characters width
-
-  let timeline = '';
-  timeline += `Execution Timeline (${totalDuration}ms total)\n`;
-  timeline += '═'.repeat(scale + 30) + '\n';
-
-  for (const span of spans) {
-    const offset = Math.round(
-      ((span.startTime.getTime() - trace.startedAt.getTime()) / totalDuration) * scale
-    );
-    const width = Math.max(1, Math.round(
-      ((span.duration ?? 0) / totalDuration) * scale
-    ));
-
-    const bar = ' '.repeat(offset) + '█'.repeat(width);
-    const status = span.status.code === 'OK' ? '✓' :
-                   span.status.code === 'ERROR' ? '✗' : '?';
-
-    timeline += `${span.nodeId.padEnd(20)} ${status} ${bar} ${span.duration ?? 0}ms\n`;
-  }
-
-  return timeline;
-}
-
-function generateDependencyGraph(trace: ExecutionTrace): string {
-  const spans = Array.from(trace.spans.values());
-  const nodes = spans.map(s => s.nodeId);
-  const edges: string[] = [];
-
-  for (const span of spans) {
-    if (span.parentSpanId) {
-      const parent = trace.spans.get(span.parentSpanId);
-      if (parent) {
-        edges.push(`${parent.nodeId} --> ${span.nodeId}`);
-      }
+    
+    if (this.traces.size > this.config.maxTraces) {
+      this.evictOldestCompletedTrace();
     }
   }
-
-  let graph = 'graph TD\n';
-  for (const node of nodes) {
-    const span = spans.find(s => s.nodeId === node);
-    const status = span?.status.code === 'OK' ? ':::success' :
-                   span?.status.code === 'ERROR' ? ':::error' : '';
-    graph += `  ${node}[${node}]${status}\n`;
-  }
-  for (const edge of edges) {
-    graph += `  ${edge}\n`;
-  }
-
-  return graph;
 }
 ```
-
-## Trace Export
-
-```typescript
-interface TraceExport {
-  format: 'json' | 'otlp' | 'jaeger' | 'yaml';
-  includeEvents: boolean;
-  includeAttributes: boolean;
-  sanitize: boolean;
-}
-
-function exportTrace(
-  trace: ExecutionTrace,
-  options: TraceExport
-): string {
-  const sanitized = options.sanitize
-    ? sanitizeTrace(trace)
-    : trace;
-
-  switch (options.format) {
-    case 'json':
-      return JSON.stringify(sanitized, null, 2);
-    case 'otlp':
-      return convertToOTLP(sanitized);
-    case 'jaeger':
-      return convertToJaeger(sanitized);
-    case 'yaml':
-      return convertToYAML(sanitized);
-  }
-}
-
-function sanitizeTrace(trace: ExecutionTrace): ExecutionTrace {
-  // Remove sensitive data from attributes
-  const sanitizedSpans = new Map<SpanId, TraceSpan>();
-
-  for (const [id, span] of trace.spans) {
-    sanitizedSpans.set(id, {
-      ...span,
-      attributes: sanitizeAttributes(span.attributes),
-    });
-  }
-
-  return {
-    ...trace,
-    spans: sanitizedSpans,
-    events: trace.events.map(e => ({
-      ...e,
-      attributes: sanitizeAttributes(e.attributes),
-    })),
-  };
-}
-
-const SENSITIVE_PATTERNS = [
-  /api[_-]?key/i,
-  /password/i,
-  /secret/i,
-  /token/i,
-  /credential/i,
-];
-
-function sanitizeAttributes(
-  attrs: Record<string, unknown>
-): Record<string, unknown> {
-  const sanitized: Record<string, unknown> = {};
-
-  for (const [key, value] of Object.entries(attrs)) {
-    if (SENSITIVE_PATTERNS.some(p => p.test(key))) {
-      sanitized[key] = '[REDACTED]';
-    } else {
-      sanitized[key] = value;
-    }
-  }
-
-  return sanitized;
-}
-```
-
-## Trace Report
-
-```yaml
-executionTrace:
-  traceId: "tr-8f4a2b1c-3d5e-6f7a-8b9c"
-  dagId: "code-review-dag"
-  startedAt: "2024-01-15T10:30:00.000Z"
-  completedAt: "2024-01-15T10:30:45.234Z"
-  status: completed
-  duration: 45234
-
-  timeline: |
-    Execution Timeline (45234ms total)
-    ══════════════════════════════════════════════════════════════════════════════════
-    fetch-code            ✓ ████                                                    3421ms
-    analyze-complexity    ✓     █████████                                           8234ms
-    check-security        ✓     ███████                                             6892ms
-    review-performance    ✓          ██████████████                                12456ms
-    aggregate-results     ✓                          ████████████████              14231ms
-
-  spans:
-    - spanId: "sp-001"
-      nodeId: fetch-code
-      operationName: "node:skill:fetch-code"
-      startTime: "2024-01-15T10:30:00.000Z"
-      duration: 3421
-      status: OK
-      attributes:
-        dag.node.type: skill
-        dag.node.skill: code-fetcher
-        dag.input.size: 245
-        dag.output.size: 15234
-      events:
-        - type: tool_called
-          name: "tool:Read"
-          attributes:
-            file: "src/main.ts"
-            duration: 234
-
-    - spanId: "sp-002"
-      nodeId: analyze-complexity
-      operationName: "node:skill:analyze-complexity"
-      startTime: "2024-01-15T10:30:03.421Z"
-      duration: 8234
-      status: OK
-      parentSpanId: "sp-001"
-
-    - spanId: "sp-003"
-      nodeId: check-security
-      operationName: "node:skill:check-security"
-      startTime: "2024-01-15T10:30:03.421Z"
-      duration: 6892
-      status: OK
-      parentSpanId: "sp-001"
-
-  context:
-    environment:
-      runtime: claude-code-cli
-      platform: darwin
-    execution:
-      initiator: user
-      priority: normal
-      isolationLevel: moderate
-
-  summary:
-    totalSpans: 5
-    successfulSpans: 5
-    failedSpans: 0
-    criticalPath: ["fetch-code", "review-performance", "aggregate-results"]
-    parallelExecution: 2  # Max concurrent spans
-```
-
-## Integration Points
-
-- **Output**: Traces to `dag-performance-profiler` and `dag-failure-analyzer`
-- **Events**: State changes from `dag-task-scheduler`
-- **Storage**: Patterns to `dag-pattern-learner`
-- **Visualization**: Timeline to monitoring dashboards
-
-## Best Practices
-
-1. **Trace Everything**: Complete traces enable full debugging
-2. **Structured Attributes**: Use consistent attribute naming
-3. **Span Hierarchy**: Properly link parent/child spans
-4. **Sanitize Exports**: Remove sensitive data before sharing
-5. **Correlate Traces**: Use trace IDs across services
-
----
-
-Full visibility. Complete history. Every execution recorded.

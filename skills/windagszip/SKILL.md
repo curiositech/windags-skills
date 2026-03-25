@@ -1,22 +1,15 @@
 ---
+license: Apache-2.0
 name: windagszip
-description: >
-  This skill should be used when a SKILL.md file needs compression, deduplication,
-  or token reduction. It provides an embedding-based compression pipeline that
-  detects and removes redundant chunks within SKILL.md files using local embeddings
-  (all-MiniLM-L6-v2). Two-pass approach: (1) free intra-skill deduplication via
-  cosine similarity clustering, (2) optional LLM-judged graded eval to detect
-  pretraining overlap. Typical result: 25-46% token reduction with zero quality loss.
-  This skill is not intended for editing skill content, creating new skills, routing
-  optimization, or cross-skill deduplication.
-category: Skill Development & Meta
+description: |
+  This skill should be used when a SKILL.md file needs compression, deduplication, or token reduction. It provides an embedding-based compression pipeline that detects and removes redundant chunks within SKILL.md files using local embeddings (all-MiniLM-L6-v2). Two-pass approach: (1) free intra-skill deduplication via cosine similarity clustering, (2) optional LLM-judged graded eval to detect pretraining overlap. Typical result: 25-46% token reduction with zero quality loss. This skill is not intended for editing skill content, creating new skills, routing optimization, or cross-skill deduplication.
+category: Agent & Orchestration
 tags:
+  - windags
+  - packaging
+  - distribution
   - compression
-  - optimization
-  - embeddings
-  - deduplication
-  - skill-development
-  - token-efficiency
+  - deployment
 allowed-tools: Read,Write,Edit,Bash(python:*),Bash(pip:*),Glob,Grep
 user-invocable: true
 pairs-with:

@@ -1,8 +1,15 @@
 ---
+license: Apache-2.0
 name: playwright-e2e-tester
 version: 1.0.0
-category: testing
-tags: [e2e, playwright, testing, automation, ci-cd, cross-browser]
+category: Code Quality & Testing
+tags:
+  - e2e
+  - playwright
+  - testing
+  - automation
+  - ci-cd
+  - cross-browser
 ---
 
 # Playwright E2E Tester
@@ -19,213 +26,197 @@ Expert in end-to-end testing with Playwright, the modern cross-browser testing f
 - Implementing visual regression testing
 - Configuring Playwright for CI/CD pipelines
 - Migrating from Cypress, Selenium, or Puppeteer
-- Testing authenticated flows with session management
-- Cross-browser testing (Chromium, Firefox, WebKit)
 
-## Capabilities
+## Decision Points
 
-### Test Generation & Writing
-- Generate Playwright tests from user stories or acceptance criteria
-- Write tests using best practices (locators, assertions, waits)
-- Implement Page Object Model (POM) patterns
-- Create reusable test fixtures and utilities
-- Handle dynamic content and race conditions
+### Locator Strategy Selection
+```
+Is element semantic (button, heading, form control)?
+├─ YES → Use role-based locators (getByRole, getByLabel)
+│   └─ Expected to change frequently?
+│       ├─ NO → Stop here (most stable)
+│       └─ YES → Add getByTestId as backup
+└─ NO → Is element purely presentational?
+    ├─ YES → Use getByTestId (add data-testid attribute)
+    │   └─ Can't modify markup?
+    │       └─ Use CSS selector (last resort, document fragility)
+    └─ NO → Use getByText for content-based selection
+```
 
-### Configuration & Setup
-- Configure `playwright.config.ts` for different environments
-- Set up projects for multiple browsers and viewports
-- Configure base URL, timeouts, and retries
-- Implement global setup/teardown for auth
-- Set up test reporters (HTML, JSON, JUnit)
+### Wait Strategy Decision
+```
+Action type:
+├─ Navigation (page.goto, click link) → Use waitForURL()
+├─ Element appears/disappears → Use waitForSelector() or visibility assertions
+├─ API response affects UI → Use waitForResponse() then element assertion
+├─ Animation/transition → Use waitForFunction() with custom condition
+└─ Network request completion → Use page.route() with route.fulfill()
+```
 
-### Advanced Patterns
-- API mocking with `route()` and `fulfill()`
-- Network interception and request validation
-- Visual regression with `toHaveScreenshot()`
-- Accessibility testing with `@axe-core/playwright`
-- Mobile emulation and device testing
-- Geolocation and permissions mocking
+### Test Organization
+```
+Test complexity:
+├─ Single page interaction → Inline test with direct selectors
+├─ Multi-step flow → Use Page Object Model pattern
+├─ Cross-page workflow → Use fixtures for shared state
+└─ Multi-app integration → Use projects with different configs
+```
 
-### CI/CD Integration
-- GitHub Actions workflow configuration
-- Parallel test execution with sharding
-- Artifact collection (traces, screenshots, videos)
-- Flaky test detection and retry strategies
-- Test result reporting and notifications
+## Failure Modes
 
-### Debugging & Maintenance
-- Use Playwright Inspector and Trace Viewer
-- Debug with `page.pause()` and headed mode
-- Analyze test traces for failures
-- Reduce test flakiness with proper waits
-- Maintain test stability over time
+### Stale Element Reference
+**Symptoms**: `Error: Element is not attached to the DOM`
+**Detection Rule**: If you see detachment errors during dynamic content updates
+**Fix**: Replace element variables with fresh locator calls:
+```typescript
+// BAD: Storing element reference
+const button = page.locator('button');
+await button.click(); // May fail if DOM updated
 
-## Dependencies
+// GOOD: Fresh locator each time
+await page.locator('button').click();
+```
 
-Works well with:
-- `vitest-testing-patterns` - Unit test patterns that complement E2E
-- `github-actions-pipeline-builder` - CI/CD pipeline setup
-- `accessibility-auditor` - Extended accessibility testing
-- `api-architect` - API contract testing alongside E2E
+### Timeout Hell
+**Symptoms**: Tests fail with "Timeout exceeded" in CI but pass locally
+**Detection Rule**: If tests have inconsistent CI failures with 30s+ timeouts
+**Fix**: Implement explicit waits with proper conditions:
+```typescript
+// BAD: Blind timeout increase
+await page.waitForTimeout(5000);
 
-## Examples
+// GOOD: Wait for specific condition
+await page.waitForSelector('[data-testid="loading"]', { state: 'hidden' });
+await expect(page.locator('[data-testid="results"]')).toBeVisible();
+```
 
-### Basic Test Structure
+### Race Condition Rapids
+**Symptoms**: Intermittent failures where elements "aren't ready yet"
+**Detection Rule**: If test flakiness correlates with slow network/CPU
+**Fix**: Chain waits to ensure proper sequencing:
+```typescript
+// BAD: Assuming immediate availability
+await page.click('#submit');
+await page.fill('#new-field', 'value'); // May fail
+
+// GOOD: Wait for UI state transition
+await page.click('#submit');
+await page.waitForSelector('#new-field:not([disabled])');
+await page.fill('#new-field', 'value');
+```
+
+### Selector Fragility Syndrome
+**Symptoms**: Tests break when CSS classes or DOM structure changes
+**Detection Rule**: If tests fail after frontend refactoring without feature changes
+**Fix**: Migrate to semantic locators:
+```typescript
+// BAD: Structural dependency
+await page.click('.header > .nav > .item:nth-child(3)');
+
+// GOOD: Semantic meaning
+await page.getByRole('navigation').getByRole('link', { name: 'Products' }).click();
+```
+
+### Screenshot Drift Disease
+**Symptoms**: Visual regression tests fail due to minor rendering differences
+**Detection Rule**: If screenshot tests fail in CI with <5% pixel differences
+**Fix**: Configure appropriate tolerances and masks:
+```typescript
+await expect(page).toHaveScreenshot('page.png', {
+  maxDiffPixelRatio: 0.01,
+  mask: [page.locator('[data-testid="dynamic-timestamp"]')],
+  animations: 'disabled'
+});
+```
+
+## Worked Examples
+
+### Authentication Flow Test Implementation
+
+**Scenario**: Test user login with error handling and success validation
+
+**Expert Approach**:
 ```typescript
 import { test, expect } from '@playwright/test';
 
 test.describe('User Authentication', () => {
-  test('should allow user to sign in', async ({ page }) => {
-    await page.goto('/login');
-
-    await page.getByLabel('Email').fill('user@example.com');
-    await page.getByLabel('Password').fill('securepassword');
-    await page.getByRole('button', { name: 'Sign In' }).click();
-
+  test('should handle complete login flow', async ({ page }) => {
+    // Decision: Use Page Object for multi-step flow
+    const loginPage = new LoginPage(page);
+    
+    await loginPage.goto();
+    
+    // Decision: Test error state first (negative case)
+    await loginPage.signIn('invalid@email.com', 'wrongpass');
+    
+    // Wait strategy: Error message should appear
+    await expect(page.getByRole('alert')).toContainText('Invalid credentials');
+    
+    // Decision: Clear state before positive test
+    await loginPage.clearForm();
+    
+    // Decision: Use valid test data
+    await loginPage.signIn('user@example.com', 'validpass');
+    
+    // Wait strategy: Navigation indicates success
+    await page.waitForURL('/dashboard');
+    
+    // Verification: Check authenticated state
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-    await expect(page).toHaveURL('/dashboard');
+    await expect(page.getByText('Welcome back, John')).toBeVisible();
   });
 });
-```
 
-### Page Object Pattern
-```typescript
-// pages/LoginPage.ts
-import { Page, Locator } from '@playwright/test';
-
-export class LoginPage {
-  readonly page: Page;
-  readonly emailInput: Locator;
-  readonly passwordInput: Locator;
-  readonly signInButton: Locator;
-
-  constructor(page: Page) {
-    this.page = page;
-    this.emailInput = page.getByLabel('Email');
-    this.passwordInput = page.getByLabel('Password');
-    this.signInButton = page.getByRole('button', { name: 'Sign In' });
-  }
-
+class LoginPage {
+  constructor(private page: Page) {}
+  
   async goto() {
     await this.page.goto('/login');
+    // Wait for form to be interactive
+    await this.page.waitForSelector('form[data-testid="login-form"]');
   }
-
+  
   async signIn(email: string, password: string) {
-    await this.emailInput.fill(email);
-    await this.passwordInput.fill(password);
-    await this.signInButton.click();
+    // Decision: Use semantic locators
+    await this.page.getByLabel('Email').fill(email);
+    await this.page.getByLabel('Password').fill(password);
+    await this.page.getByRole('button', { name: 'Sign In' }).click();
+  }
+  
+  async clearForm() {
+    await this.page.getByLabel('Email').clear();
+    await this.page.getByLabel('Password').clear();
   }
 }
 ```
 
-### Auth Setup Fixture
-```typescript
-// fixtures/auth.ts
-import { test as base } from '@playwright/test';
+**Novice would miss**: Error state testing, proper wait strategies, form state management
+**Expert catches**: Complete flow coverage, semantic locators, defensive waits
 
-export const test = base.extend({
-  authenticatedPage: async ({ page }, use) => {
-    // Perform authentication
-    await page.goto('/login');
-    await page.getByLabel('Email').fill(process.env.TEST_USER!);
-    await page.getByLabel('Password').fill(process.env.TEST_PASS!);
-    await page.getByRole('button', { name: 'Sign In' }).click();
+## Quality Gates
 
-    // Wait for auth to complete
-    await page.waitForURL('/dashboard');
+Test implementation checklist:
+- [ ] All user interactions use semantic locators (getByRole, getByLabel, getByText)
+- [ ] No hard waits (page.waitForTimeout) - only conditional waits
+- [ ] Error states and edge cases are tested, not just happy path
+- [ ] Tests pass consistently in CI (5+ consecutive runs without flakes)
+- [ ] Each test is independent and can run in any order
+- [ ] Page Object Model used for multi-step flows (3+ interactions)
+- [ ] Visual regression tests have appropriate tolerance thresholds (<2% pixel diff)
+- [ ] API mocking implemented for external dependencies
+- [ ] Authentication state properly managed via fixtures
+- [ ] Test coverage includes critical user journeys (login, checkout, etc.)
 
-    // Use the authenticated page in tests
-    await use(page);
-  },
-});
-```
+## NOT-FOR Boundaries
 
-### GitHub Actions CI
-```yaml
-name: E2E Tests
+**Don't use this skill for**:
+- Unit testing individual functions → Use `vitest-testing-patterns` instead
+- API contract testing → Use `api-architect` for endpoint validation
+- Performance testing → Use dedicated load testing tools like k6
+- Security penetration testing → Use specialized security testing tools
+- Cross-browser compatibility issues → Use browser-specific debugging tools
 
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-
-      - name: Run E2E tests
-        run: npx playwright test
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          path: playwright-report/
-```
-
-### Visual Regression Test
-```typescript
-test('homepage matches snapshot', async ({ page }) => {
-  await page.goto('/');
-
-  // Full page screenshot comparison
-  await expect(page).toHaveScreenshot('homepage.png', {
-    fullPage: true,
-    maxDiffPixelRatio: 0.01,
-  });
-
-  // Component-level screenshot
-  const hero = page.getByTestId('hero-section');
-  await expect(hero).toHaveScreenshot('hero-section.png');
-});
-```
-
-### API Mocking
-```typescript
-test('displays products from API', async ({ page }) => {
-  // Mock the API response
-  await page.route('**/api/products', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([
-        { id: 1, name: 'Product A', price: 29.99 },
-        { id: 2, name: 'Product B', price: 49.99 },
-      ]),
-    });
-  });
-
-  await page.goto('/products');
-
-  await expect(page.getByText('Product A')).toBeVisible();
-  await expect(page.getByText('$29.99')).toBeVisible();
-});
-```
-
-## Best Practices
-
-1. **Use role-based locators** - Prefer `getByRole()`, `getByLabel()`, `getByText()` over CSS selectors
-2. **Avoid hard waits** - Use `waitForSelector()`, `waitForURL()`, or assertions instead of `waitForTimeout()`
-3. **Isolate tests** - Each test should be independent and not rely on state from other tests
-4. **Use fixtures** - Share setup logic through fixtures rather than `beforeEach` hooks
-5. **Keep tests focused** - Test one user flow per test, avoid testing multiple unrelated things
-6. **Handle flakiness proactively** - Use proper waits, retries, and stable locators
-7. **Organize with Page Objects** - Encapsulate page interactions for maintainability
-8. **Run in CI** - Always run E2E tests in CI before merging
-
-## Common Pitfalls
-
-- **Flaky locators**: Avoid fragile selectors like `nth-child(3)` or auto-generated class names
-- **Race conditions**: Always wait for elements/navigation before interacting
-- **Shared state**: Tests should not depend on execution order
-- **Slow tests**: Use API calls to set up state instead of UI interactions when possible
-- **Missing cleanup**: Clean up test data to avoid pollution between runs
+**Delegate to other skills**:
+- For CI/CD pipeline setup → Use `github-actions-pipeline-builder`
+- For accessibility auditing → Use `accessibility-auditor`
+- For component testing → Use `vitest-testing-patterns`

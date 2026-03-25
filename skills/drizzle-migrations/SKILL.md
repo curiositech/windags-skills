@@ -1,414 +1,214 @@
 ---
+license: Apache-2.0
 name: drizzle-migrations
 description: Manage database schema with Drizzle ORM and SQLite migrations. Use when adding tables, modifying columns, creating indexes, or running migrations. Activates for database schema changes, migration generation, and Drizzle query patterns.
 allowed-tools: Read,Write,Edit,Bash(npm:*,npx:*)
-category: Data & Analytics
+category: Backend & Infrastructure
 tags:
-  - database
   - drizzle
   - migrations
+  - orm
+  - database
+  - typescript
 ---
 
 # Drizzle ORM Migrations
 
-This skill helps you manage database schema changes using Drizzle ORM with SQLite.
+Manage database schema changes using Drizzle ORM with SQLite through decision-driven migration strategies.
 
-## When to Use
+## DECISION POINTS
 
-✅ **USE this skill for:**
-- Adding new tables or modifying existing columns
-- Generating and running database migrations
-- Drizzle-specific query patterns and relations
-- SQLite schema best practices with Drizzle
-- Setting up Drizzle configuration
+### Schema Change Strategy Decision Tree
 
-❌ **DO NOT use for:**
-- Supabase/PostgreSQL → use `supabase-admin` skill
-- Raw SQL without Drizzle → use standard SQL resources
-- Prisma ORM → different syntax and patterns
-- General database design theory → use database architecture resources
-
-## Project Setup
-
-**Configuration**: `drizzle.config.ts`
-```typescript
-import { defineConfig } from 'drizzle-kit';
-
-export default defineConfig({
-  schema: './src/db/schema.ts',
-  out: './drizzle',
-  dialect: 'sqlite',
-  dbCredentials: {
-    url: './data/app.db',
-  },
-});
+```
+Is this a production database?
+├─ YES → Always use generate + migrate workflow
+│  ├─ Breaking change (column removal, type change)?
+│  │  ├─ YES → Multi-step migration with data preservation
+│  │  └─ NO → Standard migration generation
+│  └─ Performance impact (large table, complex index)?
+│     ├─ YES → Plan maintenance window, test on replica
+│     └─ NO → Standard migration during low traffic
+└─ NO (development) → Can use push for speed
+   ├─ Breaking existing local data?
+   │  ├─ YES → Backup first, consider fresh DB
+   │  └─ NO → Safe to push directly
+   └─ Collaborating with team?
+      ├─ YES → Use migrations for consistency
+      └─ NO → Push is acceptable
 ```
 
-**Commands**:
-```bash
-npm run db:generate  # Generate migration files
-npm run db:push      # Push schema directly (dev only)
-npm run db:studio    # Open Drizzle Studio GUI
+### Column Type Selection Matrix
+
+| Data Type | Use | Drizzle Type | Index Recommended |
+|-----------|-----|--------------|------------------|
+| User ID | Primary/Foreign keys | `text('id').primaryKey()` | Auto on PK/FK |
+| Email | Unique identifiers | `text('email').unique()` | YES |
+| Timestamps | Created/updated times | `text('created_at').default(sql\`CURRENT_TIMESTAMP\`)` | If filtered |
+| JSON Data | Flexible schemas | `text('data', { mode: 'json' })` | NO (use computed) |
+| Booleans | Status flags | `integer('active', { mode: 'boolean' })` | If filtered |
+| Counters | Stats, quantities | `integer('count').default(0)` | If aggregated |
+
+### Migration Conflict Resolution
+
+```
+Migration fails to apply?
+├─ Schema conflict detected
+│  ├─ Column exists → Check if type matches expected
+│  ├─ Table exists → Verify schema matches or rename
+│  └─ Index exists → Check if definition identical
+├─ Foreign key violation
+│  ├─ Referenced table missing → Create dependency first
+│  ├─ Referenced column missing → Fix reference or add column
+│  └─ Circular reference → Break into separate migrations
+└─ Data type mismatch
+   ├─ Incompatible conversion → Create transformation migration
+   ├─ NULL constraint violation → Add default or migrate data
+   └─ Unique constraint violation → Clean duplicate data first
 ```
 
-## Schema Definition
+## FAILURE MODES
 
-Location: `src/db/schema.ts`
+### 1. "Push to Production" Anti-Pattern
+**Symptoms:** Using `npm run db:push` on production database
+**Detection:** If environment is production AND using push command
+**Fix:** 
+- Stop immediately
+- Generate proper migration: `npm run db:generate`
+- Review SQL in `/drizzle` folder
+- Test on staging first
+- Apply via migration runner
 
-### Table Definition
-
+### 2. "Missing Index Cascade" Anti-Pattern  
+**Symptoms:** Query performance degrades after adding foreign keys
+**Detection:** Foreign key columns without corresponding indexes
+**Fix:**
 ```typescript
-import { sqliteTable, text, integer, real, blob } from 'drizzle-orm/sqlite-core';
-import { relations } from 'drizzle-orm';
-
-// Basic table
-export const users = sqliteTable('users', {
-  id: text('id').primaryKey(),
-  email: text('email').notNull().unique(),
-  username: text('username').notNull(),
-  passwordHash: text('password_hash'),
-  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-  updatedAt: text('updated_at'),
-});
-
-// Table with foreign key
+// Add index for FK columns
 export const checkIns = sqliteTable('check_ins', {
+  userId: text('user_id').notNull().references(() => users.id),
+}, (table) => ({
+  userIdIdx: index('idx_checkins_user_id').on(table.userId), // Add this
+}));
+```
+
+### 3. "Destructive Migration Drift" Anti-Pattern
+**Symptoms:** Data loss during column rename or type changes
+**Detection:** Migration contains `DROP COLUMN` or incompatible type changes
+**Fix:**
+- Create multi-step migration
+- Step 1: Add new column
+- Step 2: Migrate data  
+- Step 3: Remove old column
+
+### 4. "Schema Bloat" Anti-Pattern
+**Symptoms:** Tables with 15+ columns, deeply nested JSON in text fields
+**Detection:** Single table handling multiple concerns
+**Fix:**
+- Break into related tables with proper foreign keys
+- Extract JSON objects into separate tables
+- Use relations to maintain referential integrity
+
+### 5. "Missing WHERE Clause Disaster" Anti-Pattern
+**Symptoms:** Accidental bulk deletes or updates
+**Detection:** `DELETE` or `UPDATE` statements without `.where()` clause
+**Fix:**
+```typescript
+// WRONG: Deletes all records
+await db.delete(users);
+
+// RIGHT: Targeted deletion
+await db.delete(users).where(eq(users.id, userId));
+```
+
+## WORKED EXAMPLES
+
+### Adding a New Table with Relations
+
+**Scenario:** Add user preferences table to existing user system
+
+**Step 1: Analyze Impact**
+- New table, no breaking changes
+- Will need FK relationship to users
+- Should include index on user_id for lookups
+
+**Step 2: Schema Definition**
+```typescript
+// src/db/schema.ts
+export const userPreferences = sqliteTable('user_preferences', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, {
-    onDelete: 'cascade',
+    onDelete: 'cascade',  // Delete prefs when user deleted
   }),
-  mood: integer('mood').notNull(),
-  cravingLevel: integer('craving_level').notNull(),
-  sleepHours: real('sleep_hours'),
-  notes: text('notes'),
-  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-// Table with composite index
-export const auditLog = sqliteTable('audit_log', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull(),
-  action: text('action').notNull(),
-  targetType: text('target_type'),
-  targetId: text('target_id'),
-  details: text('details'),  // JSON string
-  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
+  theme: text('theme', { enum: ['light', 'dark', 'auto'] }).default('auto'),
+  notifications: integer('notifications', { mode: 'boolean' }).default(true),
+  timezone: text('timezone').default('UTC'),
+  updatedAt: text('updated_at').notNull().default(sql`CURRENT_TIMESTAMP`),
 }, (table) => ({
-  userActionIdx: index('idx_audit_user_action').on(table.userId, table.action),
-  createdAtIdx: index('idx_audit_created').on(table.createdAt),
+  userIdIdx: index('idx_user_preferences_user_id').on(table.userId),
 }));
-```
 
-### Relations
+export const userPreferencesRelations = relations(userPreferences, ({ one }) => ({
+  user: one(users, {
+    fields: [userPreferences.userId],
+    references: [users.id],
+  }),
+}));
 
-```typescript
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
+  preferences: one(userPreferences),  // Add this line
   checkIns: many(checkIns),
-  sessions: many(sessions),
-  journalEntries: many(journalEntries),
-}));
-
-export const checkInsRelations = relations(checkIns, ({ one }) => ({
-  user: one(users, {
-    fields: [checkIns.userId],
-    references: [users.id],
-  }),
 }));
 ```
 
-## Column Types
-
-### SQLite Types in Drizzle
-
-```typescript
-import {
-  sqliteTable,
-  text,           // TEXT - strings, JSON, dates
-  integer,        // INTEGER - numbers, booleans (0/1)
-  real,           // REAL - floating point
-  blob,           // BLOB - binary data
-} from 'drizzle-orm/sqlite-core';
-
-const examples = sqliteTable('examples', {
-  // Strings
-  name: text('name').notNull(),
-  description: text('description'),
-
-  // Numbers
-  count: integer('count').notNull().default(0),
-  rating: real('rating'),
-
-  // Booleans (stored as 0/1)
-  isActive: integer('is_active', { mode: 'boolean' }).default(true),
-
-  // Dates (stored as ISO strings)
-  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-  expiresAt: text('expires_at'),
-
-  // JSON (stored as TEXT)
-  metadata: text('metadata', { mode: 'json' }),
-
-  // Enums (stored as TEXT)
-  status: text('status', { enum: ['pending', 'active', 'archived'] }),
-});
-```
-
-## Migration Strategies
-
-### Strategy 1: Push (Development Only)
-
+**Step 3: Generate and Review**
 ```bash
-npm run db:push
-```
-
-- Directly applies schema changes
-- Fast for development
-- **Never use in production**
-
-### Strategy 2: Generate & Migrate (Production)
-
-```bash
-# 1. Generate migration file
 npm run db:generate
-
-# 2. Review generated SQL in /drizzle folder
-
-# 3. Apply migration (in code or manually)
 ```
 
-### Applying Migrations in Code
-
-```typescript
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import Database from 'better-sqlite3';
-
-const sqlite = new Database('./data/app.db');
-const db = drizzle(sqlite);
-
-// Run migrations
-migrate(db, { migrationsFolder: './drizzle' });
-```
-
-## Common Schema Changes
-
-### Adding a New Table
-
-```typescript
-// 1. Add to schema.ts
-export const newFeature = sqliteTable('new_feature', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  name: text('name').notNull(),
-  createdAt: text('created_at').notNull().default(sql`CURRENT_TIMESTAMP`),
-});
-
-// 2. Add relations
-export const newFeatureRelations = relations(newFeature, ({ one }) => ({
-  user: one(users, {
-    fields: [newFeature.userId],
-    references: [users.id],
-  }),
-}));
-
-// 3. Generate migration
-// npm run db:generate
-```
-
-### Adding a Column
-
-```typescript
-// In schema.ts, add the new column
-export const users = sqliteTable('users', {
-  // existing columns...
-  newColumn: text('new_column'),  // Add this
-});
-
-// Generate migration
-// npm run db:generate
-```
-
-### Adding an Index
-
-```typescript
-export const messages = sqliteTable('messages', {
-  id: text('id').primaryKey(),
-  conversationId: text('conversation_id').notNull(),
-  createdAt: text('created_at').notNull(),
-}, (table) => ({
-  // Add index
-  convCreatedIdx: index('idx_messages_conv_created')
-    .on(table.conversationId, table.createdAt),
-}));
-```
-
-### Renaming (Requires Manual SQL)
-
-SQLite doesn't support direct column renames in older versions. For complex changes:
-
+**Step 4: Verify Generated SQL**
 ```sql
--- drizzle/XXXX_rename_column.sql
--- Manual migration for column rename
-
--- 1. Create new table with desired schema
-CREATE TABLE users_new (
-  id TEXT PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE,
-  display_name TEXT NOT NULL,  -- renamed from username
-  created_at TEXT NOT NULL
+-- drizzle/0001_create_user_preferences.sql
+CREATE TABLE `user_preferences` (
+  `id` text PRIMARY KEY NOT NULL,
+  `user_id` text NOT NULL,
+  `theme` text DEFAULT 'auto',
+  `notifications` integer DEFAULT true,
+  `timezone` text DEFAULT 'UTC',
+  `updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
 
--- 2. Copy data
-INSERT INTO users_new SELECT id, email, username, created_at FROM users;
-
--- 3. Drop old table
-DROP TABLE users;
-
--- 4. Rename new table
-ALTER TABLE users_new RENAME TO users;
+CREATE INDEX `idx_user_preferences_user_id` ON `user_preferences` (`user_id`);
 ```
 
-## Query Patterns
+**What Expert Catches:** FK cascade behavior is correct, index is present, defaults are appropriate
+**What Novice Misses:** Would forget the index, might not consider cascade behavior
 
-### Basic Queries
+## QUALITY GATES
 
-```typescript
-import { db } from '@/db';
-import { eq, and, or, desc, asc, like, gte, lte } from 'drizzle-orm';
-import { users, checkIns } from '@/db/schema';
+- [ ] Migration generates without errors (`npm run db:generate`)
+- [ ] Generated SQL reviewed for correctness in `/drizzle` folder
+- [ ] Foreign key constraints include proper `onDelete` behavior
+- [ ] Indexes added for all foreign key columns
+- [ ] Test database successfully migrates (`npm run db:migrate`)
+- [ ] Sample queries execute without performance issues
+- [ ] No data loss verified if modifying existing tables
+- [ ] Migration is reversible or rollback plan documented
+- [ ] Schema matches TypeScript types (no type/runtime mismatches)
+- [ ] Relations properly defined for new tables
 
-// Select all
-const allUsers = await db.select().from(users);
+## NOT-FOR Boundaries
 
-// Select with conditions
-const activeUsers = await db
-  .select()
-  .from(users)
-  .where(eq(users.isActive, true));
+❌ **DO NOT use this skill for:**
+- **PostgreSQL/Supabase projects** → Use `supabase-admin` skill instead
+- **Prisma ORM migrations** → Different syntax and CLI commands
+- **Raw SQL database management** → Use database-specific tools
+- **Database design theory** → Use architecture planning skills
+- **Performance tuning** → Use database optimization skills
+- **Backup/restore operations** → Use database administration skills
 
-// Select specific columns
-const userEmails = await db
-  .select({ id: users.id, email: users.email })
-  .from(users);
-
-// Complex where clause
-const results = await db
-  .select()
-  .from(checkIns)
-  .where(
-    and(
-      eq(checkIns.userId, userId),
-      gte(checkIns.createdAt, startDate),
-      lte(checkIns.createdAt, endDate)
-    )
-  )
-  .orderBy(desc(checkIns.createdAt))
-  .limit(30);
-```
-
-### Insert
-
-```typescript
-// Single insert
-const [newUser] = await db
-  .insert(users)
-  .values({
-    id: generateId(),
-    email: 'user@example.com',
-    username: 'newuser',
-  })
-  .returning();
-
-// Bulk insert
-await db.insert(checkIns).values([
-  { id: '1', userId, mood: 7, cravingLevel: 2 },
-  { id: '2', userId, mood: 8, cravingLevel: 1 },
-]);
-
-// Upsert (insert or update)
-await db
-  .insert(users)
-  .values({ id: 'user-1', email: 'new@example.com' })
-  .onConflictDoUpdate({
-    target: users.id,
-    set: { email: 'new@example.com' },
-  });
-```
-
-### Update
-
-```typescript
-await db
-  .update(users)
-  .set({ username: 'newname', updatedAt: new Date().toISOString() })
-  .where(eq(users.id, userId));
-```
-
-### Delete
-
-```typescript
-// Always use WHERE clause!
-await db
-  .delete(checkIns)
-  .where(eq(checkIns.id, checkInId));
-
-// Delete with multiple conditions
-await db
-  .delete(sessions)
-  .where(
-    and(
-      eq(sessions.userId, userId),
-      lte(sessions.expiresAt, new Date().toISOString())
-    )
-  );
-```
-
-### Joins
-
-```typescript
-const userWithCheckIns = await db
-  .select({
-    user: users,
-    checkIn: checkIns,
-  })
-  .from(users)
-  .leftJoin(checkIns, eq(users.id, checkIns.userId))
-  .where(eq(users.id, userId));
-```
-
-### Aggregations
-
-```typescript
-import { count, avg, sum, max, min } from 'drizzle-orm';
-
-const stats = await db
-  .select({
-    totalCheckIns: count(),
-    avgMood: avg(checkIns.mood),
-    maxStreak: max(checkIns.streak),
-  })
-  .from(checkIns)
-  .where(eq(checkIns.userId, userId));
-```
-
-## Best Practices
-
-1. **Always use transactions for related changes**
-```typescript
-await db.transaction(async (tx) => {
-  await tx.insert(users).values(userData);
-  await tx.insert(profiles).values(profileData);
-});
-```
-
-2. **Always include WHERE on DELETE/UPDATE**
-3. **Use indexes for frequently queried columns**
-4. **Store dates as ISO strings for SQLite**
-5. **Use `returning()` to get inserted/updated rows**
-6. **Generate migrations, don't push to production**
-
-## References
-
-- [Drizzle ORM Docs](https://orm.drizzle.team/docs/overview)
-- [Drizzle SQLite](https://orm.drizzle.team/docs/get-started-sqlite)
-- [Drizzle Migrations](https://orm.drizzle.team/docs/migrations)
+✅ **Instead delegate to:**
+- `supabase-admin` for PostgreSQL schema management
+- `database-design` for entity relationship modeling
+- `sql-optimization` for query performance issues

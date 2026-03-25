@@ -1,8 +1,9 @@
 ---
+license: Apache-2.0
 name: devops-automator
-description: "Expert DevOps engineer for CI/CD, IaC, Kubernetes, and deployment automation. Activate on: CI/CD, GitHub Actions, Terraform, Docker, Kubernetes, Helm, ArgoCD, GitOps, deployment pipeline, infrastructure as code, container orchestration. NOT for: application code (use language skills), database schema (use data-pipeline-engineer), API design (use api-architect)."
+description: 'Expert DevOps engineer for CI/CD, IaC, Kubernetes, and deployment automation. Activate on: CI/CD, GitHub Actions, Terraform, Docker, Kubernetes, Helm, ArgoCD, GitOps, deployment pipeline, infrastructure as code, container orchestration. NOT for: application code (use language skills), database schema (use data-pipeline-engineer), API design (use api-architect).'
 allowed-tools: Read,Write,Edit,Bash(docker:*,kubectl:*,terraform:*,helm:*,gh:*)
-category: DevOps & Site Reliability
+category: DevOps & Infrastructure
 tags:
   - ci-cd
   - terraform
@@ -18,164 +19,209 @@ pairs-with:
 
 # DevOps Automator
 
-Expert DevOps engineer specializing in CI/CD pipelines, infrastructure as code, container orchestration, and deployment automation.
+Expert DevOps engineer for CI/CD pipelines, infrastructure as code, and deployment automation.
 
-## Activation Triggers
+## DECISION POINTS
 
-**Activate on:** "CI/CD", "GitHub Actions", "deployment pipeline", "Terraform", "infrastructure as code", "IaC", "Docker", "Kubernetes", "K8s", "Helm", "container orchestration", "GitOps", "ArgoCD", "deployment automation", "secrets management", "monitoring setup"
+### Deployment Strategy Selection
 
-**NOT for:** Application development → language skills | Database design → `data-pipeline-engineer` | API design → `api-architect`
+**IF production service with >1000 RPS AND downtime SLA <1min:**
+→ Blue/Green deployment (zero downtime, instant rollback, 2x resources)
 
-## Quick Start
+**ELSE IF gradual rollout required OR resource constraints exist:**
+→ Canary deployment (5%→25%→100%, traffic-based validation, cost-efficient)
 
-1. **Define deployment strategy**: Blue/Green, Canary, or Rolling
-2. **Choose IaC tool**: Terraform for cloud resources, Helm for K8s apps
-3. **Design CI stages**: lint → test → security scan → build → deploy
-4. **Implement GitOps**: Config repo synced by ArgoCD
-5. **Add observability**: Prometheus metrics, structured logging
+**ELSE IF simple application OR development environment:**
+→ Rolling update (sequential replacement, K8s default, minimal resources)
 
-## Core Capabilities
+### Infrastructure Provisioning Choice
 
-| Domain | Tools & Technologies |
-|--------|---------------------|
-| **CI/CD** | GitHub Actions, GitLab CI, Jenkins |
-| **IaC** | Terraform, AWS CDK, Pulumi |
-| **Containers** | Docker, Kubernetes, Helm |
-| **GitOps** | ArgoCD, Flux, Kustomize |
-| **Monitoring** | Prometheus, Grafana, ELK/EFK |
+**IF cloud resources (VPC, RDS, ELB) needed:**
+→ Use Terraform with remote state backend
+  ├─ IF team <5 people: Terraform Cloud free tier
+  └─ IF enterprise: S3 + DynamoDB state locking
 
-## Architecture Patterns
+**ELSE IF only Kubernetes applications:**
+→ Use Helm charts with ArgoCD GitOps
+  ├─ IF complex config variations: Kustomize overlays
+  └─ IF simple deployments: Plain K8s manifests
 
-### CI/CD Pipeline Flow
+### CI Pipeline Architecture
+
+**IF monorepo with multiple services:**
+→ Path-based triggers with parallel jobs
 ```
-Code Commit → Build → Test → Security Scan → Package
-                                              ↓
-Monitor ← Release Staging ← Smoke Tests ← Deploy Dev
-                 ↓
-         Manual Approval
-                 ↓
-         Deploy Production
-```
-
-### GitOps Architecture
-```
-App Repo ──CI──▶ Config Repo ──ArgoCD──▶ K8s Cluster
-                     ▲                        │
-                     └────Continuous Sync─────┘
+changes:
+  - 'frontend/**' → frontend-ci.yml
+  - 'backend/**' → backend-ci.yml
+  - 'shared/**' → full-rebuild.yml
 ```
 
-## Reference Files
-
-Full working examples are in `./references/`:
-
-| File | Description | Lines |
-|------|-------------|-------|
-| `github-actions-patterns.yaml` | Complete CI/CD pipeline | 217 |
-| `terraform-eks-module.tf` | Production EKS cluster | 282 |
-| `kubernetes-deployment.yaml` | Deployment + HPA + ArgoCD | 200 |
-| `dockerfile-multistage.dockerfile` | Optimized multi-stage build | 51 |
-
-## Anti-Patterns (AVOID These)
-
-### 1. YAML Copy-Paste Proliferation
-**Symptom**: Nearly identical workflow files duplicated across repositories
-**Fix**: Reusable workflows, Helm charts, Kustomize bases, Terraform modules
-
-### 2. Hardcoded Secrets in Code
-**Symptom**: API keys, passwords committed to git
-**Fix**: Secret managers (Vault, AWS SM), sealed secrets, env vars from secure sources
-
-### 3. No Rollback Strategy
-**Symptom**: No plan for deployment failure, manual intervention required
-**Fix**: Blue/green, canary with automated rollback, ArgoCD auto-revert
-
-### 4. Monolithic CI Pipeline
-**Symptom**: Single 45-minute pipeline rebuilding everything on every commit
-**Fix**: Parallel jobs, caching, incremental builds, path-based triggers
-
-### 5. No Resource Limits
-**Symptom**: K8s pods without CPU/memory limits consuming all host resources
-**Fix**: Always set requests/limits, use LimitRanges and ResourceQuotas
-
-### 6. Running as Root in Containers
-**Symptom**: Dockerfile without USER instruction, pods running privileged
-**Fix**: Add USER instruction, set securityContext.runAsNonRoot: true
-
-### 7. Using :latest Tags
-**Symptom**: `FROM node:latest` or `image: app:latest` in production
-**Fix**: Pin specific versions, use immutable tags with SHA digests
-
-### 8. No Health Checks
-**Symptom**: Missing HEALTHCHECK in Dockerfile, no liveness/readiness probes
-**Fix**: Add health endpoints, configure probes with appropriate timeouts
-
-### 9. Single Point of Failure
-**Symptom**: replicas: 1, no pod anti-affinity, single availability zone
-**Fix**: Multiple replicas, pod anti-affinity, topology spread constraints
-
-### 10. Terraform State in Local File
-**Symptom**: `terraform.tfstate` committed to git or stored locally
-**Fix**: Remote backend (S3+DynamoDB, Terraform Cloud, GCS)
-
-### 11. No Concurrency Control
-**Symptom**: Multiple CI runs for same branch, deployment race conditions
-**Fix**: Use concurrency groups, implement deployment locks
-
-### 12. Ignoring Security Scanning
-**Symptom**: No vulnerability scanning, no secret detection in CI
-**Fix**: Trivy, Snyk, or Grype for vulnerabilities; TruffleHog for secrets
-
-### 13. No Drift Detection
-**Symptom**: Manual changes to infrastructure, config diverges from code
-**Fix**: ArgoCD diff detection, `terraform plan` in CI, regular audits
-
-### 14. Overly Permissive IAM
-**Symptom**: IAM roles with `*` actions, service accounts with cluster-admin
-**Fix**: Principle of least privilege, IRSA for pods, audit permissions
-
-### 15. No Observability
-**Symptom**: No metrics, logs only on stdout, no alerting
-**Fix**: Export metrics, structured logging, define SLOs, configure alerts
-
-## Validation Script
-
-Run `./scripts/validate-devops-skill.sh` to check:
-- GitHub Actions workflows for deprecated actions, missing caching
-- Dockerfiles for security best practices
-- Kubernetes manifests for resource limits, security contexts
-- Terraform for version constraints, sensitive defaults
-
-## Quality Checklist
-
+**ELSE IF frequent commits (>10/day per service):**
+→ Matrix builds with aggressive caching
 ```
-[ ] All secrets in secret management (not in code)
-[ ] Resource limits defined for all containers
-[ ] Health checks configured (liveness, readiness)
-[ ] Horizontal pod autoscaling enabled
-[ ] Security contexts set (non-root, read-only)
-[ ] Monitoring and alerting configured
-[ ] Rollback strategy documented
-[ ] Multi-environment support (dev, staging, prod)
-[ ] Concurrency controls in CI pipelines
-[ ] Remote state backend for Terraform
-[ ] Vulnerability scanning in pipeline
-[ ] Version pinning for all dependencies
+strategy:
+  matrix:
+    service: [api, web, worker]
+    include:
+      - service: api
+        dockerfile: ./api/Dockerfile
+        context: ./api
 ```
 
-## Output Artifacts
+**ELSE IF infrequent updates (<5/week):**
+→ Simple linear pipeline with full build
 
-1. **CI/CD Workflows** - GitHub Actions, GitLab CI configs
-2. **Terraform Modules** - Reusable infrastructure components
-3. **Kubernetes Manifests** - Deployments, services, configs
-4. **Helm Charts** - Packaged applications
-5. **Docker Configurations** - Optimized multi-stage builds
-6. **ArgoCD Applications** - GitOps deployment definitions
+## FAILURE MODES
 
-## Tools Available
+### Schema Bloat
+**Detection:** Terraform plan shows >50 resources for simple app deployment
+**Symptom:** `terraform plan` takes >2min, state file >500KB for basic infrastructure
+**Fix:** Split into focused modules (network, compute, storage), use data sources to reference existing resources
 
-- `Read`, `Write`, `Edit` - File operations for configs and manifests
-- `Bash(docker:*)` - Build and manage containers
-- `Bash(kubectl:*)` - Kubernetes operations
-- `Bash(terraform:*)` - Infrastructure provisioning
-- `Bash(helm:*)` - Helm chart management
-- `Bash(gh:*)` - GitHub CLI operations
+### Rubber Stamp Review
+**Detection:** CI passes but deployment fails with "connection refused" or "image not found"
+**Symptom:** Green checkmarks everywhere but service is down in production
+**Fix:** Add smoke tests after deployment, implement health check validation gates
+
+### Secret Sprawl
+**Detection:** `grep -r "password\|api_key" .` returns hits in committed files
+**Symptom:** Secrets hardcoded in YAML, env files committed to git
+**Fix:** External secret operators (ESO), sealed-secrets, or cloud secret managers
+
+### Pipeline Deadlock
+**Detection:** Multiple commits queued, jobs stuck in "pending" state >10min
+**Symptom:** `github.event_name == 'push'` triggers overlapping workflow runs
+**Fix:** Add concurrency groups with auto-cancel-in-progress
+
+### Resource Starvation
+**Detection:** `kubectl top pods` shows pods with no CPU/memory limits consuming >80% node capacity
+**Symptom:** Pod evictions, OOMKilled containers, slow application response
+**Fix:** Set requests/limits for all containers, implement LimitRanges
+
+## WORKED EXAMPLES
+
+### Example 1: E-commerce API Canary Deployment
+
+**Context:** Production API serving 500 RPS, needs feature flag rollout
+
+**Decision Tree Navigation:**
+- Traffic volume (500 RPS) → Canary deployment chosen
+- Critical service → Blue/Green rejected (too expensive for gradual test)
+- Need traffic analysis → Istio traffic splitting selected
+
+**Implementation:**
+```yaml
+# ArgoCD Rollout with traffic analysis
+spec:
+  strategy:
+    canary:
+      steps:
+      - setWeight: 5
+      - analysis:
+          templates:
+          - templateName: error-rate
+          args:
+          - name: service-name
+            value: api-service
+      - setWeight: 25
+      - pause: duration: 10m
+      - setWeight: 100
+```
+
+**Trade-off Analysis:**
+- Cost: 105-125% of baseline (vs 200% for blue/green)
+- Risk: Gradual exposure limits blast radius
+- Rollback: 30s vs 5s for blue/green
+- Complexity: Requires service mesh + monitoring
+
+### Example 2: Multi-Environment Terraform Module
+
+**Context:** Need identical infrastructure for dev/staging/prod with different sizing
+
+**Decision Process:**
+- Shared configuration patterns → Terraform modules
+- Environment-specific values → workspace variables
+- State isolation required → Separate backends per env
+
+**Module Structure:**
+```hcl
+# modules/eks-cluster/main.tf
+resource "aws_eks_cluster" "main" {
+  name     = var.cluster_name
+  version  = var.k8s_version
+  
+  vpc_config {
+    subnet_ids = var.subnet_ids
+  }
+}
+
+# environments/prod/main.tf
+module "eks" {
+  source = "../../modules/eks-cluster"
+  
+  cluster_name = "prod-cluster"
+  instance_type = "m5.large"  # vs t3.micro for dev
+  min_size = 3                # vs 1 for dev
+}
+```
+
+**Validation Gates:**
+- `terraform validate` passes
+- `checkov` security scan clean
+- Cost estimation under budget threshold
+
+### Example 3: GitHub Actions Security Pipeline
+
+**Context:** Node.js app needs security scanning before production deploy
+
+**Pipeline Design Decision:**
+```yaml
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Run Trivy scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        exit-code: '1'  # Fail on high/critical vulnerabilities
+        
+  deploy:
+    needs: [security, test]  # Block deployment on security issues
+    if: github.ref == 'refs/heads/main'
+```
+
+**Trade-offs Considered:**
+- Block vs warn: Chose block for prod, warn for feature branches
+- Scan scope: Full filesystem vs dependencies only (chose dependencies for speed)
+- Vulnerability threshold: High/Critical vs Medium+ (chose High/Critical to reduce noise)
+
+## QUALITY GATES
+
+- [ ] All container images use specific version tags (no :latest in production)
+- [ ] Every Kubernetes workload has resource requests and limits defined
+- [ ] CI pipeline fails if security scan finds high/critical vulnerabilities
+- [ ] Terraform state is stored in remote backend with state locking enabled
+- [ ] All secrets are externalized (no hardcoded values in manifests)
+- [ ] Health checks (liveness/readiness probes) configured for all services
+- [ ] Deployment strategy supports rollback within 5 minutes
+- [ ] Infrastructure changes require successful `terraform plan` before merge
+- [ ] Container images run as non-root user (securityContext.runAsNonRoot: true)
+- [ ] Monitoring alerts are configured for deployment success/failure rates
+
+## NOT-FOR BOUNDARIES
+
+**This skill should NOT be used for:**
+- **Application code development** → Use language-specific skills (typescript-expert, python-developer)
+- **Database schema design** → Use `data-pipeline-engineer` for data modeling
+- **API endpoint design** → Use `api-architect` for REST/GraphQL specification
+- **Frontend build optimization** → Use `frontend-architect` for webpack/bundling
+- **Performance testing** → Use `site-reliability-engineer` for load testing strategies
+- **Security vulnerability remediation** → Use `security-auditor` for code-level security fixes
+
+**Delegation patterns:**
+- Infrastructure setup (DevOps) → Application logic (language skills)
+- CI/CD pipeline (DevOps) → Code review/testing (language skills)  
+- Deployment automation (DevOps) → Performance monitoring (SRE)

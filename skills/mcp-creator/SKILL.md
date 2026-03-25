@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: mcp-creator
 description: Expert MCP (Model Context Protocol) server developer creating safe, performant, production-ready servers with proper security, error handling, and developer experience. Activate on 'create MCP', 'MCP server', 'build MCP', 'custom tool server', 'MCP development', 'Model Context Protocol'. NOT for using existing MCPs (just invoke them), general API development (use backend-architect), or skills/agents without external state (use skill-coach/agent-creator).
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob,WebSearch,WebFetch
-category: Productivity & Meta
+category: Agent & Orchestration
 tags:
   - mcp
   - model-context-protocol
   - tools
   - integration
-  - servers
+  - creation
 pairs-with:
   - skill: agent-creator
     reason: Skills that use the MCP tools
@@ -18,459 +19,227 @@ pairs-with:
 
 # MCP Creator
 
-Expert in building production-ready Model Context Protocol servers. Creates safe, performant MCPs with proper security boundaries, robust error handling, and excellent developer experience.
+Expert in building production-ready Model Context Protocol servers with security boundaries, robust error handling, and excellent developer experience.
 
-## When to Use This Skill
+## Decision Points
 
-**Use MCP when you need:**
-- External API integration with authentication
-- Stateful connections (databases, WebSockets, sessions)
-- Multiple related tools sharing configuration
-- Security boundaries between Claude and external services
-- Connection pooling and resource management
+### Tool Granularity Decision Tree
+```
+Tool complexity assessment:
+├── Multiple API endpoints needed?
+    ├── Yes → Design separate tools for each endpoint
+    │   └── Example: get_user, create_user, update_user
+    └── No → Single tool with action parameter
+        └── Example: manage_user(action: "get"|"create"|"update")
 
-**Do NOT use MCP for:**
-- Pure domain expertise (use Skill)
-- Multi-step orchestration (use Agent)
-- Local stateless operations (use Script)
-- Simple file processing (use Claude's built-in tools)
+Tool execution pattern:
+├── Operation takes >5 seconds?
+    ├── Yes → Design as async with polling tool
+    │   └── start_analysis() → check_status() → get_results()
+    └── No → Direct synchronous tool
+        └── analyze_data() returns results immediately
 
-## Quick Start
-
-```bash
-# Scaffold new MCP server
-npx @modelcontextprotocol/create-server my-mcp-server
-
-# Install SDK
-npm install @modelcontextprotocol/sdk
-
-# Test with inspector
-npx @modelcontextprotocol/inspector
+External service interaction:
+├── Requires authentication?
+    ├── Yes → Bundle related operations in one MCP
+    │   └── Share auth config across tools
+    └── No → Consider standalone tools or scripts
 ```
 
-## MCP Architecture Overview
-
+### Resource vs Tools Decision Matrix
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Claude                               │
-└─────────────────────────┬───────────────────────────────────┘
-                          │ MCP Protocol (JSON-RPC)
-┌─────────────────────────┴───────────────────────────────────┐
-│                    MCP Server                               │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
-│  │   Tools     │  │  Resources  │  │     Prompts         │ │
-│  │ (actions)   │  │ (read-only) │  │ (templates)         │ │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
-│                          │                                  │
-│  ┌───────────────────────┴──────────────────────────────┐  │
-│  │           Auth / Rate Limiting / Caching              │  │
-│  └───────────────────────┬──────────────────────────────┘  │
-└──────────────────────────┼──────────────────────────────────┘
-                           │
-┌──────────────────────────┴──────────────────────────────────┐
-│                    External Services                         │
-│         APIs │ Databases │ File Systems │ WebSockets         │
-└─────────────────────────────────────────────────────────────┘
+Data access pattern:
+├── Read-only structured data? → Use Resources
+│   └── Templates, configs, documentation
+├── Actions that modify state? → Use Tools
+│   └── API calls, database writes, file creation
+└── Interactive operations? → Use Tools with prompts
+    └── Guided workflows, form filling
 ```
 
-## Core MCP Server Template
+### Transport Layer Decision
+```
+Deployment context:
+├── Local CLI integration?
+    └── Use StdioTransport (simplest, most secure)
+├── Multiple client support needed?
+    └── Use SSE Transport (HTTP-based)
+├── Custom protocol requirements?
+    └── Implement custom Transport class
+└── Production server deployment?
+    └── SSE with proper auth middleware
+```
 
+## Failure Modes
+
+### Schema Bloat
+**Symptom**: Tools accept `any` type or overly permissive schemas
+**Detection**: If schema validation catches <90% of invalid inputs
+**Fix**: Implement strict Zod schemas with constraints
 ```typescript
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-  ErrorCode,
-  McpError,
-} from "@modelcontextprotocol/sdk/types.js";
-
-const server = new Server(
-  { name: "my-mcp-server", version: "1.0.0" },
-  { capabilities: { tools: {} } }
-);
-
-// Tool definitions
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [
-    {
-      name: "my_tool",
-      description: "Clear description of what this tool does",
-      inputSchema: {
-        type: "object",
-        properties: {
-          input: { type: "string", description: "Input description" },
-        },
-        required: ["input"],
-      },
-    },
-  ],
-}));
-
-// Tool implementation
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-
-  if (name === "my_tool") {
-    try {
-      const result = await processInput(args.input);
-      return { content: [{ type: "text", text: JSON.stringify(result) }] };
-    } catch (error) {
-      throw new McpError(ErrorCode.InternalError, error.message);
-    }
-  }
-
-  throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
-});
-
-// Start server
-const transport = new StdioServerTransport();
-await server.connect(transport);
-```
-
-## Tool Design Principles
-
-### 1. Clear Naming
-```typescript
-// ✅ Good: Action-oriented, specific
-"get_user_profile"
-"create_issue"
-"analyze_sentiment"
-
-// ❌ Bad: Vague, generic
-"process"
-"do_thing"
-"handle"
-```
-
-### 2. Precise Input Schemas
-```typescript
-// ✅ Good: Typed, constrained, documented
-{
-  type: "object",
-  properties: {
-    userId: { type: "string", pattern: "^[a-f0-9]{24}$" },
-    action: { type: "string", enum: ["read", "write", "delete"] },
-    limit: { type: "integer", minimum: 1, maximum: 100, default: 10 }
-  },
-  required: ["userId", "action"],
-  additionalProperties: false
-}
-
-// ❌ Bad: Untyped, unconstrained
+// ❌ Detection rule: Schema too permissive
 { type: "object" }
+
+// ✅ Fix: Strict validation
+const schema = z.object({
+  id: z.string().uuid(),
+  count: z.number().min(1).max(100)
+})
 ```
 
-### 3. Structured Outputs
+### Connection Leaks
+**Symptom**: Server becomes unresponsive after extended use
+**Detection**: If connection pools show >90% utilization or memory usage grows continuously
+**Fix**: Implement proper resource cleanup with try/finally blocks
 ```typescript
-// ✅ Good: Consistent structure
-return {
-  content: [{
-    type: "text",
-    text: JSON.stringify({
-      success: true,
-      data: result,
-      metadata: { requestId, timestamp }
-    }, null, 2)
-  }]
-};
+// ❌ Detection: No cleanup
+const client = await pool.connect();
+const result = await client.query(sql);
 
-// ❌ Bad: Inconsistent, unstructured
-return { content: [{ type: "text", text: "done" }] };
+// ✅ Fix: Guaranteed cleanup
+const client = await pool.connect();
+try {
+  return await client.query(sql);
+} finally {
+  client.release();
+}
 ```
 
-## Security Hardening (CRITICAL)
-
-### Input Validation
+### Secret Exposure
+**Symptom**: API keys visible in logs, error messages, or responses
+**Detection**: If grep finds credentials in logs or error responses
+**Fix**: Sanitize all outputs and use secure environment variable loading
 ```typescript
-import { z } from "zod";
+// ❌ Detection rule: Secrets in error messages
+throw new Error(`API call failed with key ${apiKey}`);
 
-const UserInputSchema = z.object({
-  userId: z.string().regex(/^[a-f0-9]{24}$/),
-  email: z.string().email(),
-  query: z.string().max(1000).refine(
-    (q) => !q.includes("--") && !q.includes(";"),
-    { message: "Invalid characters in query" }
-  ),
+// ✅ Fix: Sanitized errors
+throw new Error(`API call failed: ${error.message.replace(apiKey, '[REDACTED]')}`);
+```
+
+### Rate Limit Cascade
+**Symptom**: External API returns 429 errors, causing tool failures
+**Detection**: If >10% of external API calls return rate limit errors
+**Fix**: Implement exponential backoff and circuit breaker pattern
+```typescript
+// ❌ Detection: No rate limiting
+await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+
+// ✅ Fix: Rate limiting with backoff
+if (!rateLimiter.canProceed(url, 100, 60000)) {
+  await exponentialBackoff(() => fetch(url, options));
+}
+```
+
+### Error Swallowing
+**Symptom**: Tools succeed but produce incorrect or incomplete results
+**Detection**: If tool success rate is >95% but user reports failures
+**Fix**: Implement structured error handling with proper propagation
+```typescript
+// ❌ Detection rule: Silent failures
+try {
+  await riskyOperation();
+} catch (e) {
+  // Silent failure
+}
+
+// ✅ Fix: Proper error handling
+try {
+  return await riskyOperation();
+} catch (error) {
+  throw new McpError(ErrorCode.InternalError, `Operation failed: ${error.message}`);
+}
+```
+
+## Worked Example: Database Query Tool
+
+**Scenario**: Create an MCP tool for querying a PostgreSQL database with user data.
+
+**Step 1 - Tool Design Decision**
+Looking at requirements: multiple query types (get user, list users, search users). Following the decision tree:
+- Multiple endpoints? Yes → Design separate tools
+- But all share auth/connection? Yes → Bundle in one MCP
+
+Decision: Create `database-mcp` with tools: `get_user`, `list_users`, `search_users`
+
+**Step 2 - Security Schema Design**
+```typescript
+const getUserSchema = z.object({
+  userId: z.string().uuid(), // Prevent SQL injection
+  includeDeleted: z.boolean().default(false)
 });
-
-async function handleTool(args: unknown) {
-  const validated = UserInputSchema.parse(args); // Throws on invalid
-  // Safe to use validated data
-}
 ```
+Novice mistake: Using `z.string()` without validation → allows SQL injection
+Expert addition: UUID validation prevents malicious input
 
-### Secret Management
+**Step 3 - Connection Management**
 ```typescript
-// ✅ Good: Environment variables
-const API_KEY = process.env.SERVICE_API_KEY;
-if (!API_KEY) throw new Error("SERVICE_API_KEY required");
-
-// ✅ Good: Secret manager integration
-const secret = await secretManager.getSecret("service-api-key");
-
-// ❌ NEVER: Hardcoded secrets
-const API_KEY = "sk-abc123..."; // SECURITY VULNERABILITY
-```
-
-### Rate Limiting
-```typescript
-class RateLimiter {
-  private requests: Map<string, number[]> = new Map();
-
-  canProceed(key: string, limit: number, windowMs: number): boolean {
-    const now = Date.now();
-    const timestamps = this.requests.get(key) || [];
-    const recent = timestamps.filter(t => now - t < windowMs);
-
-    if (recent.length >= limit) return false;
-
-    recent.push(now);
-    this.requests.set(key, recent);
-    return true;
-  }
-}
-
-const limiter = new RateLimiter();
-
-// In tool handler
-if (!limiter.canProceed(userId, 100, 60000)) {
-  throw new McpError(ErrorCode.InvalidRequest, "Rate limit exceeded");
-}
-```
-
-### Authentication Boundaries
-```typescript
-// Validate credentials before any operation
-async function withAuth<T>(
-  credentials: Credentials,
-  operation: () => Promise<T>
-): Promise<T> {
-  if (!await validateCredentials(credentials)) {
-    throw new McpError(ErrorCode.InvalidRequest, "Invalid credentials");
-  }
-  return operation();
-}
-```
-
-## Error Handling Patterns
-
-### Structured Error Responses
-```typescript
-// Define error types
-enum ServiceError {
-  NOT_FOUND = "NOT_FOUND",
-  UNAUTHORIZED = "UNAUTHORIZED",
-  RATE_LIMITED = "RATE_LIMITED",
-  VALIDATION_ERROR = "VALIDATION_ERROR",
-  EXTERNAL_SERVICE_ERROR = "EXTERNAL_SERVICE_ERROR",
-}
-
-// Map to MCP errors
-function toMcpError(error: unknown): McpError {
-  if (error instanceof z.ZodError) {
-    return new McpError(
-      ErrorCode.InvalidParams,
-      `Validation error: ${error.errors.map(e => e.message).join(", ")}`
-    );
-  }
-
-  if (error instanceof ServiceError) {
-    return new McpError(ErrorCode.InternalError, error.message);
-  }
-
-  return new McpError(ErrorCode.InternalError, "Unknown error occurred");
-}
-```
-
-### Graceful Degradation
-```typescript
-async function fetchWithFallback<T>(
-  primary: () => Promise<T>,
-  fallback: () => Promise<T>,
-  options: { retries?: number; timeout?: number } = {}
-): Promise<T> {
-  const { retries = 3, timeout = 5000 } = options;
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await Promise.race([
-        primary(),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout")), timeout)
-        ),
-      ]);
-    } catch (error) {
-      if (i === retries - 1) {
-        console.error("Primary failed, trying fallback:", error);
-        return fallback();
-      }
-      await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Backoff
-    }
-  }
-  throw new Error("All retries exhausted");
-}
-```
-
-## Performance Optimization
-
-### Connection Pooling
-```typescript
-// PostgreSQL pool
-import { Pool } from "pg";
-
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  max: 10, // Connection limit
+  idleTimeoutMillis: 30000
 });
+```
+Novice mistake: Creating new connection per request → resource exhaustion
+Expert pattern: Connection pooling with limits
 
-// Reuse connections
-async function query(sql: string, params: unknown[]) {
+**Step 4 - Error Handling Strategy**
+```typescript
+async function getUser(args: unknown) {
+  const { userId, includeDeleted } = getUserSchema.parse(args);
+  
   const client = await pool.connect();
   try {
-    return await client.query(sql, params);
-  } finally {
-    client.release();
-  }
-}
-```
-
-### Caching Layer
-```typescript
-class Cache<T> {
-  private store: Map<string, { value: T; expires: number }> = new Map();
-
-  get(key: string): T | undefined {
-    const entry = this.store.get(key);
-    if (!entry) return undefined;
-    if (Date.now() > entry.expires) {
-      this.store.delete(key);
-      return undefined;
+    const query = includeDeleted 
+      ? 'SELECT * FROM users WHERE id = $1'
+      : 'SELECT * FROM users WHERE id = $1 AND deleted_at IS NULL';
+    
+    const result = await client.query(query, [userId]);
+    
+    if (result.rows.length === 0) {
+      return { content: [{ type: "text", text: JSON.stringify({ found: false }) }] };
     }
-    return entry.value;
+    
+    return { content: [{ type: "text", text: JSON.stringify({ 
+      found: true, 
+      user: result.rows[0] 
+    }) }] };
+    
+  } catch (error) {
+    throw new McpError(ErrorCode.InternalError, `Database query failed`);
+  } finally {
+    client.release(); // Always cleanup
   }
-
-  set(key: string, value: T, ttlMs: number): void {
-    this.store.set(key, { value, expires: Date.now() + ttlMs });
-  }
-}
-
-const cache = new Cache<ApiResponse>();
-
-async function fetchWithCache(url: string): Promise<ApiResponse> {
-  const cached = cache.get(url);
-  if (cached) return cached;
-
-  const response = await fetch(url);
-  const data = await response.json();
-  cache.set(url, data, 300000); // 5 min TTL
-  return data;
 }
 ```
 
-## Anti-Patterns
+Novice mistake: No connection cleanup → connection leaks
+Expert pattern: try/finally ensures cleanup even on error
 
-### Anti-Pattern: No Input Validation
-**What it looks like**: Passing user input directly to APIs/databases
-**Why wrong**: SQL injection, command injection, data corruption
-**Instead**: Validate with Zod, sanitize inputs, use parameterized queries
+## Quality Gates
 
-### Anti-Pattern: Secrets in Code
-**What it looks like**: Hardcoded API keys, tokens in source
-**Why wrong**: Secrets leak via git, logs, error messages
-**Instead**: Environment variables, secret managers, encrypted config
+- [ ] All tool inputs validated with Zod schemas including format constraints
+- [ ] No hardcoded secrets (grep -r "sk-\|api[_-]?key\|token" returns empty)
+- [ ] All database/HTTP connections properly pooled and cleaned up in finally blocks
+- [ ] Rate limiting implemented with configurable limits (default: 100 req/min)
+- [ ] Error responses never expose stack traces or sensitive data in production
+- [ ] All async operations have explicit timeouts (default: 30s max)
+- [ ] Tool responses follow consistent JSON structure with success/error indicators
+- [ ] External API calls implement retry logic with exponential backoff
+- [ ] Security audit passes: no SQL injection vectors, XSS prevention, CSRF protection
+- [ ] Performance benchmarks: P95 latency <500ms, error rate <1%, connection pool utilization <80%
 
-### Anti-Pattern: No Rate Limiting
-**What it looks like**: Unlimited API calls to external services
-**Why wrong**: Cost explosion, API bans, resource exhaustion
-**Instead**: Token bucket, sliding window, or adaptive rate limiting
+## NOT-FOR Boundaries
 
-### Anti-Pattern: Synchronous Blocking
-**What it looks like**: `sleep()`, blocking I/O in async handlers
-**Why wrong**: Blocks all requests, causes timeouts
-**Instead**: Proper async/await, non-blocking patterns
+**Do NOT use MCP Creator for:**
+- **Pure domain knowledge without external state** → Use `skill-coach` instead
+- **Multi-step agent orchestration** → Use `agent-creator` instead  
+- **Simple file processing without APIs** → Use Claude's built-in file tools
+- **Local scripts without authentication** → Use `script-writer` instead
+- **General web API development** → Use `backend-architect` instead
+- **Using existing MCP servers** → Just invoke them directly, no creation needed
 
-### Anti-Pattern: Silent Failures
-**What it looks like**: Empty catch blocks, swallowed errors
-**Why wrong**: Debugging impossible, data corruption undetected
-**Instead**: Structured error handling, logging, proper propagation
-
-### Anti-Pattern: No Timeouts
-**What it looks like**: Waiting indefinitely for external services
-**Why wrong**: Hung connections, resource leaks
-**Instead**: Explicit timeouts on all external calls, circuit breakers
-
-## Testing Your MCP
-
-### Using MCP Inspector
-```bash
-# Start inspector
-npx @modelcontextprotocol/inspector
-
-# In another terminal, start your server
-node dist/index.js
-
-# Connect inspector to your server
-# Test tool invocations manually
-```
-
-### Unit Testing
-```typescript
-import { describe, it, expect } from "vitest";
-
-describe("my_tool", () => {
-  it("should validate input", async () => {
-    await expect(
-      handleTool({ userId: "invalid" })
-    ).rejects.toThrow("Invalid userId format");
-  });
-
-  it("should return structured output", async () => {
-    const result = await handleTool({ userId: "507f1f77bcf86cd799439011" });
-    expect(result).toHaveProperty("success", true);
-    expect(result).toHaveProperty("data");
-  });
-});
-```
-
-## Decision Tree: When to Add to MCP
-
-```
-Does this tool need...
-├── External API with auth? → Add to MCP
-├── Persistent state/connection? → Add to MCP
-├── Rate limiting for external service? → Add to MCP
-├── Shared credentials with other tools? → Add to MCP
-├── Security boundary from Claude? → Add to MCP
-└── None of the above? → Consider Script instead
-```
-
-## Success Metrics
-
-| Metric | Target |
-|--------|--------|
-| Tool latency P95 | < 500ms |
-| Error rate | < 1% |
-| Input validation coverage | 100% |
-| Secret exposure | 0 |
-| Rate limit violations | 0 |
-
-## Reference Files
-
-| File | Contents |
-|------|----------|
-| `references/architecture-patterns.md` | Transport layers, server lifecycle, resource management |
-| `references/tool-design.md` | Schema patterns, naming conventions, output formats |
-| `references/security-hardening.md` | Complete OWASP-aligned security checklist |
-| `references/error-handling.md` | Error types, recovery strategies, logging |
-| `references/testing-debugging.md` | Inspector usage, unit/integration tests |
-| `references/performance.md` | Caching, pooling, async patterns |
-| `templates/` | Production-ready server templates |
-
----
-
-**Creates**: Safe, performant MCP servers | Robust tool interfaces | Security-hardened integrations
-
-**Use with**: security-auditor (security review) | site-reliability-engineer (deployment) | agent-creator (when MCP supports agents)
+**Delegate to other skills when:**
+- Security review needed → Hand off to `security-auditor`
+- Infrastructure deployment → Hand off to `site-reliability-engineer` 
+- The MCP will be used by agents → Collaborate with `agent-creator` for integration

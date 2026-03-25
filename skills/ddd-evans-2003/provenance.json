@@ -1,0 +1,52 @@
+{
+  "source": {
+    "file": "DDD-Evans-2003.pdf",
+    "path": "../batch_evaluator_gaps/DDD-Evans-2003.pdf",
+    "chars": 919454,
+    "tokens_approx": 229863
+  },
+  "extractions": [
+    {
+      "model": "claude-haiku-4-5-20251001",
+      "model_version": "haiku-4.5",
+      "pass": "notes",
+      "timestamp": "2026-02-24T13:14:31.589804Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "chapter-notes",
+      "tokens": {
+        "input": 202590,
+        "output": 29844
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "synthesis",
+      "timestamp": "2026-02-24T13:14:31.600830Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "chapter-notes",
+      "tokens": {
+        "input": 31676,
+        "output": 27062
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T13:14:31.608799Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "chapter-notes",
+      "tokens": {
+        "input": 1364,
+        "output": 3062
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 1224.326772928238,
+  "generated_at": "2026-02-24T13:14:31.616985Z"
+}

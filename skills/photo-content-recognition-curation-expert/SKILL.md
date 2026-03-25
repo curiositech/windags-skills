@@ -1,14 +1,15 @@
 ---
+license: Apache-2.0
 name: photo-content-recognition-curation-expert
 description: Expert in photo content recognition, intelligent curation, and quality filtering. Specializes in face/animal/place recognition, perceptual hashing for de-duplication, screenshot/meme detection, burst photo selection, and quick indexing strategies. Activate on 'face recognition', 'face clustering', 'perceptual hash', 'near-duplicate', 'burst photo', 'screenshot detection', 'photo curation', 'photo indexing', 'NSFW detection', 'pet recognition', 'DINOHash', 'HDBSCAN faces'. NOT for GPS-based location clustering (use event-detection-temporal-intelligence-expert), color palette extraction (use color-theory-palette-harmony-expert), semantic image-text matching (use clip-aware-embeddings), or video analysis/frame extraction.
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob,mcp__firecrawl__firecrawl_search,WebFetch
 category: AI & Machine Learning
 tags:
-  - face-recognition
-  - deduplication
+  - content-recognition
+  - photo
   - curation
-  - indexing
-  - nsfw
+  - computer-vision
+  - tagging
 pairs-with:
   - skill: event-detection-temporal-intelligence-expert
     reason: Temporal context for photos
@@ -20,301 +21,218 @@ pairs-with:
 
 Expert in photo content analysis and intelligent curation. Combines classical computer vision with modern deep learning for comprehensive photo analysis.
 
-## When to Use This Skill
-
-✅ **Use for:**
-- Face recognition and clustering (identifying important people)
-- Animal/pet detection and clustering
-- Near-duplicate detection using perceptual hashing (DINOHash, pHash, dHash)
-- Burst photo selection (finding best frame from 10-50 shots)
-- Screenshot vs photo classification
-- Meme/download filtering
-- NSFW content detection
-- Quick indexing for large photo libraries (10K+)
-- Aesthetic quality scoring (NIMA)
-
-❌ **NOT for:**
-- GPS-based location clustering → `event-detection-temporal-intelligence-expert`
-- Color palette extraction → `color-theory-palette-harmony-expert`
-- Semantic image-text matching → `clip-aware-embeddings`
-- Video analysis or frame extraction
-
-## Quick Decision Tree
+## Decision Points
 
 ```
-What do you need to recognize/filter?
-│
-├─ Duplicate photos? ─────────────────────────────── Perceptual Hashing
-│   ├─ Exact duplicates? ──────────────────────────── dHash (fastest)
-│   ├─ Brightness/contrast changes? ───────────────── pHash (DCT-based)
-│   ├─ Heavy crops/compression? ───────────────────── DINOHash (2025 SOTA)
-│   └─ Production system? ─────────────────────────── Hybrid (pHash → DINOHash)
-│
-├─ People in photos? ─────────────────────────────── Face Clustering
-│   ├─ Known thresholds? ──────────────────────────── Apple-style Agglomerative
-│   └─ Unknown data distribution? ─────────────────── HDBSCAN
-│
-├─ Pets/Animals? ─────────────────────────────────── Pet Recognition
-│   ├─ Detection? ─────────────────────────────────── YOLOv8
-│   └─ Individual clustering? ─────────────────────── CLIP + HDBSCAN
-│
-├─ Best from burst? ──────────────────────────────── Burst Selection
-│   └─ Score: sharpness + face quality + aesthetics
-│
-└─ Filter junk? ──────────────────────────────────── Content Detection
-    ├─ Screenshots? ───────────────────────────────── Multi-signal classifier
-    └─ NSFW? ──────────────────────────────────────── Safety classifier
+PHOTO LIBRARY SIZE?
+├─ <1K photos → Single-pass processing
+│   ├─ dHash for duplicates (fastest)
+│   └─ Agglomerative clustering (known thresholds)
+├─ 1K-10K photos → Optimized pipeline
+│   ├─ pHash → DINOHash hybrid
+│   └─ HDBSCAN if variance in cluster sizes >3x
+└─ >10K photos → Batch processing
+    ├─ GPU batching (batch_size=32)
+    └─ Incremental updates only
+
+CLUSTERING ALGORITHM CHOICE?
+├─ Face variance known? → Agglomerative (threshold=0.4, 0.6)
+├─ Unknown distribution? → HDBSCAN (auto-threshold)
+└─ Real-time additions? → Incremental clustering
+
+DUPLICATE DETECTION ROBUSTNESS?
+├─ Exact duplicates only? → dHash (Hamming ≤3)
+├─ Brightness/contrast edits? → pHash (Hamming ≤5)
+├─ Heavy crops/compression? → DINOHash (Hamming ≤10)
+└─ Production system? → Hybrid (pHash→DINOHash)
+
+BURST PHOTO SELECTION?
+├─ Face quality available? → Weight faces 35%, sharpness 30%
+├─ No faces detected? → Weight sharpness 50%, aesthetics 30%
+└─ Action photos? → Weight sharpness 60%, exposure 25%
+
+CONTENT FILTERING CONFIDENCE?
+├─ Screenshot confidence >0.6? → Filter out
+├─ NSFW confidence >0.8? → Filter out  
+├─ Face confidence <0.9? → Exclude from clustering
+└─ Pet confidence <0.7? → Manual review
 ```
 
----
+## Failure Modes
 
-## Core Concepts
+### 1. Too Many Face Clusters (Symptom: 100+ clusters for 1000 photos)
 
-### 1. Perceptual Hashing for Near-Duplicate Detection
+**Root Cause:** Clustering threshold too strict, splitting same person into multiple clusters
+**Detection Rule:** If clusters/unique_people ratio > 2.0, threshold too conservative
+**Fix:** 
+- Increase distance threshold from 0.4 to 0.6
+- Run second-pass merging with relaxed threshold
+- Verify with manual spot-check of 5 random cluster pairs
 
-**Problem:** Camera bursts, re-saved images, and minor edits create near-duplicates.
+### 2. False Duplicate Detection (Symptom: Different people flagged as duplicates)
 
-**Solution:** Perceptual hashes generate similar values for visually similar images.
+**Root Cause:** Perceptual hash threshold too loose, faces in similar poses triggering matches
+**Detection Rule:** If duplicate groups contain faces with cosine distance >0.7, hash threshold too aggressive
+**Fix:**
+- Tighten Hamming threshold from 10 to 5 bits
+- Add face verification step: extract face embeddings from "duplicates"
+- If face similarity <0.5, not duplicates
 
-**Method Comparison:**
+### 3. Burst Selection Missing Best Frame (Symptom: Blurry photos selected over sharp ones)
 
-| Method | Speed | Robustness | Best For |
-|--------|-------|------------|----------|
-| dHash | Fastest | Low | Exact duplicates |
-| pHash | Fast | Medium | Brightness/contrast changes |
-| DINOHash | Slower | High | Heavy crops, compression |
-| Hybrid | Medium | Very High | Production systems |
+**Root Cause:** Face quality override masking sharpness issues when faces poorly detected
+**Detection Rule:** If selected burst frame Laplacian variance <500 while other frames >1000
+**Fix:**
+- Cap face quality bonus at 20% total score
+- Add face detection confidence check (>0.9 required for face bonus)
+- Fallback to pure sharpness if no high-confidence faces
 
-**Hybrid Pipeline (2025 Best Practice):**
-1. **Stage 1:** Fast pHash filtering (eliminates obvious non-duplicates)
-2. **Stage 2:** DINOHash refinement (accurate detection)
-3. **Stage 3:** Optional Siamese ViT verification
+### 4. Screenshot False Negatives (Symptom: UI screenshots in final curated set)
 
-**Hamming Distance Thresholds:**
-- Conservative: ≤5 bits different = duplicates
-- Aggressive: ≤10 bits different = duplicates
+**Root Cause:** Single-signal detection missing edge cases (dark mode, custom UI)
+**Detection Rule:** If photos contain perfect rectangles + high text density but confidence <0.6
+**Fix:**
+- Lower combined threshold from 0.6 to 0.5 for multi-signal hits
+- Add aspect ratio check for common device screens (16:9, 19.5:9, 4:3)
+- OCR confidence boost for text >20% coverage
 
-→ **Deep dive**: `references/perceptual-hashing.md`
+### 5. Memory Explosion on Large Libraries (Symptom: >16GB RAM usage on 10K photos)
 
----
+**Root Cause:** Loading all images into memory simultaneously instead of streaming
+**Detection Rule:** If memory usage >2GB per 1000 photos, batch size too large
+**Fix:**
+- Reduce batch size from 64 to 16 images
+- Implement lazy loading with generators
+- Cache only embeddings/hashes, not raw images
 
-### 2. Face Recognition & Clustering
+## Worked Examples
 
-**Goal:** Group photos by person without user labeling.
+### Example 1: 500-Photo Family Library Curation
 
-**Apple Photos Strategy (2021-2025):**
-1. Extract face + upper body embeddings (FaceNet, 512-dim)
-2. Two-pass agglomerative clustering
-3. Conservative first pass (threshold=0.4, high precision)
-4. HAC second pass (threshold=0.6, increase recall)
-5. Incremental updates for new photos
+**Scenario:** Family vacation photos (500 images), many bursts and similar poses, want top 100 for sharing.
 
-**HDBSCAN Alternative:**
-- No threshold tuning required
-- Robust to noise
-- Better for unknown data distributions
+**Step 1 - Library Analysis:**
+- Photo count: 500 → Use pHash→DINOHash hybrid
+- Face variance unknown → HDBSCAN clustering
+- Mix of portraits/landscapes → Multi-criteria burst selection
 
-**Parameters:**
-
-| Setting | Agglomerative | HDBSCAN |
-|---------|---------------|---------|
-| Pass 1 threshold | 0.4 (cosine) | - |
-| Pass 2 threshold | 0.6 (cosine) | - |
-| Min cluster size | - | 3 photos |
-| Metric | cosine | cosine |
-
-→ **Deep dive**: `references/face-clustering.md`
-
----
-
-### 3. Burst Photo Selection
-
-**Problem:** Burst mode creates 10-50 nearly identical photos.
-
-**Multi-Criteria Scoring:**
-
-| Criterion | Weight | Measurement |
-|-----------|--------|-------------|
-| Sharpness | 30% | Laplacian variance |
-| Face Quality | 35% | Eyes open, smiling, face sharpness |
-| Aesthetics | 20% | NIMA score |
-| Position | 10% | Middle frames bonus |
-| Exposure | 5% | Histogram clipping check |
-
-**Burst Detection:** Photos within 0.5 seconds of each other.
-
-→ **Deep dive**: `references/content-detection.md`
-
----
-
-### 4. Screenshot Detection
-
-**Multi-Signal Approach:**
-
-| Signal | Confidence | Description |
-|--------|------------|-------------|
-| UI elements | 0.85 | Status bars, buttons detected |
-| Perfect rectangles | 0.75 | &gt;5 UI buttons (90° angles) |
-| High text | 0.70 | &gt;25% text coverage (OCR) |
-| No camera EXIF | 0.60 | Missing Make/Model/Lens |
-| Device aspect | 0.60 | Exact phone screen ratio |
-| Perfect sharpness | 0.50 | &gt;2000 Laplacian variance |
-
-**Decision:** Confidence &gt;0.6 = screenshot
-
-→ **Deep dive**: `references/content-detection.md`
-
----
-
-### 5. Quick Indexing Pipeline
-
-**Goal:** Index 10K+ photos efficiently with caching.
-
-**Features Extracted:**
-- Perceptual hashes (de-duplication)
-- Face embeddings (people clustering)
-- CLIP embeddings (semantic search)
-- Color palettes
-- Aesthetic scores
-
-**Performance (10K photos, M1 MacBook Pro):**
-
-| Operation | Time |
-|-----------|------|
-| Perceptual hashing | 2 min |
-| CLIP embeddings | 3 min (GPU) |
-| Face detection | 4 min |
-| Color palettes | 1 min |
-| Aesthetic scoring | 2 min (GPU) |
-| Clustering + dedup | 1 min |
-| **Total (first run)** | **~13 min** |
-| **Incremental** | **&lt;1 min** |
-
-→ **Deep dive**: `references/photo-indexing.md`
-
----
-
-## Common Anti-Patterns
-
-### Anti-Pattern: Euclidean Distance for Face Embeddings
-
-**What it looks like:**
+**Step 2 - Duplicate Detection:**
 ```python
-distance = np.linalg.norm(embedding1 - embedding2)  # WRONG
+# Stage 1: Fast pHash filtering
+pHash_duplicates = find_duplicates_phash(photos, threshold=5)
+# Found 45 potential duplicate groups
+
+# Stage 2: DINOHash verification  
+verified_duplicates = []
+for group in pHash_duplicates:
+    dino_hashes = [compute_dinohash(img) for img in group]
+    if hamming_distance(dino_hashes[0], dino_hashes[1]) <= 8:
+        verified_duplicates.append(group)
+# Verified 38 true duplicate groups
 ```
 
-**Why it's wrong:** Face embeddings are normalized; cosine similarity is the correct metric.
+**Step 3 - Face Clustering Decision:**
+- Extract face embeddings: 234 faces detected
+- Check cluster size variance: max_size/min_size = 4.2 (>3x threshold)  
+- Choose HDBSCAN over agglomerative
 
-**What to do instead:**
+**Step 4 - Burst Selection Trade-offs:**
+- Detected 12 burst sequences (3-8 photos each)
+- Burst #3: 5 photos of kids playing
+  - Frame 2: Highest sharpness (1850 Laplacian) but no faces detected
+  - Frame 4: Lower sharpness (1200) but 2 clear faces, both smiling
+  - **Decision:** Frame 4 selected (face quality 35% weight > sharpness 30%)
+
+**Final Output:** 387 unique photos → 100 curated (top aesthetic + diversity)
+
+### Example 2: Burst Selection Edge Case - Blurry + Exposed Face
+
+**Scenario:** Wedding ceremony burst of 15 shots, bride's face overexposed in sharpest frames.
+
+**Challenge:** Best technical shot (frame 8) has bride's face blown out by direct sunlight.
+
+**Analysis Process:**
 ```python
-from scipy.spatial.distance import cosine
-distance = cosine(embedding1, embedding2)  # Correct
+# Frame 8: Sharpness winner but face quality fail
+frame_8_metrics = {
+    'sharpness': 2100,      # Highest in burst
+    'face_quality': 0.2,    # Overexposed face detection
+    'aesthetics': 0.75,     # Good composition 
+    'exposure': 0.3         # Highlights clipped
+}
+
+# Frame 11: Balanced option
+frame_11_metrics = {
+    'sharpness': 1650,      # Still acceptable  
+    'face_quality': 0.9,    # Clear face, good exposure
+    'aesthetics': 0.8,      # Slightly better angle
+    'exposure': 0.85        # Well exposed
+}
+
+# Weighted scoring:
+frame_8_score = 2100*0.3 + 0.2*0.35 + 0.75*0.2 + 0.3*0.05 = 630 + 0.07 + 0.15 + 0.015 = 630.235
+frame_11_score = 1650*0.3 + 0.9*0.35 + 0.8*0.2 + 0.85*0.05 = 495 + 0.315 + 0.16 + 0.0425 = 495.518
 ```
 
-### Anti-Pattern: Fixed Clustering Thresholds
+**Expert Insight:** Frame 11 selected despite lower sharpness because face quality penalty (-80%) outweighs sharpness advantage. Novice would pick frame 8 based on technical metrics alone.
 
-**What it looks like:** Using same distance threshold for all face clusters.
+## Quality Gates
 
-**Why it's wrong:** Different people have varying intra-class variance (twins vs. diverse ages).
+**Photo Indexing Complete:**
+- [ ] All EXIF metadata extracted and cached
+- [ ] Perceptual hashes computed for 100% of images  
+- [ ] Face embeddings extracted (confidence >0.9 only)
+- [ ] CLIP embeddings generated for semantic search
+- [ ] Index file saved and can be reloaded without errors
 
-**What to do instead:** Use HDBSCAN for automatic threshold discovery, or two-pass clustering with conservative + relaxed passes.
+**Duplicate Detection Complete:**
+- [ ] Hamming distance threshold validated (manual check 10 random pairs)
+- [ ] Duplicate groups reviewed (no false positives in sample)
+- [ ] Performance acceptable (<2 min per 1000 photos)
+- [ ] Original files preserved (only flagging, not deleting)
 
-### Anti-Pattern: Raw Pixel Comparison for Duplicates
+**Face Clustering Complete:**
+- [ ] Cluster count reasonable (max 1 cluster per 50 photos)
+- [ ] No singleton clusters with confidence >0.95 faces
+- [ ] Manual verification: 5 random clusters contain same person
+- [ ] Noise properly classified (face confidence <0.9)
 
-**What it looks like:**
-```python
-is_duplicate = np.allclose(img1, img2)  # WRONG
-```
+**Burst Selection Complete:**
+- [ ] All burst sequences identified (timestamp gap <0.5s)
+- [ ] One photo selected per burst (highest weighted score)
+- [ ] Face quality bonus only applied when face confidence >0.9
+- [ ] Manual spot-check: 3 burst selections look correct
 
-**Why it's wrong:** Re-saved JPEGs, crops, brightness changes create pixel differences.
+**Content Filtering Complete:**
+- [ ] Screenshot detection tested on known UI captures (>95% accuracy)  
+- [ ] NSFW filter validated on test set (no false positives on family photos)
+- [ ] Pet detection covers common animals (cat, dog, horse, bird)
+- [ ] Confidence thresholds produce <5% manual review rate
 
-**What to do instead:** Perceptual hashing (pHash or DINOHash) with Hamming distance.
+## NOT-FOR Boundaries  
 
-### Anti-Pattern: Sequential Face Detection
+**This skill should NOT be used for:**
 
-**What it looks like:** Processing faces one photo at a time without batching.
+- **GPS-based location clustering** → Use `event-detection-temporal-intelligence-expert` instead
+  - Reason: Requires temporal event modeling and GPS clustering algorithms
+  
+- **Color palette extraction and harmony** → Use `color-theory-palette-harmony-expert` instead  
+  - Reason: Needs color theory knowledge and palette composition rules
+  
+- **Semantic image-text matching** → Use `clip-aware-embeddings` instead
+  - Reason: Requires cross-modal understanding and text-image alignment
+  
+- **Video analysis or frame extraction** → Use video processing specialist instead
+  - Reason: Different pipeline for temporal sequences and video codecs
 
-**Why it's wrong:** GPU underutilization, 10x slower than batched.
+- **Advanced photo editing** → Use image editing specialist instead
+  - Reason: Focus is on analysis/curation, not pixel-level manipulation
 
-**What to do instead:** Batch process images (batch_size=32) with GPU acceleration.
+- **3D scene reconstruction** → Use computer vision specialist instead
+  - Reason: Requires stereo vision and depth estimation techniques
 
-### Anti-Pattern: No Confidence Filtering
-
-**What it looks like:**
-```python
-for face in all_detected_faces:
-    cluster(face)  # No filtering
-```
-
-**Why it's wrong:** Low-confidence detections create noise clusters (hands, objects).
-
-**What to do instead:** Filter by confidence (threshold 0.9 for faces).
-
-### Anti-Pattern: Forcing Every Photo into Clusters
-
-**What it looks like:** Assigning noise points to nearest cluster.
-
-**Why it's wrong:** Solo appearances shouldn't pollute person clusters.
-
-**What to do instead:** HDBSCAN/DBSCAN naturally identifies noise (label=-1). Keep noise separate.
-
----
-
-## Quick Start
-
-```python
-from photo_curation import PhotoCurationPipeline
-
-pipeline = PhotoCurationPipeline()
-
-# Index photo library
-index = pipeline.index_library('/path/to/photos')
-
-# De-duplicate
-duplicates = index.find_duplicates()
-print(f"Found {len(duplicates)} duplicate groups")
-
-# Cluster faces
-face_clusters = index.cluster_faces()
-print(f"Found {len(face_clusters)} people")
-
-# Select best from bursts
-best_photos = pipeline.select_best_from_bursts(index)
-
-# Filter screenshots
-real_photos = pipeline.filter_screenshots(index)
-
-# Curate for collage
-collage_photos = pipeline.curate_for_collage(index, target_count=100)
-```
-
----
-
-## Python Dependencies
-
-```
-torch transformers facenet-pytorch ultralytics hdbscan opencv-python scipy numpy scikit-learn pillow pytesseract
-```
-
----
-
-## Integration Points
-
-- **event-detection-temporal-intelligence-expert**: Provides temporal event clustering for event-aware curation
-- **color-theory-palette-harmony-expert**: Extracts color palettes for visual diversity
-- **collage-layout-expert**: Receives curated photos for assembly
-- **clip-aware-embeddings**: Provides CLIP embeddings for semantic search and DeepDBSCAN
-
----
-
-## References
-
-1. **DINOHash (2025)**: "Adversarially Fine-Tuned DINOv2 Features for Perceptual Hashing"
-2. **Apple Photos (2021)**: "Recognizing People in Photos Through Private On-Device ML"
-3. **HDBSCAN**: "Hierarchical Density-Based Spatial Clustering" (2013-2025)
-4. **Perceptual Hashing**: dHash (Neal Krawetz), DCT-based pHash
-
----
-
-**Version**: 2.0.0
-**Last Updated**: November 2025
+**Delegation Rules:**
+- If task involves time/location → `event-detection-temporal-intelligence-expert`
+- If task involves colors/aesthetics → `color-theory-palette-harmony-expert`  
+- If task involves text matching → `clip-aware-embeddings`
+- If task involves editing → Image editing specialist

@@ -1,12 +1,15 @@
 ---
+license: Apache-2.0
 name: crisis-response-protocol
 description: Handle mental health crisis situations in AI coaching safely. Use when implementing crisis detection, safety protocols, emergency escalation, or suicide prevention features. Activates for crisis keywords, safety planning, hotline integration, and risk assessment.
 allowed-tools: Read,Write,Edit
-category: Lifestyle & Personal
+category: Recovery & Wellness
 tags:
-  - mental-health
-  - crisis-intervention
+  - crisis-response
+  - protocol
+  - intervention
   - safety
+  - emergency
 ---
 
 # Crisis Response Protocol

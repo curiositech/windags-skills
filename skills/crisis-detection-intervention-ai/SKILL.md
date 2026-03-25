@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: crisis-detection-intervention-ai
 description: Detect crisis signals in user content using NLP, mental health sentiment analysis, and safe intervention protocols. Implements suicide ideation detection, automated escalation, and crisis resource integration. Use for mental health apps, recovery platforms, support communities. Activate on "crisis detection", "suicide prevention", "mental health NLP", "intervention protocol". NOT for general sentiment analysis, medical diagnosis, or replacing professional help.
 allowed-tools: Read,Write,Edit,Bash(npm:*)
+category: Recovery & Wellness
+tags:
+  - crisis-detection
+  - intervention
+  - ai
+  - mental-health
+  - safety
 ---
 
 # Crisis Detection & Intervention AI

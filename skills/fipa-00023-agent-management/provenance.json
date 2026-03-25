@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "FIPA-00023-Agent-Management.pdf",
+    "path": "batch_weak_subsystems/fipa/FIPA-00023-Agent-Management.pdf",
+    "chars": 72493,
+    "tokens_approx": 18123
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T05:28:55.839034Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 23379,
+        "output": 27351
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T05:28:55.850338Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1466,
+        "output": 3351
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 626.4644570350647,
+  "generated_at": "2026-02-24T05:28:55.858431Z"
+}

@@ -1,4 +1,5 @@
 ---
+license: Apache-2.0
 name: swift-executor
 description: Rapid task execution without hesitation or deterrence. Expert in overcoming blockers, making quick decisions, and maintaining forward momentum. Use for urgent tasks, breaking through impediments, decisive action. Activates on 'swift', 'execute quickly', 'undeterred', 'overcome blocker', 'just do it'. NOT for strategic planning, careful analysis, or research tasks.
 allowed-tools:
@@ -8,13 +9,13 @@ allowed-tools:
   - Bash
   - Grep
   - Glob
-category: Productivity & Meta
+category: Agent & Orchestration
 tags:
   - execution
-  - urgency
-  - decisiveness
-  - momentum
-  - blockers
+  - swift
+  - task-running
+  - automation
+  - performance
 pairs-with:
   - skill: orchestrator
     reason: Execute orchestrated tasks quickly

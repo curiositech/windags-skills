@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: sobriety-tools-guardian
 description: Performance optimization and continuous improvement for sobriety.tools recovery app. Use for load time optimization, offline capability, crisis detection, performance monitoring, automated issue detection. Activate on "sobriety.tools", "recovery app perf", "crisis detection", "offline meetings", "HALT check-in", "sponsor contacts". NOT for general Next.js help, unrelated Cloudflare Workers, or non-recovery apps.
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob,Task,WebFetch
+category: Recovery & Wellness
+tags:
+  - sobriety
+  - tools
+  - protection
+  - recovery
+  - safety
 ---
 
 # Sobriety Tools Guardian

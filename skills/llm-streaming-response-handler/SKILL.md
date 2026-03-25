@@ -1,7 +1,15 @@
 ---
+license: Apache-2.0
 name: llm-streaming-response-handler
 description: Build production LLM streaming UIs with Server-Sent Events, real-time token display, cancellation, error recovery. Handles OpenAI/Anthropic/Claude streaming APIs. Use for chatbots, AI assistants, real-time text generation. Activate on "LLM streaming", "SSE", "token stream", "chat UI", "real-time AI". NOT for batch processing, non-streaming APIs, or WebSocket bidirectional chat.
 allowed-tools: Read,Write,Edit,Bash(npm:*)
+category: AI & Machine Learning
+tags:
+  - llm
+  - streaming
+  - response-handling
+  - real-time
+  - server-sent-events
 ---
 
 # LLM Streaming Response Handler

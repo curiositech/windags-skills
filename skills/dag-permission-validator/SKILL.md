@@ -1,4 +1,5 @@
 ---
+license: BSL-1.1
 name: dag-permission-validator
 description: Validates permission inheritance between parent and child agents. Ensures child permissions are equal to or more restrictive than parent. Activate on 'validate permissions', 'permission check', 'inheritance validation', 'permission matrix', 'security validation'. NOT for runtime enforcement (use dag-scope-enforcer) or isolation management (use dag-isolation-manager).
 allowed-tools:
@@ -7,7 +8,7 @@ allowed-tools:
   - Edit
   - Glob
   - Grep
-category: DAG Framework
+category: Agent & Orchestration
 tags:
   - dag
   - permissions
@@ -23,421 +24,174 @@ pairs-with:
     reason: Validates before agent spawning
 ---
 
-You are a DAG Permission Validator, an expert at validating permission inheritance between parent and child agents. You ensure the fundamental security principle that child agents can only have permissions equal to or more restrictive than their parent.
+You are a DAG Permission Validator, ensuring child agents never exceed parent permissions through systematic validation of permission matrices.
 
-## Core Responsibilities
+## DECISION POINTS
 
-### 1. Permission Inheritance Validation
-- Verify child permissions are subset of parent
-- Check tool access restrictions
-- Validate file system boundaries
+### Main Validation Decision Table
 
-### 2. Permission Matrix Analysis
-- Parse and compare permission matrices
-- Identify permission violations
-- Report specific violation details
+| Child Permission State | Parent Has Permission | Action |
+|---|---|---|
+| Requests core tool (read/write/etc) | ✓ Parent has it | APPROVE - child can inherit |
+| Requests core tool | ✗ Parent lacks it | DENY - log violation, suggest removal |
+| Requests file pattern | ✓ Pattern subset of parent | APPROVE - within boundaries |
+| Requests file pattern | ✗ Pattern exceeds parent scope | DENY - narrow to parent scope |
+| Has fewer deny patterns than parent | Parent denies pattern X | DENY - child must inherit all denials |
+| Network/bash permissions | Parent disabled | DENY - cannot enable what parent lacks |
+| Ambiguous glob pattern overlap | ? Unclear if subset | WARN - request clarification, suggest explicit patterns |
 
-### 3. Pre-Spawn Validation
-- Validate permissions before agent spawning
-- Block invalid permission requests
-- Suggest valid permission configurations
+### Pre-Spawn Flow
+```
+1. Merge requested permissions with defaults
+   ├─ If conflict in request → Use most restrictive
+   └─ If missing field → Use secure default (false/empty)
 
-### 4. Policy Enforcement
-- Apply organization-wide permission policies
-- Validate against baseline restrictions
-- Ensure compliance with security requirements
+2. Compare each permission category:
+   ├─ Core tools: child.tool ≤ parent.tool for each tool
+   ├─ File patterns: each child pattern ⊆ parent patterns  
+   ├─ Network: child domains ⊆ parent domains
+   └─ Bash: child patterns ⊆ parent patterns AND child denials ⊇ parent denials
 
-## Permission Matrix Structure
+3. Generate result:
+   ├─ All valid → return PASS + child matrix
+   ├─ Violations found → return FAIL + violations + suggested fixes
+   └─ Warnings only → return WARN + proceed with corrected matrix
+```
 
+## FAILURE MODES
+
+### 1. Permission Escalation Bypass
+**Symptom**: Child agent spawned with permissions parent doesn't have
+**Diagnosis**: Validation skipped or enforcement not integrated with spawning
+**Fix**: Ensure `dag-parallel-executor` calls validation before Task tool execution
+
+### 2. Pattern Scope Creep  
+**Symptom**: Child requests `/home/**` when parent only has `/tmp/**`
+**Diagnosis**: Pattern subset logic fails on glob expansion
+**Fix**: Use `isPatternSubsetOf()` with proper glob matching, not string comparison
+
+### 3. Denial Inheritance Failure
+**Symptom**: Child bypasses restrictions parent must enforce  
+**Diagnosis**: Child permission matrix missing parent's denial patterns
+**Fix**: Copy all parent denial patterns to child before validation
+
+### 4. False Positive Rejections
+**Symptom**: Valid subset permissions rejected as violations
+**Diagnosis**: Overly strict pattern matching or missing parent wildcard handling
+**Fix**: Implement proper glob hierarchy checking with `**` and `*` expansion
+
+### 5. Default Permission Pollution
+**Symptom**: Child gets dangerous defaults when request is partial
+**Diagnosis**: Merging logic uses permissive defaults instead of restrictive ones
+**Fix**: Use `createRestrictiveDefaults()` as base, only add what parent allows
+
+## WORKED EXAMPLES
+
+### Example 1: Valid Inheritance - Research Task
 ```typescript
-interface PermissionMatrix {
-  coreTools: {
-    read: boolean;
-    write: boolean;
-    edit: boolean;
-    glob: boolean;
-    grep: boolean;
-    task: boolean;
-    webFetch: boolean;
-    webSearch: boolean;
-    todoWrite: boolean;
-  };
-
-  bash: {
-    enabled: boolean;
-    allowedPatterns: string[];  // Regex patterns
-    deniedPatterns: string[];
-    sandboxed: boolean;
-  };
-
-  fileSystem: {
-    readPatterns: string[];    // Glob patterns
-    writePatterns: string[];
-    denyPatterns: string[];
-  };
-
-  mcpTools: {
-    allowed: string[];         // 'server:tool' format
-    denied: string[];
-  };
-
-  network: {
-    enabled: boolean;
-    allowedDomains: string[];
-    denyDomains: string[];
-  };
-
-  models: {
-    allowed: ('haiku' | 'sonnet' | 'opus')[];
-    preferredForSpawning: 'haiku' | 'sonnet' | 'opus';
-  };
+// Parent: research-coordinator  
+parentMatrix = {
+  coreTools: { read: true, write: false, webSearch: true },
+  fileSystem: { readPatterns: ["/workspace/**"], writePatterns: [] },
+  network: { enabled: true, allowedDomains: ["*.edu", "arxiv.org"] }
 }
+
+// Child request: literature-scanner
+childRequest = {
+  coreTools: { read: true, webSearch: true },
+  fileSystem: { readPatterns: ["/workspace/papers/**"] },
+  network: { enabled: true, allowedDomains: ["arxiv.org"] }
+}
+
+// Validation process:
+1. Core tools: ✓ read≤read, webSearch≤webSearch, write not requested  
+2. File patterns: ✓ "/workspace/papers/**" ⊆ "/workspace/**"
+3. Network: ✓ "arxiv.org" ⊆ ["*.edu", "arxiv.org"]
+
+// Result: PASS - child is proper subset
 ```
 
-## Validation Algorithm
-
+### Example 2: Escalation Violation - Unauthorized Write
 ```typescript
-interface ValidationResult {
-  valid: boolean;
-  violations: PermissionViolation[];
-  warnings: string[];
-  suggestions: string[];
+// Parent: data-processor
+parentMatrix = {
+  coreTools: { read: true, write: false, edit: false },
+  fileSystem: { readPatterns: ["/data/**"], denyPatterns: ["/data/secrets/**"] }
 }
 
-interface PermissionViolation {
-  category: string;
-  field: string;
-  parentValue: unknown;
-  childValue: unknown;
-  message: string;
+// Child request: file-modifier  
+childRequest = {
+  coreTools: { read: true, write: true },  // ❌ VIOLATION
+  fileSystem: { readPatterns: ["/data/**"] }  // ❌ Missing denial
 }
 
-function validatePermissionInheritance(
-  parent: PermissionMatrix,
-  child: PermissionMatrix
-): ValidationResult {
-  const violations: PermissionViolation[] = [];
-  const warnings: string[] = [];
+// Validation process:
+1. Core tools: ✗ child.write=true > parent.write=false → VIOLATION
+2. File patterns: ✗ child missing "/data/secrets/**" denial → VIOLATION
 
-  // Validate core tools
-  validateCoreTools(parent, child, violations);
+// Result: FAIL  
+violations = [
+  { category: "coreTools", field: "write", message: "Child requests write but parent forbids" },
+  { category: "fileSystem", field: "denyPatterns", message: "Child must inherit secrets denial" }
+]
 
-  // Validate bash permissions
-  validateBashPermissions(parent, child, violations);
-
-  // Validate file system access
-  validateFileSystemAccess(parent, child, violations);
-
-  // Validate MCP tools
-  validateMcpTools(parent, child, violations);
-
-  // Validate network access
-  validateNetworkAccess(parent, child, violations);
-
-  // Validate model access
-  validateModelAccess(parent, child, violations);
-
-  return {
-    valid: violations.length === 0,
-    violations,
-    warnings,
-    suggestions: generateSuggestions(violations),
-  };
+// Auto-fix suggestion:
+suggestedChild = {
+  coreTools: { read: true, write: false },
+  fileSystem: { readPatterns: ["/data/**"], denyPatterns: ["/data/secrets/**"] }
 }
 ```
 
-## Core Tool Validation
-
+### Example 3: Pattern Overlap Edge Case - Ambiguous Scope
 ```typescript
-function validateCoreTools(
-  parent: PermissionMatrix,
-  child: PermissionMatrix,
-  violations: PermissionViolation[]
-): void {
-  const toolNames = [
-    'read', 'write', 'edit', 'glob', 'grep',
-    'task', 'webFetch', 'webSearch', 'todoWrite',
-  ] as const;
-
-  for (const tool of toolNames) {
-    // Child cannot have permission parent doesn't have
-    if (child.coreTools[tool] && !parent.coreTools[tool]) {
-      violations.push({
-        category: 'coreTools',
-        field: tool,
-        parentValue: false,
-        childValue: true,
-        message: `Child requests '${tool}' permission but parent doesn't have it`,
-      });
-    }
-  }
+// Parent: web-crawler
+parentMatrix = {
+  network: { enabled: true, allowedDomains: ["*.research.org", "api.*.com"] }
 }
+
+// Child request: domain-scanner
+childRequest = {
+  network: { allowedDomains: ["sub.research.org", "api.data.com", "api.unknown.net"] }
+}
+
+// Validation process:
+1. "sub.research.org" vs "*.research.org" → ✓ clear subset
+2. "api.data.com" vs "api.*.com" → ✓ matches pattern  
+3. "api.unknown.net" vs patterns → ✗ "net" ≠ "com" → VIOLATION
+
+// Trade-off analysis:
+Option A: Strict reject → blocks legitimate "api.unknown.net" if parent meant "api.*.*"
+Option B: Permissive allow → risks domain escalation
+
+// Decision: Fail safe - reject ambiguous, suggest clarification
+Result: FAIL + suggestion to make parent pattern explicit ["api.*.com", "api.*.net"]
 ```
 
-## File System Validation
+## QUALITY GATES
 
-```typescript
-function validateFileSystemAccess(
-  parent: PermissionMatrix,
-  child: PermissionMatrix,
-  violations: PermissionViolation[]
-): void {
-  // Validate read patterns
-  for (const pattern of child.fileSystem.readPatterns) {
-    if (!isPatternSubsetOf(pattern, parent.fileSystem.readPatterns)) {
-      violations.push({
-        category: 'fileSystem',
-        field: 'readPatterns',
-        parentValue: parent.fileSystem.readPatterns,
-        childValue: pattern,
-        message: `Child read pattern '${pattern}' exceeds parent's read access`,
-      });
-    }
-  }
+- [ ] All child core tool permissions have corresponding parent permission (no tool escalation)
+- [ ] All child file patterns are proper subsets of parent patterns (no path escalation)  
+- [ ] Child inherits ALL parent denial patterns (no restriction bypass)
+- [ ] Network domains pass subset validation with proper wildcard expansion
+- [ ] Bash patterns validated as regex subsets with sandbox inheritance
+- [ ] MCP tools in child.allowed exist in parent.allowed (no external tool escalation)
+- [ ] Model access restricted to parent's allowed models subset
+- [ ] Validation result includes specific violation details for debugging
+- [ ] Generated suggestions provide actionable fixes for each violation
+- [ ] Performance under 100ms for typical permission matrices (<50 patterns)
 
-  // Validate write patterns
-  for (const pattern of child.fileSystem.writePatterns) {
-    if (!isPatternSubsetOf(pattern, parent.fileSystem.writePatterns)) {
-      violations.push({
-        category: 'fileSystem',
-        field: 'writePatterns',
-        parentValue: parent.fileSystem.writePatterns,
-        childValue: pattern,
-        message: `Child write pattern '${pattern}' exceeds parent's write access`,
-      });
-    }
-  }
+## NOT-FOR BOUNDARIES
 
-  // Ensure child denies at least what parent denies
-  for (const pattern of parent.fileSystem.denyPatterns) {
-    if (!child.fileSystem.denyPatterns.includes(pattern)) {
-      violations.push({
-        category: 'fileSystem',
-        field: 'denyPatterns',
-        parentValue: pattern,
-        childValue: child.fileSystem.denyPatterns,
-        message: `Child must deny '${pattern}' as parent denies it`,
-      });
-    }
-  }
-}
+**This skill validates permissions but does NOT:**
+- **Runtime enforcement** → Use `dag-scope-enforcer` for blocking unauthorized actions
+- **Permission granting** → Use `dag-authorization-manager` for escalating agent permissions  
+- **Isolation management** → Use `dag-isolation-manager` for container/sandbox boundaries
+- **Policy creation** → Use `dag-policy-manager` for defining organizational permission rules
+- **Audit logging** → Use `dag-execution-tracer` for recording permission violations
+- **User authentication** → Use identity providers for user-level permissions
 
-function isPatternSubsetOf(
-  pattern: string,
-  allowedPatterns: string[]
-): boolean {
-  // Check if pattern is covered by any allowed pattern
-  return allowedPatterns.some(allowed => {
-    // Exact match
-    if (pattern === allowed) return true;
-
-    // Allowed pattern is more general
-    if (allowed.includes('**') || allowed.includes('*')) {
-      return globMatches(allowed, pattern);
-    }
-
-    // Pattern is subdirectory
-    if (pattern.startsWith(allowed.replace(/\*+/g, ''))) {
-      return true;
-    }
-
-    return false;
-  });
-}
-```
-
-## Bash Permission Validation
-
-```typescript
-function validateBashPermissions(
-  parent: PermissionMatrix,
-  child: PermissionMatrix,
-  violations: PermissionViolation[]
-): void {
-  // Child can't have bash if parent doesn't
-  if (child.bash.enabled && !parent.bash.enabled) {
-    violations.push({
-      category: 'bash',
-      field: 'enabled',
-      parentValue: false,
-      childValue: true,
-      message: 'Child requests bash access but parent doesn\'t have it',
-    });
-  }
-
-  // Child must be sandboxed if parent is
-  if (parent.bash.sandboxed && !child.bash.sandboxed) {
-    violations.push({
-      category: 'bash',
-      field: 'sandboxed',
-      parentValue: true,
-      childValue: false,
-      message: 'Child must be sandboxed when parent is sandboxed',
-    });
-  }
-
-  // Validate allowed patterns are subset
-  for (const pattern of child.bash.allowedPatterns) {
-    if (!parent.bash.allowedPatterns.includes(pattern)) {
-      // Check if parent has a more permissive pattern
-      const covered = parent.bash.allowedPatterns.some(p =>
-        new RegExp(p).test(pattern) || p === '.*'
-      );
-
-      if (!covered) {
-        violations.push({
-          category: 'bash',
-          field: 'allowedPatterns',
-          parentValue: parent.bash.allowedPatterns,
-          childValue: pattern,
-          message: `Child bash pattern '${pattern}' not covered by parent`,
-        });
-      }
-    }
-  }
-
-  // Child must inherit parent's denied patterns
-  for (const pattern of parent.bash.deniedPatterns) {
-    if (!child.bash.deniedPatterns.includes(pattern)) {
-      violations.push({
-        category: 'bash',
-        field: 'deniedPatterns',
-        parentValue: pattern,
-        childValue: child.bash.deniedPatterns,
-        message: `Child must deny bash pattern '${pattern}' as parent denies it`,
-      });
-    }
-  }
-}
-```
-
-## Network Permission Validation
-
-```typescript
-function validateNetworkAccess(
-  parent: PermissionMatrix,
-  child: PermissionMatrix,
-  violations: PermissionViolation[]
-): void {
-  // Child can't have network if parent doesn't
-  if (child.network.enabled && !parent.network.enabled) {
-    violations.push({
-      category: 'network',
-      field: 'enabled',
-      parentValue: false,
-      childValue: true,
-      message: 'Child requests network access but parent doesn\'t have it',
-    });
-  }
-
-  // Validate allowed domains
-  for (const domain of child.network.allowedDomains) {
-    const allowed = parent.network.allowedDomains.some(d =>
-      d === domain || d === '*' || domain.endsWith(`.${d}`)
-    );
-
-    if (!allowed) {
-      violations.push({
-        category: 'network',
-        field: 'allowedDomains',
-        parentValue: parent.network.allowedDomains,
-        childValue: domain,
-        message: `Child domain '${domain}' not allowed by parent`,
-      });
-    }
-  }
-}
-```
-
-## Validation Report Format
-
-```yaml
-validationReport:
-  parentAgent: research-coordinator
-  childAgent: web-researcher
-
-  result: invalid
-
-  violations:
-    - category: coreTools
-      field: webSearch
-      parentValue: false
-      childValue: true
-      message: "Child requests 'webSearch' permission but parent doesn't have it"
-
-    - category: fileSystem
-      field: writePatterns
-      parentValue: ["/tmp/**"]
-      childValue: "/home/user/**"
-      message: "Child write pattern '/home/user/**' exceeds parent's write access"
-
-  warnings:
-    - "Child requests extensive bash permissions - consider restricting"
-
-  suggestions:
-    - "Remove webSearch from child permissions"
-    - "Restrict child writePatterns to /tmp/**"
-
-  validChildPermissions:
-    coreTools:
-      read: true
-      write: true
-      webSearch: false  # Corrected
-    fileSystem:
-      writePatterns: ["/tmp/**"]  # Corrected
-```
-
-## Pre-Spawn Validation
-
-```typescript
-function validateBeforeSpawn(
-  parent: PermissionMatrix,
-  requested: Partial<PermissionMatrix>,
-  defaults: PermissionMatrix
-): ValidationResult {
-  // Merge requested with defaults
-  const child = mergePermissions(defaults, requested);
-
-  // Validate inheritance
-  const result = validatePermissionInheritance(parent, child);
-
-  if (!result.valid) {
-    // Generate a valid child permission matrix
-    result.suggestions.push('Use generateValidChildPermissions() to get valid config');
-  }
-
-  return result;
-}
-
-function generateValidChildPermissions(
-  parent: PermissionMatrix,
-  requested: Partial<PermissionMatrix>
-): PermissionMatrix {
-  // Start with most restrictive
-  const child = createRestrictiveDefaults();
-
-  // Apply only permissions that parent has
-  // ... implementation ...
-
-  return child;
-}
-```
-
-## Integration Points
-
-- **Pre-spawn**: Called by `dag-parallel-executor` before Task tool
-- **Enforcement**: Results used by `dag-scope-enforcer`
-- **Policies**: Organization policies from configuration
-- **Logging**: Violations reported to `dag-execution-tracer`
-
-## Best Practices
-
-1. **Validate Early**: Check before spawning agents
-2. **Fail Closed**: Reject ambiguous permissions
-3. **Log Everything**: Track permission requests and violations
-4. **Suggest Fixes**: Help users correct invalid configs
-5. **Cache Results**: Permission matrices don't change during execution
-
----
-
-Strict inheritance. Secure spawning. No escalation.
+**When to delegate:**
+- Runtime violations detected → `dag-scope-enforcer.enforce()`
+- Parent needs broader permissions → `dag-authorization-manager.elevate()`  
+- Container security needed → `dag-isolation-manager.isolate()`
+- New policy rules required → `dag-policy-manager.define()`

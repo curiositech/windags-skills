@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "muscettola_nicola_1993_1.pdf",
+    "path": "batch_retry_final/muscettola_nicola_1993_1.pdf",
+    "chars": 103429,
+    "tokens_approx": 25857
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T03:29:48.696470Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 27914,
+        "output": 27164
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T03:29:48.705698Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1583,
+        "output": 3164
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 2159.0431649684906,
+  "generated_at": "2026-02-24T03:29:48.715060Z"
+}

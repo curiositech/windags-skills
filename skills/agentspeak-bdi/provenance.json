@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "agentspeak-l-bdi-agents-speak-out-in-a-logical-computable-24usnt2sd7.pdf",
+    "path": "batch_retry_final/agentspeak-l-bdi-agents-speak-out-in-a-logical-computable-24usnt2sd7.pdf",
+    "chars": 40740,
+    "tokens_approx": 10185
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T02:53:34.639082Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 15818,
+        "output": 27393
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T02:53:34.658306Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1675,
+        "output": 3393
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 2343.8765177726746,
+  "generated_at": "2026-02-24T02:53:34.668751Z"
+}
