@@ -2,3 +2,4 @@
 *.swp
 *.swo
 *~
+mcp-server/node_modules/
