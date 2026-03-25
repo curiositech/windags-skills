@@ -1,22 +1,18 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "windags-skills",
+  "description": "463+ agent skills + /next-move prediction pipeline for Claude Code. Built by WinDAGs.",
   "owner": {
     "name": "Curiositech",
     "email": "info@curiositech.ai"
-  },
-  "metadata": {
-    "description": "463+ agent skills + /next-move prediction pipeline for Claude Code. Built by WinDAGs.",
-    "version": "2.0.0",
-    "homepage": "https://windags.ai"
   },
   "plugins": [
     {
       "name": "windags-skills",
       "source": ".",
       "description": "463+ skills for engineering, design, research, recovery, and productivity. Includes /next-move — a 5-agent meta-DAG that predicts your highest-impact next action.",
-      "version": "2.0.0",
-      "license": "BUSL-1.1",
-      "keywords": ["skills", "agent-skills", "claude-code", "next-move", "dag", "windags", "orchestration"]
+      "category": "development",
+      "homepage": "https://windags.ai"
     }
   ]
 }
