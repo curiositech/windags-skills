@@ -347,19 +347,102 @@ Agent(prompt="<skill: refactoring-surgeon>\n\nBased on the audit findings:\n<wav
 Agent(prompt="<skill: error-handling-patterns>\n\nAdd retry guards for the token refresh flow...")
 ```
 
-### If User Says "Modify"
+### If User Says "Modify" — DAG Mutation Flow
 
-Ask what to change. Common modifications:
-- Swap a skill: "Use security-auditor instead of code-review-checklist for the audit"
-- Skip a node: "Don't bother with the exploratory research node"
-- Reorder: "Do the tests before the refactor"
-- Add a node: "Also run a performance check after the fix"
+First, ask WHICH nodes to modify using AskUserQuestion with multiSelect. List every node from the prediction:
 
-Apply the modification, re-present the plan briefly, then execute.
+```
+AskUserQuestion({
+  questions: [{
+    question: "Which nodes do you want to change?",
+    header: "Modify DAG",
+    options: [
+      // One option per node in the DAG:
+      { label: "audit-test-suite", description: "[test-automation-expert] Audit test suite for flaky patterns" },
+      { label: "trace-race-conds", description: "[fullstack-debugger] Trace race conditions in auth middleware" },
+      { label: "fix-timing-issues", description: "[refactoring-surgeon] Fix identified timing issues" },
+      { label: "Add a new node", description: "I want to add something that's not in the plan" },
+      { label: "Reorder waves", description: "The dependency structure is wrong" },
+    ],
+    multiSelect: true,
+  }]
+})
+```
+
+For each selected node, ask what mutation to apply using AskUserQuestion:
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "What should change about 'audit-test-suite'?",
+    header: "Mutate Node",
+    options: [
+      { label: "Swap skill", description: "Use a different skill for this subtask" },
+      { label: "Change description", description: "The task description is wrong — I'll specify" },
+      { label: "Remove it", description: "Skip this node entirely" },
+      { label: "Change commitment", description: "Make it COMMITTED / TENTATIVE / EXPLORATORY" },
+      { label: "Move to different wave", description: "It should run earlier or later" },
+    ],
+    multiSelect: false,
+  }]
+})
+```
+
+**Mutation types and how to handle them:**
+
+| Mutation | What to do |
+|----------|-----------|
+| **Swap skill** | Ask: "What skill should handle this instead?" If they name one, use it. If unsure, call `windags_skill_search` with their description and present top 3. |
+| **Change description** | Ask: "What should this node do instead?" Use their words as the new `role_description`. |
+| **Remove node** | Delete the node. If downstream nodes depend on it, warn: "Node X depends on this. Remove both, or reassign X's dependency?" |
+| **Change commitment** | Set the new level. If promoting EXPLORATORY → COMMITTED, confirm: "This will execute automatically. Sure?" |
+| **Move to different wave** | Ask which wave. Validate dependencies still hold — a node can't move earlier than its dependencies. |
+| **Add new node** | Ask: "What should the new node do?" Call `windags_skill_search` to match a skill. Ask which wave (or auto-assign based on dependencies). |
+| **Reorder waves** | Present the current wave structure. Ask what the correct ordering is. Recompute dependencies. |
+
+**After all mutations are applied:**
+
+1. Re-present the modified DAG briefly (just the wave table, not the full banner)
+2. Call AskUserQuestion again: "Modified plan ready. Accept / Modify more / Reject"
+3. On Accept → execute the modified DAG via Step 7
+
+**Record modifications in the triple:**
+```json
+{
+  "feedback": {
+    "accepted": true,
+    "modifications": [
+      { "type": "swap_skill", "node": "audit-test-suite", "from": "test-automation-expert", "to": "security-auditor" },
+      { "type": "remove", "node": "add-retry-guards" }
+    ]
+  }
+}
+```
+
+These modification records feed the learning loop — if users consistently swap a skill for a particular subtask type, future predictions should use the preferred skill directly.
 
 ### If User Says "Reject"
 
-Ask what they actually want. Their response becomes a user hint — re-run the pipeline from Step 1 with their input as the highest-priority signal.
+Ask what they actually want. Call AskUserQuestion:
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "What should I focus on instead?",
+    header: "Redirect",
+    options: [
+      { label: "Different problem", description: "I want to work on something else entirely — I'll describe it" },
+      { label: "Same problem, different approach", description: "Right problem, wrong plan — let me explain" },
+      { label: "Not now", description: "I don't want a prediction right now" },
+    ],
+    multiSelect: false,
+  }]
+})
+```
+
+- **Different problem** → Ask for their description, re-run pipeline with it as the user hint
+- **Different approach** → Ask what approach they want, re-run decomposer + skill selector with their constraints
+- **Not now** → Stop. Record rejection in triple for calibration learning.
 
 ---
 
