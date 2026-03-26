@@ -1,6 +1,6 @@
 {
   "name": "windags-skills",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "463+ agent skills + /next-move prediction pipeline + BM25 skill search. Built by WinDAGs.",
   "author": {
     "name": "Curiositech",

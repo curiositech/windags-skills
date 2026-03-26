@@ -48,6 +48,69 @@ pairs-with:
 
 You orchestrate a 5-agent meta-DAG that analyzes project context and produces a predicted DAG of highest-impact next actions. Each pipeline stage runs as an isolated sub-agent via the `Agent` tool with structured JSON flowing forward.
 
+## Execution Architecture: Background Collection + Parallel Search
+
+**The pipeline runs in two layers simultaneously:**
+
+### Layer 1: Background Agents (data collection)
+These run immediately via `Agent(run_in_background: true)` so the user isn't waiting:
+
+```
+Agent A (background): Context Gathering
+  - git status, branch, log, diff
+  - CLAUDE.md, package.json
+  - CI status (gh), open PRs, open issues
+  - skills catalog, project memory
+  All 14 signals run in parallel via Promise.all
+
+Agent B (background): Sensemaker
+  - Starts as soon as Agent A returns context
+  - Classifies problem, sets confidence, checks halt gate
+```
+
+### Layer 2: Foreground (ANSI explainer)
+While background agents work, immediately print a live status display:
+
+```
+Print the /next-move banner, then show:
+
+  Context Gathering  3/14
+    [v] git status        8ms
+    [v] branch            3ms
+    [~] CI status         ...
+    [ ] skills catalog
+    ...
+
+Update each line as background signals resolve.
+When context completes, show:
+
+  Meta-DAG Pipeline
+    W0: [~] Sensemaker    ...
+    W1: [ ] Decomposer
+    ...
+```
+
+This ensures the user sees progress immediately — no blank spinner.
+
+### Layer 3: Parallel BM25 Skill Search (after Decomposer)
+After the Decomposer outputs subtasks, fan out skill search calls **in parallel** — one per subtask:
+
+```
+Decomposer returns 5 subtasks
+  ↓
+Promise.all([
+  windags_skill_search("audit session edge cases"),     → top 10
+  windags_skill_search("test refresh handler"),          → top 10
+  windags_skill_search("fix race condition in auth"),    → top 10
+  windags_skill_search("wire rate limiting"),             → top 10
+  windags_skill_search("integration tests"),              → top 10
+])
+  ↓
+Skill Selector LLM receives pre-narrowed candidates (not all 463)
+```
+
+This replaces passing the full 463-skill catalog to the LLM. Faster, cheaper, more accurate.
+
 ## Decision Points
 
 ### 1. Context Quality Assessment
@@ -57,10 +120,10 @@ IF git status shows no changes AND no CLAUDE.md exists:
 
 IF conversation mentions specific task AND files are modified:
   → Proceed with task-focused analysis
-  
+
 IF user says "what should I do" AND no recent commits (>24h):
   → Focus on project maintenance and setup tasks
-  
+
 IF modified files span >3 directories:
   → Flag as potentially scattered focus, proceed with caution
 ```
@@ -238,8 +301,18 @@ git status --short
 }
 ```
 
-**Step 4 - Parallel Agents**:
-- **Skill Selector**: Matches "audit-session-edge-cases" → `code-review-checklist` (structured audit approach)
+**Step 3.5 - Parallel BM25 Search** (runs immediately after decomposer):
+```
+windags_skill_search("Review session.ts for token expiry and refresh edge cases")
+  → [code-review-checklist (0.82), security-auditor (0.71), test-automation-expert (0.65), ...]
+
+windags_skill_search("Add comprehensive tests for refresh-handler.ts")
+  → [vitest-testing-patterns (0.88), test-automation-expert (0.79), playwright-e2e-tester (0.61), ...]
+```
+Both searches run in parallel — total time = max(search1, search2), not sum.
+
+**Step 4 - Parallel Agents** (Skill Selector + PreMortem):
+- **Skill Selector**: Receives pre-narrowed candidates, picks `code-review-checklist` for audit (was top BM25 hit, confirmed by LLM)
 - **PreMortem**: Returns "PROCEED" with low-severity risk about potential race conditions
 
 **Decision**: No high risks, proceed with plan
