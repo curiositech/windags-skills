@@ -171,21 +171,63 @@ IF estimated time > 45 minutes:
   → Suggest breaking into smaller chunks
 ```
 
-### 5. Confidence-Based Presentation
+### 5. Topology Selection
+
+After synthesizing subtasks, select the best execution topology. This determines HOW the workgroup collaborates, not just WHAT they do.
+
+**The 6 topologies:**
+
+| Topology | When to Use | Key Signal |
+|----------|------------|------------|
+| **DAG** (default) | Clear sequential/parallel steps, build & ship | "build X then test then deploy" |
+| **Team Loop** | Iterative refinement, quality convergence | "keep improving until it's good" |
+| **Swarm** | Open-ended exploration, multi-perspective | "research this", "brainstorm approaches" |
+| **Blackboard** | Debugging, diagnosis, shared-state problems | "debug this", "figure out why X is broken" |
+| **Team Builder** | Unclear scope, greenfield, need to figure out the team first | "I don't know what I need", "new project" |
+| **Recurring** | Single task repeating until condition met | "keep running X until Y", "monitor Z" |
+
+**Selection logic:**
+- Default to DAG unless signals clearly indicate another topology
+- If the user specified a topology (via the AskUserQuestion below), always honor their choice
+- Include `topology` and `topologyReason` in the PredictedDAG output
+- For non-DAG topologies, describe the execution pattern briefly in the presentation
+
+**For Team Loop predictions**, include: how many rounds, what the exit condition is, what inner DAG runs each round.
+**For Swarm predictions**, include: what agents subscribe to, what the seed message is, how convergence is detected.
+**For Blackboard predictions**, include: what keys are on the board, which agents read/write what.
+
+### 6. Confidence-Based Presentation
 ```
 IF overall confidence ≥ 0.8:
   → Present as "solid read" with confident language
-  
+
 IF confidence 0.6-0.79:
   → Present as "educated guess", show uncertainty
-  
+
 IF confidence < 0.6:
   → Halt gate should have fired (failsafe check)
 ```
 
-### 6. Present Prediction + AskUserQuestion (MANDATORY)
+### 7. Present Prediction + AskUserQuestion (MANDATORY)
 
-After synthesizing the PredictedDAG, present it using the markdown format (banner, wave table, risks, verdict), then **always call AskUserQuestion**. Do not just print "Accept / Modify / Reject" as text — use the actual tool so the user gets interactive options.
+After synthesizing the PredictedDAG, present it using the markdown format (banner, topology line, wave table, risks, verdict), then **always call AskUserQuestion**. Do not just print "Accept / Modify / Reject" as text — use the actual tool so the user gets interactive options.
+
+**Presentation format** (note the Topology line):
+
+```
+## Predicted Next Move: [Title]
+
+**[0.X confidence]** | [type] | **[Topology Name]** | ~[X] min | ~$[X.XX]
+[If non-DAG: one sentence explaining the topology choice]
+
+### Execution Plan
+[wave table or topology-specific layout]
+
+### Watch Out For
+[risks]
+```
+
+Then call AskUserQuestion:
 
 ```
 AskUserQuestion({
@@ -195,11 +237,15 @@ AskUserQuestion({
     options: [
       {
         label: "Accept",
-        description: "Start executing Wave 0 immediately."
+        description: "Start executing immediately."
       },
       {
         label: "Modify",
         description: "Mostly good — I want to adjust some nodes."
+      },
+      {
+        label: "Change topology",
+        description: "Right plan, wrong execution pattern. I'll pick the topology."
       },
       {
         label: "Reject",
@@ -212,9 +258,39 @@ AskUserQuestion({
 ```
 
 When the user responds:
-- **Accept** → proceed to Step 7 (execute)
+- **Accept** → proceed to Step 8 (execute)
 - **Modify** → ask what to change, adjust, re-present briefly, then execute
+- **Change topology** → present topology picker (see below), then re-present with new topology
 - **Reject** → ask what they want, re-run pipeline with their input as user hint
+
+### Topology Override Flow
+
+If the user selects "Change topology", present:
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "Which execution pattern should this workgroup use?",
+    header: "Pick Topology",
+    options: [
+      { label: "DAG", description: "Wave-parallel: agents in sequential/parallel waves, feed-forward" },
+      { label: "Team Loop", description: "Iterative: inner DAG repeats until quality converges" },
+      { label: "Swarm", description: "Exploratory: agents discover work via pub/sub, emergent convergence" },
+      { label: "Blackboard", description: "Diagnostic: specialists read/write a shared board" },
+      { label: "Team Builder", description: "Meta: figure out what team is needed first, then execute" },
+      { label: "Recurring", description: "Loop: single agent repeats until exit condition met" },
+    ],
+    multiSelect: false,
+  }]
+})
+```
+
+After they pick, restructure the prediction to match. For example, switching from DAG to Team Loop means:
+- The wave table becomes the inner DAG that repeats
+- Add an exit condition (ask the user: "What quality threshold should stop the loop?")
+- Add an evaluator skill to judge convergence
+
+Record the topology change in the triple as a modification.
 
 ## Failure Modes
 
@@ -321,7 +397,7 @@ Both searches run in parallel — total time = max(search1, search2), not sum.
 ```
 ## Predicted Next Move: Complete JWT Edge Case Audit
 
-**0.85 confidence** | well-structured | ~8 min | ~$0.12
+**0.85 confidence** | well-structured | **DAG** | ~8 min | ~$0.12
 
 ### Execution Plan
 | Wave | Node | Skill | What It Does | Status |
@@ -371,11 +447,21 @@ I see changes across frontend, backend, and database but can't find a coherent t
 - [ ] All skill IDs exist in catalog (either from MCP search or fallback list)
 - [ ] Commitment levels appropriately distributed (not all EXPLORATORY)
 - [ ] Cost estimate includes both time and monetary projections
-- [ ] Output format matches expected PredictedDAG structure for downstream consumption
+- [ ] Output includes `topology` and `topologyReason` fields
+- [ ] Topology choice matches task characteristics (not always defaulting to DAG)
+- [ ] AskUserQuestion called with topology override option
 
-## Step 7: Execute on Accept
+## Step 8: Execute on Accept
 
-When the user accepts the prediction (via AskUserQuestion or conversationally), **immediately begin executing Wave 0.** Do not wait for further confirmation.
+When the user accepts the prediction (via AskUserQuestion or conversationally), **immediately begin executing.** Do not wait for further confirmation.
+
+**Execution varies by topology:**
+- **DAG** → Launch Wave 0 agents in parallel, proceed wave-by-wave
+- **Team Loop** → Launch the inner DAG, evaluate output, repeat if not converged
+- **Swarm** → Publish seed message, let agents discover and react
+- **Blackboard** → Initialize the board, let condition-triggered agents activate
+- **Team Builder** → Run analysis, assemble team, then execute with recommended topology
+- **Recurring** → Launch the single agent, check exit condition, repeat
 
 ### Execution Rules
 
