@@ -327,24 +327,67 @@ After both Wave 2 agents return, synthesize the PredictedDAG yourself (no agent 
 
 ### Step 6: Present + AskUserQuestion (MANDATORY)
 
-Present the prediction in this format:
+Present the prediction as a **rich ASCII DAG** showing data flow, not a flat table. The visualization IS the product — it must show inputs, outputs, side effects, and how data flows between waves.
+
+**Format: 3-section diagram**
 
 ```
-## Predicted Next Move: [Title]
+╔══════════════════════════════════════════════════════════════════════╗
+║                    [TITLE OF PREDICTED MOVE]                        ║
+║    [confidence] │ [classification] │ [Topology] │ ~[X]min │ ~$[X]  ║
+╚══════════════════════════════════════════════════════════════════════╝
 
-**[0.X confidence]** | [classification] | **[Topology]** | ~[X]min | ~$[X.XX]
-[If non-DAG: one sentence explaining topology choice]
+ WAVE 0 ━ [WAVE THEME] (parallel) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### Execution Plan
+ ┌────────────────────────────┐  ┌────────────────────────────────────┐
+ │ A  [NODE NAME]             │  │ B  [NODE NAME]                     │
+ │    [skill] [model tier]    │  │    [skill] [model tier]            │
+ │    [COMMITMENT]            │  │    [COMMITMENT]                    │
+ │                            │  │                                    │
+ │ IN:  [what this node reads]│  │ IN:  [what this node reads]        │
+ │      [specific files/data] │  │      [specific files/data]         │
+ │                            │  │                                    │
+ │ OUT: [what it produces]    │  │ OUT: [what it produces]            │
+ │      [artifacts/data]      │  │      [artifacts/data]              │
+ │                            │  │                                    │
+ │ SIDE EFFECTS:              │  │ SIDE EFFECTS:                      │
+ │  └ [filesystem/git/API]    │  │  └ [filesystem/git/API]            │
+ └──────────────┬─────────────┘  └──────────────────┬─────────────────┘
+                │                                    │
+                └────────────────┬───────────────────┘
+                                 │
+                          ┌──────┴──────┐
+                          │ MERGE W0    │
+                          └──────┬──────┘
+                                 │
 
-| Wave | Node | Skill | What It Does | Commitment |
-|------|------|-------|--------------|------------|
-| 0 | [id] | `[skill]` | [description] | COMMITTED |
-| ... | ... | ... | ... | ... |
+ WAVE 1 ━ [WAVE THEME] (depends on W0) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### Watch Out For
-[risks with severity + mitigation]
+ ┌───────────────────────────────────────────────────────────────────┐
+ │ C  [NODE NAME]                                                    │
+ │    [skill] [model tier]  [COMMITMENT]                             │
+ │                                                                   │
+ │ IN:  W0 outputs: [specific outputs from A and B]                  │
+ │      [additional context]                                         │
+ │                                                                   │
+ │ OUT: [deliverables]                                               │
+ │                                                                   │
+ │ SIDE EFFECTS:                                                     │
+ │  └ [what changes in the world]                                    │
+ └───────────────────────────────────────────────────────────────────┘
+
+ RISKS ─────────────────────────────────────────────────────────────
+  [SEVERITY] [description] → [mitigation]
 ```
+
+**Rules for the diagram:**
+- Each node box MUST show IN (inputs), OUT (outputs), and SIDE EFFECTS
+- Parallel nodes in the same wave sit side by side
+- Waves connect with merge points showing data flow direction
+- COMMITTED nodes show normally, TENTATIVE nodes add the label, EXPLORATORY nodes add "needs confirmation"
+- Give each wave a descriptive theme name (e.g., "VALIDATION", "STORYTELLING", "SHIP IT")
+- Side effects must distinguish: read-only (none), file writes, git operations, API calls, Port Daddy operations
+- If a node's output feeds a specific downstream node, show that in the downstream node's IN section
 
 Then **always** call AskUserQuestion:
 
