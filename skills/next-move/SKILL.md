@@ -103,16 +103,16 @@ These were collected before you saw this prompt. Use them as ground truth.
 
 ### Port Daddy (multi-agent coordination)
 ```
-!`pd find 2>/dev/null || echo "Port Daddy not running"`
+!`command -v pd >/dev/null 2>&1 && pd find 2>/dev/null || echo "Port Daddy not installed"`
 ```
 ```
-!`pd notes 2>/dev/null || echo "No notes"`
+!`command -v pd >/dev/null 2>&1 && pd notes 2>/dev/null || echo ""`
 ```
 ```
-!`pd salvage 2>/dev/null || echo "No dead agent sessions"`
+!`command -v pd >/dev/null 2>&1 && pd salvage 2>/dev/null || echo ""`
 ```
 ```
-!`pd whoami 2>/dev/null || echo "No active session"`
+!`command -v pd >/dev/null 2>&1 && pd whoami 2>/dev/null || echo ""`
 ```
 
 ### Prior WinDAGs Predictions
