@@ -78,17 +78,17 @@ These were collected before you saw this prompt. Use them as ground truth.
 
 ### What Changed
 ```
-!`git diff --stat 2>/dev/null | head -20 || echo "No unstaged changes"`
+!`git diff --stat 2>/dev/null || echo "No unstaged changes"`
 ```
 
 ### Staged Changes
 ```
-!`git diff --cached --stat 2>/dev/null | head -10 || echo "Nothing staged"`
+!`git diff --cached --stat 2>/dev/null || echo "Nothing staged"`
 ```
 
-### Recently Modified Files (sorted by recency)
+### Recently Modified Files
 ```
-!`git diff --name-only HEAD~3 2>/dev/null | head -20 || find . -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.py' -o -name '*.go' -o -name '*.rs' -o -name '*.swift' \) -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/dist/*' -newer "$(git log -1 --format=%ci HEAD~3 2>/dev/null || echo '2026-01-01')" 2>/dev/null | head -20 || echo "No recent files"`
+!`git diff --name-only HEAD~3 2>/dev/null || echo "No recent file changes"`
 ```
 
 ### CLAUDE.md
@@ -98,20 +98,20 @@ These were collected before you saw this prompt. Use them as ground truth.
 
 ### Package / Project Info
 ```
-!`head -20 package.json 2>/dev/null || head -20 Cargo.toml 2>/dev/null || head -20 go.mod 2>/dev/null || head -20 pyproject.toml 2>/dev/null || echo "No project manifest"`
+!`cat package.json 2>/dev/null || echo "No package.json"`
 ```
 
 ### Port Daddy (multi-agent coordination)
 ```
-!`pd list-services --json 2>/dev/null | head -30 || echo "Port Daddy not active"`
+!`pd list-services 2>/dev/null || echo "Port Daddy not active"`
 ```
 ```
 !`pd salvage 2>/dev/null || echo "No dead agent sessions"`
 ```
 
-### Prior WinDAGs Predictions (most recent)
+### Prior WinDAGs Predictions
 ```
-!`ls -1t .windags/triples/*.json 2>/dev/null | head -1 | xargs cat 2>/dev/null | head -40 || echo "No prior predictions"`
+!`ls -1t .windags/triples/ 2>/dev/null || echo "No prior predictions"`
 ```
 
 ---
