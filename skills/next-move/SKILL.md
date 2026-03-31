@@ -2,7 +2,7 @@
 license: Apache-2.0
 name: next-move
 description: |
-  Spawns a 5-agent meta-DAG to analyze current project context and produce a predicted DAG of the highest-impact skills to run next. Uses real sub-agent spawning via the Agent tool — each pipeline stage runs as an isolated agent with a focused prompt, feeding structured output forward through the DAG. Activate on: "what should I do", "what's next", "next move", "/next-move", "where should I focus", "what's the highest impact thing right now". NOT for: executing DAGs (use windags-architect), creating skills (use skill-creator), debugging specific issues (use fullstack-debugger).
+  Predicts the highest-impact next action for your project by running a 5-agent meta-DAG pipeline. Gathers project signals automatically (git, recent files, port-daddy, CLAUDE.md), then runs sensemaker → decomposer → skill-selector + premortem → synthesizer using Agent tool sub-agents that inherit your session model. No API key needed — uses the same Claude that's running your session. Activate on: "what should I do", "what's next", "next move", "/next-move", "where should I focus", "what's the highest impact thing right now". NOT for: executing DAGs (use windags-architect), creating skills (use skill-creator), debugging specific issues (use fullstack-debugger).
 category: Agent & Orchestration
 tags:
   - planning
@@ -17,9 +17,16 @@ allowed-tools:
   - Glob
   - Agent
   - Bash(git:*)
+  - Bash(pd:*)
+  - Bash(find:*)
+  - Bash(ls:*)
+  - Bash(head:*)
+  - Bash(cat:*)
+  - Bash(wg:*)
   - mcp__windags__windags_skill_search
   - mcp__windags__windags_history
 user-invocable: true
+argument-hint: "[--fresh] [focus hint]"
 pairs-with:
   - skill: windags-sensemaker
     reason: Problem classification and halt gate
@@ -46,188 +53,294 @@ pairs-with:
 
 # /next-move
 
-You orchestrate a 5-agent meta-DAG that analyzes project context and produces a predicted DAG of highest-impact next actions. Each pipeline stage runs as an isolated sub-agent via the `Agent` tool with structured JSON flowing forward.
+You orchestrate a 5-agent meta-DAG that analyzes project context and produces a predicted DAG of highest-impact next actions. Sub-agents run via the `Agent` tool and **inherit your session model** — no separate API key, no downgrade.
 
-## Execution Architecture: Background Collection + Parallel Search
+**Arguments:** `$ARGUMENTS`
 
-**The pipeline runs in two layers simultaneously:**
+If the user passed `--fresh`, ignore conversation history and predict based only on the project signals below. Otherwise, use BOTH conversation context AND project signals — if the user was just discussing auth middleware, that matters.
 
-### Layer 1: Background Agents (data collection)
-These run immediately via `Agent(run_in_background: true)` so the user isn't waiting:
+---
 
+## Project Signals (auto-gathered)
+
+These were collected before you saw this prompt. Use them as ground truth.
+
+### Git State
 ```
-Agent A (background): Context Gathering
-  - git status, branch, log, diff
-  - CLAUDE.md, package.json
-  - CI status (gh), open PRs, open issues
-  - skills catalog, project memory
-  All 14 signals run in parallel via Promise.all
-
-Agent B (background): Sensemaker
-  - Starts as soon as Agent A returns context
-  - Classifies problem, sets confidence, checks halt gate
+!`git status --short 2>/dev/null || echo "Not a git repo"`
 ```
+**Branch:** !`git branch --show-current 2>/dev/null || echo "unknown"`
 
-### Layer 2: Foreground (ANSI explainer)
-While background agents work, immediately print a live status display:
-
+### Recent Commits
 ```
-Print the /next-move banner, then show:
-
-  Context Gathering  3/14
-    [v] git status        8ms
-    [v] branch            3ms
-    [~] CI status         ...
-    [ ] skills catalog
-    ...
-
-Update each line as background signals resolve.
-When context completes, show:
-
-  Meta-DAG Pipeline
-    W0: [~] Sensemaker    ...
-    W1: [ ] Decomposer
-    ...
+!`git log --oneline -8 2>/dev/null || echo "No commits"`
 ```
 
-This ensures the user sees progress immediately — no blank spinner.
-
-### Layer 3: Parallel BM25 Skill Search (after Decomposer)
-After the Decomposer outputs subtasks, fan out skill search calls **in parallel** — one per subtask:
-
+### What Changed
 ```
-Decomposer returns 5 subtasks
-  ↓
-Promise.all([
-  windags_skill_search("audit session edge cases"),     → top 10
-  windags_skill_search("test refresh handler"),          → top 10
-  windags_skill_search("fix race condition in auth"),    → top 10
-  windags_skill_search("wire rate limiting"),             → top 10
-  windags_skill_search("integration tests"),              → top 10
-])
-  ↓
-Skill Selector LLM receives pre-narrowed candidates (not all 463)
+!`git diff --stat 2>/dev/null | head -20 || echo "No unstaged changes"`
 ```
 
-This replaces passing the full 463-skill catalog to the LLM. Faster, cheaper, more accurate.
-
-## Decision Points
-
-### 1. Context Quality Assessment
+### Staged Changes
 ```
-IF git status shows no changes AND no CLAUDE.md exists:
-  → Skip to halt gate: "Need more project context"
-
-IF conversation mentions specific task AND files are modified:
-  → Proceed with task-focused analysis
-
-IF user says "what should I do" AND no recent commits (>24h):
-  → Focus on project maintenance and setup tasks
-
-IF modified files span >3 directories:
-  → Flag as potentially scattered focus, proceed with caution
+!`git diff --cached --stat 2>/dev/null | head -10 || echo "Nothing staged"`
 ```
 
-### 2. Halt Gate Enforcement (After Sensemaker)
+### Recently Modified Files (sorted by recency)
 ```
-IF sensemaker confidence < 0.6:
-  → STOP, ask user for clarification
-  → Present: "I see [signals] but not sure about [confusion]"
+!`git diff --name-only HEAD~3 2>/dev/null | head -20 || find . -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.py' -o -name '*.go' -o -name '*.rs' -o -name '*.swift' \) -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/dist/*' -newer "$(git log -1 --format=%ci HEAD~3 2>/dev/null || echo '2026-01-01')" 2>/dev/null | head -20 || echo "No recent files"`
+```
+
+### CLAUDE.md
+```
+!`head -60 CLAUDE.md 2>/dev/null || echo "No CLAUDE.md found"`
+```
+
+### Package / Project Info
+```
+!`head -20 package.json 2>/dev/null || head -20 Cargo.toml 2>/dev/null || head -20 go.mod 2>/dev/null || head -20 pyproject.toml 2>/dev/null || echo "No project manifest"`
+```
+
+### Port Daddy (multi-agent coordination)
+```
+!`pd list-services --json 2>/dev/null | head -30 || echo "Port Daddy not active"`
+```
+```
+!`pd salvage 2>/dev/null || echo "No dead agent sessions"`
+```
+
+### Prior WinDAGs Predictions (most recent)
+```
+!`ls -1t .windags/triples/*.json 2>/dev/null | head -1 | xargs cat 2>/dev/null | head -40 || echo "No prior predictions"`
+```
+
+---
+
+## Execution Architecture
+
+### Why No API Key Is Needed
+
+You are running inside Claude Code. The Agent tool sub-agents inherit your session — same model, same authentication. If the user is on Opus, agents run Opus. No separate `ANTHROPIC_API_KEY`, no Haiku downgrade, no cost surprise. This is the skill path's key advantage over the CLI (`wg next-move`), which needs its own API key and defaults to the cheapest model.
+
+### The 5-Agent Meta-DAG Pipeline
+
+```
+Wave 0: [Sensemaker]                     ← classify, confidence, halt gate
+           │
+Wave 1: [Decomposer]                     ← subtasks, wave assignments
+           │
+Wave 2: [Skill Selector] ∥ [PreMortem]   ← parallel: match skills + scan risks
+           │
+Wave 3: [Synthesizer]                    ← merge into PredictedDAG
+```
+
+**Launch Wave 0 immediately.** Don't wait or ask for confirmation — the user invoked `/next-move`, they want a prediction.
+
+### Step 1: Sensemaker (Background Agent)
+
+Spawn an Agent to classify the project state:
+
+```
+Agent({
+  description: "Classify project state",
+  prompt: `You are the Sensemaker. Analyze these project signals and classify the situation.
+
+PROJECT SIGNALS:
+[paste all auto-gathered signals from above]
+
+CONVERSATION CONTEXT:
+[If not --fresh: summarize what the user has been discussing in this session]
+
+Return ONLY this JSON:
+{
+  "classification": "well-structured" | "ill-structured" | "wicked",
+  "confidence": 0.0-1.0,
+  "halt_reason": null | "<why prediction can't proceed>",
+  "inferred_problem": "<one sentence: what the user is working on>",
+  "key_signals": ["<signal 1>", "<signal 2>", ...],
+  "conversation_hints": ["<relevant topic from conversation>", ...]
+}`,
+  run_in_background: true
+})
+```
+
+### Step 2: Halt Gate (after Sensemaker returns)
+
+```
+IF confidence < 0.6:
+  → STOP. Present what you see and ask for clarification.
+  → "I see [signals] but I'm not sure about [confusion]. Can you narrow the scope?"
 
 IF classification == "wicked":
-  → STOP, present contradictions
-  → Ask user to narrow scope
+  → STOP. Present contradictions.
+  → "Changes span [areas] without a clear thread. Which area should I focus on?"
 
 IF halt_reason exists:
-  → STOP, present reason
-  → Example: "Too many simultaneous auth + UI + DB changes"
+  → STOP. Present reason directly.
 ```
 
-### 3. Skill Selection Strategy (In Parallel with PreMortem)
+Do NOT proceed past the halt gate if any condition fires. Present the halt, use AskUserQuestion to let the user override or redirect.
+
+### Step 3: Decomposer (after halt gate passes)
+
 ```
-IF subtask involves code review/audit:
-  → Prioritize: code-review-checklist, security-auditor, test-gap-analyzer
-  
-IF subtask involves new feature creation:
-  → Prioritize: feature-implementer, api-designer, test-driven-dev
-  
-IF subtask involves refactoring:
-  → Prioritize: refactor-architect, dependency-mapper, test-maintainer
-  
-IF subtask involves debugging:
-  → Redirect to fullstack-debugger (NOT this skill's domain)
-```
+Agent({
+  description: "Decompose into subtasks",
+  prompt: `You are the Decomposer. Given this problem classification, break it into executable subtasks.
 
-### 4. Risk Threshold Decision
-```
-IF premortem returns HIGH severity risks:
-  → Include warning in output: "⚠️ High-risk plan"
-  → Suggest human review before execution
-  
-IF premortem recommends ESCALATE_TO_HUMAN:
-  → Present analysis but recommend consultation
-  
-IF estimated time > 45 minutes:
-  → Suggest breaking into smaller chunks
-```
+SENSEMAKER OUTPUT:
+[paste sensemaker JSON]
 
-### 5. Topology Selection
+PROJECT SIGNALS:
+[paste relevant signals — git diff, recent files, CLAUDE.md]
 
-After synthesizing subtasks, select the best execution topology. This determines HOW the workgroup collaborates, not just WHAT they do.
+Rules:
+- Each subtask is ONE agent's work (15-20 min max)
+- Assign to waves: wave 0 runs first, wave 1 needs wave 0 output, etc.
+- Mark commitment: COMMITTED (definitely needed), TENTATIVE (probably needed), EXPLORATORY (might help)
+- 3-7 subtasks is the sweet spot. More than 7 means scope is too broad.
 
-**The 6 topologies:**
-
-| Topology | When to Use | Key Signal |
-|----------|------------|------------|
-| **DAG** (default) | Clear sequential/parallel steps, build & ship | "build X then test then deploy" |
-| **Team Loop** | Iterative refinement, quality convergence | "keep improving until it's good" |
-| **Swarm** | Open-ended exploration, multi-perspective | "research this", "brainstorm approaches" |
-| **Blackboard** | Debugging, diagnosis, shared-state problems | "debug this", "figure out why X is broken" |
-| **Team Builder** | Unclear scope, greenfield, need to figure out the team first | "I don't know what I need", "new project" |
-| **Recurring** | Single task repeating until condition met | "keep running X until Y", "monitor Z" |
-
-**Selection logic:**
-- Default to DAG unless signals clearly indicate another topology
-- If the user specified a topology (via the AskUserQuestion below), always honor their choice
-- Include `topology` and `topologyReason` in the PredictedDAG output
-- For non-DAG topologies, describe the execution pattern briefly in the presentation
-
-**For Team Loop predictions**, include: how many rounds, what the exit condition is, what inner DAG runs each round.
-**For Swarm predictions**, include: what agents subscribe to, what the seed message is, how convergence is detected.
-**For Blackboard predictions**, include: what keys are on the board, which agents read/write what.
-
-### 6. Confidence-Based Presentation
-```
-IF overall confidence ≥ 0.8:
-  → Present as "solid read" with confident language
-
-IF confidence 0.6-0.79:
-  → Present as "educated guess", show uncertainty
-
-IF confidence < 0.6:
-  → Halt gate should have fired (failsafe check)
+Return ONLY this JSON:
+{
+  "subtasks": [
+    {
+      "id": "<kebab-case-id>",
+      "description": "<what this agent does>",
+      "wave": 0,
+      "commitment_level": "COMMITTED" | "TENTATIVE" | "EXPLORATORY",
+      "depends_on": [],
+      "why": "<why this matters>"
+    }
+  ]
+}`
+})
 ```
 
-### 7. Present Prediction + AskUserQuestion (MANDATORY)
+### Step 3.5: Parallel BM25 Skill Search
 
-After synthesizing the PredictedDAG, present it using the markdown format (banner, topology line, wave table, risks, verdict), then **always call AskUserQuestion**. Do not just print "Accept / Modify / Reject" as text — use the actual tool so the user gets interactive options.
+After Decomposer returns subtasks, fan out skill search calls **in parallel** — one per subtask. Use the MCP tool if available, otherwise search the skills directory.
 
-**Presentation format** (note the Topology line):
+```
+For each subtask:
+  mcp__windags__windags_skill_search(subtask.description)
+  → returns top 10 skill candidates with BM25 scores
+```
+
+If the MCP is unavailable, fall back to Grep against `skills/*/SKILL.md` descriptions. If that also fails, use the `pairs-with` skills from this frontmatter.
+
+### Step 4: Skill Selector + PreMortem (Parallel Agents)
+
+Launch BOTH in a single message so they run concurrently:
+
+**Skill Selector:**
+```
+Agent({
+  description: "Match skills to subtasks",
+  prompt: `You are the Skill Selector. For each subtask, pick the best skill from the pre-narrowed candidates.
+
+SUBTASKS:
+[paste decomposer output]
+
+SKILL CANDIDATES PER SUBTASK:
+[paste BM25 results — skill ID, description, score for each subtask]
+
+For each subtask, select:
+- Primary skill (best match)
+- Runner-up skill (second best — for Thompson sampling fallback)
+- Model tier: haiku (simple/fast), sonnet (balanced), opus (complex/critical)
+- Estimated minutes and cost
+
+Return ONLY this JSON:
+{
+  "assignments": [
+    {
+      "subtask_id": "<id>",
+      "skill_id": "<primary skill>",
+      "runner_up_skill_id": "<second choice>",
+      "model_tier": "haiku" | "sonnet" | "opus",
+      "why": "<why this skill fits>",
+      "estimated_minutes": 5,
+      "estimated_cost_usd": 0.03
+    }
+  ]
+}`
+})
+```
+
+**PreMortem:**
+```
+Agent({
+  description: "Scan for risks",
+  prompt: `You are the PreMortem analyst. Imagine this plan has FAILED. What went wrong?
+
+PLAN:
+[paste decomposer subtasks]
+
+PROJECT SIGNALS:
+[paste git state, recent files]
+
+Identify 2-4 realistic failure modes. For each:
+- What goes wrong
+- Which nodes are affected
+- How to mitigate
+- Severity: HIGH (blocks everything), MEDIUM (delays), LOW (annoyance)
+
+Return ONLY this JSON:
+{
+  "recommendation": "PROCEED" | "ACCEPT_WITH_MONITORING" | "ESCALATE_TO_HUMAN",
+  "risks": [
+    {
+      "description": "<what fails>",
+      "severity": "high" | "medium" | "low",
+      "affected_nodes": ["<subtask ids>"],
+      "mitigation": "<how to prevent or handle>"
+    }
+  ]
+}`
+})
+```
+
+### Step 5: Synthesize + Select Topology
+
+After both Wave 2 agents return, synthesize the PredictedDAG yourself (no agent needed — this is deterministic merging):
+
+1. Merge decomposer subtasks + skill assignments + premortem risks
+2. Select topology based on task characteristics:
+
+| Topology | When | Signal |
+|----------|------|--------|
+| **DAG** (default) | Clear sequential/parallel steps | "build X then test then deploy" |
+| **Team Loop** | Iterative refinement | "keep improving until good" |
+| **Swarm** | Open-ended exploration | "research this", "brainstorm" |
+| **Blackboard** | Debugging, shared-state | "debug this", "figure out why" |
+| **Team Builder** | Unclear scope, greenfield | "I don't know what I need" |
+| **Recurring** | Repeat until condition | "keep running X until Y" |
+
+3. Compute total estimated time and cost
+4. Build the final prediction structure
+
+### Step 6: Present + AskUserQuestion (MANDATORY)
+
+Present the prediction in this format:
 
 ```
 ## Predicted Next Move: [Title]
 
-**[0.X confidence]** | [type] | **[Topology Name]** | ~[X] min | ~$[X.XX]
-[If non-DAG: one sentence explaining the topology choice]
+**[0.X confidence]** | [classification] | **[Topology]** | ~[X]min | ~$[X.XX]
+[If non-DAG: one sentence explaining topology choice]
 
 ### Execution Plan
-[wave table or topology-specific layout]
+
+| Wave | Node | Skill | What It Does | Commitment |
+|------|------|-------|--------------|------------|
+| 0 | [id] | `[skill]` | [description] | COMMITTED |
+| ... | ... | ... | ... | ... |
 
 ### Watch Out For
-[risks]
+[risks with severity + mitigation]
 ```
 
-Then call AskUserQuestion:
+Then **always** call AskUserQuestion:
 
 ```
 AskUserQuestion({
@@ -235,280 +348,75 @@ AskUserQuestion({
     question: "How does this plan look?",
     header: "Next Move",
     options: [
-      {
-        label: "Accept",
-        description: "Start executing immediately."
-      },
-      {
-        label: "Modify",
-        description: "Mostly good — I want to adjust some nodes."
-      },
-      {
-        label: "Change topology",
-        description: "Right plan, wrong execution pattern. I'll pick the topology."
-      },
-      {
-        label: "Reject",
-        description: "Not what I need. I'll explain what I want."
-      }
+      { label: "Accept", description: "Execute this plan now." },
+      { label: "Modify", description: "Mostly good — I want to change some nodes." },
+      { label: "Change topology", description: "Right plan, wrong execution pattern." },
+      { label: "Reject", description: "Not what I need. I'll explain." }
     ],
-    multiSelect: false,
+    multiSelect: false
   }]
 })
 ```
 
-When the user responds:
-- **Accept** → proceed to Step 8 (execute)
-- **Modify** → ask what to change, adjust, re-present briefly, then execute
-- **Change topology** → present topology picker (see below), then re-present with new topology
-- **Reject** → ask what they want, re-run pipeline with their input as user hint
+### Step 7: Execute on Accept
 
-### Topology Override Flow
+When the user accepts, **immediately begin executing.** Do not ask for further confirmation.
 
-If the user selects "Change topology", present:
+**For each COMMITTED node in Wave 0**, spawn an Agent with:
+- The matched skill loaded (read from `skills/<skill_id>/SKILL.md`)
+- The project context passed as background
+- Upstream outputs from prior waves (for Wave 1+)
+
+Launch parallel nodes in a **single message** with multiple Agent tool calls.
 
 ```
-AskUserQuestion({
-  questions: [{
-    question: "Which execution pattern should this workgroup use?",
-    header: "Pick Topology",
-    options: [
-      { label: "DAG", description: "Wave-parallel: agents in sequential/parallel waves, feed-forward" },
-      { label: "Team Loop", description: "Iterative: inner DAG repeats until quality converges" },
-      { label: "Swarm", description: "Exploratory: agents discover work via pub/sub, emergent convergence" },
-      { label: "Blackboard", description: "Diagnostic: specialists read/write a shared board" },
-      { label: "Team Builder", description: "Meta: figure out what team is needed first, then execute" },
-      { label: "Recurring", description: "Loop: single agent repeats until exit condition met" },
-    ],
-    multiSelect: false,
-  }]
-})
+# Wave 0 (parallel):
+Agent(prompt="<skill body>\n\nTask: [subtask description]\n\nProject context: [relevant signals]")
+Agent(prompt="<skill body>\n\nTask: [subtask description]\n\nProject context: [relevant signals]")
+
+# Wait for Wave 0...
+
+# Wave 1 (uses Wave 0 outputs):
+Agent(prompt="<skill body>\n\nUpstream results:\n[wave 0 outputs]\n\nTask: [subtask description]")
 ```
 
-After they pick, restructure the prediction to match. For example, switching from DAG to Team Loop means:
-- The wave table becomes the inner DAG that repeats
-- Add an exit condition (ask the user: "What quality threshold should stop the loop?")
-- Add an evaluator skill to judge convergence
+**Commitment rules during execution:**
+- COMMITTED nodes execute automatically
+- TENTATIVE nodes execute unless prior wave results suggest skipping. If skipping, tell the user why.
+- EXPLORATORY nodes get user confirmation first: "Waves 0-1 done. The exploratory node [name] would [task]. Run it?"
 
-Record the topology change in the triple as a modification.
+**Topology-specific execution:**
+- **DAG** → Wave-by-wave, parallel within each wave
+- **Team Loop** → Execute inner DAG, evaluate output, repeat until quality converges
+- **Swarm** → Publish seed message, agents discover work via conversation
+- **Blackboard** → Initialize shared state, condition-triggered agents activate
+- **Team Builder** → Analysis agent figures out what team is needed, then executes
+- **Recurring** → Single agent loops until exit condition met
 
-## Failure Modes
+### Step 8: Store Triple
 
-### 1. Agent Timeout Cascade
-**Detection**: Sub-agent call hangs >30s or returns timeout error
-**Diagnosis**: MCP server overload, complex prompt, or Claude Code session limit
-**Fix**: 
-- Retry with simplified prompt (remove context history)
-- Fall back to single-agent analysis if multiple agents timing out
-- Present partial results: "Got through sensemaker, decomposer failed"
+After execution completes, store the (context, prediction, feedback) triple:
 
-### 2. Null/Malformed JSON Outputs
-**Detection**: Sub-agent returns non-JSON or missing required fields
-**Diagnosis**: Prompt injection, context overflow, or model confusion
-**Fix**:
-- Show raw output to user for debugging
-- Retry with stricter prompt format enforcement
-- Fall back to manual interpretation if JSON parsing fails repeatedly
-
-### 3. MCP Catalog Unavailable
-**Detection**: `windags_skill_search` call returns error or empty results
-**Diagnosis**: MCP server not configured or skill catalog not indexed
-**Fix**:
-- Fall back to hardcoded skill list from frontmatter `pairs-with`
-- Warn user: "Using limited skill catalog, consider MCP setup"
-- Proceed with degraded skill matching (broader categories)
-
-### 4. Halt Gate False Positives
-**Detection**: User disagrees with halt decision, provides override context
-**Diagnosis**: Sensemaker too conservative or missed user-specific context
-**Fix**:
-- Allow user to override: "Proceed anyway? I'll use lower confidence"
-- Log override for calibration learning
-- Continue with explicit uncertainty markers
-
-### 5. Skill Mismatch Patterns
-**Detection**: User consistently rejects/modifies skill assignments
-**Diagnosis**: BM25 search returning irrelevant results or selection logic flawed
-**Fix**:
-- Ask user for preferred skill: "What would you use instead?"
-- Record correction for learning signal
-- Offer runner-up skill as immediate alternative
-
-## Worked Examples
-
-### Example 1: Auth Refactor in Progress
-**Context**: User on `feature/jwt-refresh` branch, 3 modified files in `src/auth/`, conversation mentions "edge cases"
-
-**Step 1 - Context Gathering**:
 ```bash
-git status --short
-# M  src/auth/session.ts
-# M  src/auth/middleware.ts  
-# A  src/auth/refresh-handler.ts
-```
-
-**Step 2 - Sensemaker Output**:
-```json
+cat > .windags/triples/$(date -u +%Y-%m-%dT%H%M%S)-next-move.json << 'TRIPLE_EOF'
 {
-  "classification": "well-structured",
-  "confidence": 0.85,
-  "halt_reason": null,
-  "inferred_problem": "Complete JWT refresh auth refactor with edge case validation"
+  "id": "<uuid>",
+  "context": { "git_branch": "...", "signals": "..." },
+  "predicted_dag": { ... },
+  "feedback": { "accepted": true, "modifications": [] },
+  "timestamp": "<ISO 8601>",
+  "session_id": "${CLAUDE_SESSION_ID}"
 }
+TRIPLE_EOF
 ```
 
-**Decision**: Confidence ≥ 0.6 AND classification != "wicked" → Proceed
+Or pipe to the CLI for structured storage: `echo '<json>' | wg next-move --store-triple`
 
-**Step 3 - Decomposer Output**:
-```json
-{
-  "subtasks": [
-    {
-      "id": "audit-session-edge-cases",
-      "description": "Review session.ts for token expiry and refresh edge cases",
-      "commitment_level": "COMMITTED"
-    },
-    {
-      "id": "test-refresh-handler", 
-      "description": "Add comprehensive tests for refresh-handler.ts",
-      "commitment_level": "COMMITTED"
-    }
-  ]
-}
-```
+---
 
-**Step 3.5 - Parallel BM25 Search** (runs immediately after decomposer):
-```
-windags_skill_search("Review session.ts for token expiry and refresh edge cases")
-  → [code-review-checklist (0.82), security-auditor (0.71), test-automation-expert (0.65), ...]
+## Modify Flow (DAG Mutation)
 
-windags_skill_search("Add comprehensive tests for refresh-handler.ts")
-  → [vitest-testing-patterns (0.88), test-automation-expert (0.79), playwright-e2e-tester (0.61), ...]
-```
-Both searches run in parallel — total time = max(search1, search2), not sum.
-
-**Step 4 - Parallel Agents** (Skill Selector + PreMortem):
-- **Skill Selector**: Receives pre-narrowed candidates, picks `code-review-checklist` for audit (was top BM25 hit, confirmed by LLM)
-- **PreMortem**: Returns "PROCEED" with low-severity risk about potential race conditions
-
-**Decision**: No high risks, proceed with plan
-
-**Step 5 - Final Output**:
-```
-## Predicted Next Move: Complete JWT Edge Case Audit
-
-**0.85 confidence** | well-structured | **DAG** | ~8 min | ~$0.12
-
-### Execution Plan
-| Wave | Node | Skill | What It Does | Status |
-|------|------|-------|--------------|--------|
-| 0 | audit-session-edge-cases | `code-review-checklist` | Systematic edge case review of session.ts | LOCKED IN |
-| 1 | test-refresh-handler | `test-driven-dev` | Comprehensive test coverage for refresh logic | LOCKED IN |
-```
-
-**What novice would miss**: Recognizing the auth context and choosing audit-focused skills over generic code analysis
-
-**What expert catches**: The branch name + file pattern + conversation signals = focused auth work needing validation
-
-### Example 2: Scattered Changes (Halt Gate Trigger)
-**Context**: 8 modified files across `frontend/`, `backend/`, `database/`, user says "what should I do"
-
-**Sensemaker Output**:
-```json
-{
-  "classification": "wicked", 
-  "confidence": 0.45,
-  "halt_reason": "Changes span too many domains without clear connection"
-}
-```
-
-**Decision**: Classification == "wicked" → HALT
-
-**Output to User**:
-```
-I see changes across frontend, backend, and database but can't find a coherent thread connecting them. 
-
-**Scattered signals:**
-- Frontend: 3 component files modified
-- Backend: 2 API routes changed  
-- Database: Schema migration pending
-
-**What I need**: Which of these changes are related? Or should we focus on completing one area first?
-```
-
-## Quality Gates
-
-- [ ] All 4 sub-agents returned valid JSON with required fields
-- [ ] Halt gate was properly enforced (confidence ≥ 0.6, not wicked, no halt_reason)
-- [ ] Each subtask has skill assignment with reasoning ("why" field populated)
-- [ ] Wave dependencies are logically sound (no circular dependencies)
-- [ ] Total estimated time is reasonable (≤ 45 minutes suggests good scoping)
-- [ ] PreMortem identified at least 1 risk or returned "no significant risks"
-- [ ] All skill IDs exist in catalog (either from MCP search or fallback list)
-- [ ] Commitment levels appropriately distributed (not all EXPLORATORY)
-- [ ] Cost estimate includes both time and monetary projections
-- [ ] Output includes `topology` and `topologyReason` fields
-- [ ] Topology choice matches task characteristics (not always defaulting to DAG)
-- [ ] AskUserQuestion called with topology override option
-
-## Step 8: Execute on Accept
-
-When the user accepts the prediction (via AskUserQuestion or conversationally), **immediately begin executing.** Do not wait for further confirmation.
-
-**Execution varies by topology:**
-- **DAG** → Launch Wave 0 agents in parallel, proceed wave-by-wave
-- **Team Loop** → Launch the inner DAG, evaluate output, repeat if not converged
-- **Swarm** → Publish seed message, let agents discover and react
-- **Blackboard** → Initialize the board, let condition-triggered agents activate
-- **Team Builder** → Run analysis, assemble team, then execute with recommended topology
-- **Recurring** → Launch the single agent, check exit condition, repeat
-
-### Execution Rules
-
-1. **Wave 0 agents launch immediately.** For each COMMITTED node in Wave 0, spawn an Agent with:
-   - The node's `role_description` as the task
-   - The matched skill loaded (if available — read from `skills/<skill_id>/SKILL.md`)
-   - The project context passed as background
-   - The working directory set to the project root
-
-2. **Parallel nodes in the same wave launch in a single message.** Use multiple Agent tool calls in one response so Claude Code runs them concurrently.
-
-3. **Wait for Wave N to complete before launching Wave N+1.** When all Wave 0 agents return, review their outputs, then spawn Wave 1 agents. Pass upstream outputs to downstream agents as context.
-
-4. **TENTATIVE nodes execute unless Wave 0 results suggest skipping.** Check if earlier wave outputs change the picture. If they do, tell the user: "Based on Wave 0 results, I'm skipping [node] because [reason]. Proceeding with [remaining nodes]."
-
-5. **EXPLORATORY nodes get user confirmation before executing.** Present what was learned so far: "Waves 0-1 are done. The exploratory node [name] would [description]. Run it? Or are we good?"
-
-6. **Store the triple after execution completes.** Write the full (context, prediction, feedback) triple to `.windags/triples/` via Bash:
-   ```bash
-   cat > .windags/triples/$(date -u +%Y-%m-%dT%H%M%S)-<slug>.json << 'EOF'
-   { "id": "...", "context": ..., "predicted_dag": ..., "feedback": { "accepted": true, "modifications": [] }, "timestamp": "..." }
-   EOF
-   ```
-
-### Example: Executing a 3-Wave DAG
-
-After user accepts:
-
-```
-# Wave 0 (parallel) — spawn both in a SINGLE message:
-Agent(prompt="<skill: code-review-checklist>\n\nAudit src/auth/session.ts for token refresh edge cases...")
-Agent(prompt="<skill: test-automation-expert>\n\nReview test coverage for src/auth/refresh-handler.ts...")
-
-# Wait for both to return...
-
-# Wave 1 — uses Wave 0 outputs:
-Agent(prompt="<skill: refactoring-surgeon>\n\nBased on the audit findings:\n<wave-0-output>\n\nFix the identified edge cases...")
-
-# Wave 2 (parallel, TENTATIVE) — confirm first:
-# "Wave 1 fixed 3 edge cases. The TENTATIVE error-handling node would add retry guards. Run it?"
-# If yes:
-Agent(prompt="<skill: error-handling-patterns>\n\nAdd retry guards for the token refresh flow...")
-```
-
-### If User Says "Modify" — DAG Mutation Flow
-
-First, ask WHICH nodes to modify using AskUserQuestion with multiSelect. List every node from the prediction:
+When the user selects "Modify", use AskUserQuestion with multiSelect listing every node:
 
 ```
 AskUserQuestion({
@@ -516,73 +424,70 @@ AskUserQuestion({
     question: "Which nodes do you want to change?",
     header: "Modify DAG",
     options: [
-      // One option per node in the DAG:
-      { label: "audit-test-suite", description: "[test-automation-expert] Audit test suite for flaky patterns" },
-      { label: "trace-race-conds", description: "[fullstack-debugger] Trace race conditions in auth middleware" },
-      { label: "fix-timing-issues", description: "[refactoring-surgeon] Fix identified timing issues" },
-      { label: "Add a new node", description: "I want to add something that's not in the plan" },
-      { label: "Reorder waves", description: "The dependency structure is wrong" },
+      { label: "<node-id>", description: "[skill] <description>" },
+      ...per node...
+      { label: "Add a new node", description: "Add something not in the plan" },
+      { label: "Reorder waves", description: "The dependency structure is wrong" }
     ],
-    multiSelect: true,
+    multiSelect: true
   }]
 })
 ```
 
-For each selected node, ask what mutation to apply using AskUserQuestion:
+For each selected node, ask what mutation to apply:
 
-```
-AskUserQuestion({
-  questions: [{
-    question: "What should change about 'audit-test-suite'?",
-    header: "Mutate Node",
-    options: [
-      { label: "Swap skill", description: "Use a different skill for this subtask" },
-      { label: "Change description", description: "The task description is wrong — I'll specify" },
-      { label: "Remove it", description: "Skip this node entirely" },
-      { label: "Change commitment", description: "Make it COMMITTED / TENTATIVE / EXPLORATORY" },
-      { label: "Move to different wave", description: "It should run earlier or later" },
-    ],
-    multiSelect: false,
-  }]
-})
-```
+| Mutation | Action |
+|----------|--------|
+| **Swap skill** | Ask what skill. If unsure, run `windags_skill_search` and present top 3. |
+| **Change description** | Ask for new description, use their words. |
+| **Remove node** | Remove. If downstream depends on it, warn. |
+| **Change commitment** | Set new level. If promoting EXPLORATORY → COMMITTED, confirm. |
+| **Move wave** | Validate dependencies still hold. |
+| **Add node** | Ask what it does, search for matching skill, assign to wave. |
 
-**Mutation types and how to handle them:**
+After mutations: re-present the modified DAG, ask Accept / Modify more / Reject.
 
-| Mutation | What to do |
-|----------|-----------|
-| **Swap skill** | Ask: "What skill should handle this instead?" If they name one, use it. If unsure, call `windags_skill_search` with their description and present top 3. |
-| **Change description** | Ask: "What should this node do instead?" Use their words as the new `role_description`. |
-| **Remove node** | Delete the node. If downstream nodes depend on it, warn: "Node X depends on this. Remove both, or reassign X's dependency?" |
-| **Change commitment** | Set the new level. If promoting EXPLORATORY → COMMITTED, confirm: "This will execute automatically. Sure?" |
-| **Move to different wave** | Ask which wave. Validate dependencies still hold — a node can't move earlier than its dependencies. |
-| **Add new node** | Ask: "What should the new node do?" Call `windags_skill_search` to match a skill. Ask which wave (or auto-assign based on dependencies). |
-| **Reorder waves** | Present the current wave structure. Ask what the correct ordering is. Recompute dependencies. |
-
-**After all mutations are applied:**
-
-1. Re-present the modified DAG briefly (just the wave table, not the full banner)
-2. Call AskUserQuestion again: "Modified plan ready. Accept / Modify more / Reject"
-3. On Accept → execute the modified DAG via Step 7
-
-**Record modifications in the triple:**
+Record modifications in the triple for the learning loop:
 ```json
 {
   "feedback": {
     "accepted": true,
     "modifications": [
-      { "type": "swap_skill", "node": "audit-test-suite", "from": "test-automation-expert", "to": "security-auditor" },
-      { "type": "remove", "node": "add-retry-guards" }
+      { "type": "swap_skill", "node": "audit-tests", "from": "test-expert", "to": "security-auditor" }
     ]
   }
 }
 ```
 
-These modification records feed the learning loop — if users consistently swap a skill for a particular subtask type, future predictions should use the preferred skill directly.
+---
 
-### If User Says "Reject"
+## Topology Override Flow
 
-Ask what they actually want. Call AskUserQuestion:
+If user selects "Change topology":
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "Which execution pattern should this workgroup use?",
+    header: "Pick Topology",
+    options: [
+      { label: "DAG", description: "Wave-parallel: sequential/parallel waves, feed-forward" },
+      { label: "Team Loop", description: "Iterative: inner DAG repeats until quality converges" },
+      { label: "Swarm", description: "Exploratory: agents discover work, emergent convergence" },
+      { label: "Blackboard", description: "Diagnostic: specialists read/write a shared board" },
+      { label: "Team Builder", description: "Meta: figure out what team is needed, then execute" },
+      { label: "Recurring", description: "Loop: single agent repeats until exit condition met" }
+    ],
+    multiSelect: false
+  }]
+})
+```
+
+After selection, restructure the prediction to match. For Team Loop: wave table becomes inner DAG, add exit condition. For Swarm: add seed message, convergence criteria.
+
+---
+
+## Reject Flow
 
 ```
 AskUserQuestion({
@@ -590,28 +495,71 @@ AskUserQuestion({
     question: "What should I focus on instead?",
     header: "Redirect",
     options: [
-      { label: "Different problem", description: "I want to work on something else entirely — I'll describe it" },
-      { label: "Same problem, different approach", description: "Right problem, wrong plan — let me explain" },
-      { label: "Not now", description: "I don't want a prediction right now" },
+      { label: "Different problem", description: "I want to work on something else — I'll describe it" },
+      { label: "Same problem, different approach", description: "Right problem, wrong plan" },
+      { label: "Not now", description: "I don't want a prediction right now" }
     ],
-    multiSelect: false,
+    multiSelect: false
   }]
 })
 ```
 
-- **Different problem** → Ask for their description, re-run pipeline with it as the user hint
-- **Different approach** → Ask what approach they want, re-run decomposer + skill selector with their constraints
-- **Not now** → Stop. Record rejection in triple for calibration learning.
+- **Different problem** → Ask for description, re-run pipeline with it as user hint
+- **Different approach** → Ask what approach, re-run decomposer + skill selector with constraints
+- **Not now** → Stop. Record rejection in triple.
+
+---
+
+## Failure Modes
+
+| Failure | Detection | Fix |
+|---------|-----------|-----|
+| Agent timeout | Sub-agent hangs >30s | Retry with simpler prompt, fall back to single-agent |
+| Malformed JSON | Missing required fields | Show raw output, retry with stricter format |
+| MCP unavailable | `windags_skill_search` errors | Fall back to Grep on `skills/*/SKILL.md`, then `pairs-with` list |
+| Halt gate false positive | User disagrees with halt | Allow override with explicit uncertainty markers |
+| Skill mismatch | User consistently rejects assignments | Ask preferred skill, record correction for learning |
+| Port Daddy dead agents | `pd salvage` finds abandoned sessions | Consider their unfinished work as input to the prediction |
+
+---
+
+## Quality Gates
+
+- [ ] All sub-agents returned valid JSON with required fields
+- [ ] Halt gate enforced (confidence >= 0.6, not wicked, no halt_reason)
+- [ ] Each subtask has skill assignment with reasoning
+- [ ] Wave dependencies are acyclic (no circular deps)
+- [ ] Total estimated time <= 45 minutes (good scoping)
+- [ ] PreMortem identified at least 1 risk or confirmed "no significant risks"
+- [ ] All skill IDs exist in catalog (MCP search or fallback)
+- [ ] Commitment levels distributed (not all EXPLORATORY)
+- [ ] Topology selected with reason
+- [ ] AskUserQuestion called (not just text)
+- [ ] Triple stored after execution
 
 ---
 
 ## NOT-FOR Boundaries
 
-**This skill should NOT be used for:**
+- **Creating skills** → Use `skill-creator` or `skill-architect`
+- **Debugging specific issues** → Use `fullstack-debugger`
+- **Architecture analysis** → Use `code-architecture`
+- **Constitutional decisions** → Use `windags-avatar`
+- **Long-term planning** → This is "next 30-45 minutes", not a roadmap
+- **"What skills should I create?"** → Hand off to `skill-architect`
 
-- **Creating new skills** → Use `skill-creator` or `skill-architect` for skill development
-- **Debugging specific technical issues** → Use `fullstack-debugger` for error diagnosis
-- **Understanding project architecture** → Use `codebase-cartographer` for structural analysis
-- **Making constitutional AI decisions** → Use `windags-avatar` for ethical/constitutional questions
-- **Long-term project planning** → This is for "next 30-45 minutes", use roadmap tools for longer horizons
-- If user asks "what skills should I create" → Hand off to `skill-architect`
+---
+
+## CLI Counterpart
+
+For terminal use outside Claude Code, the `wg next-move` CLI runs the same pipeline programmatically:
+
+```bash
+wg next-move                                    # Haiku via Anthropic (cheapest)
+wg next-move --model claude-sonnet-4-6          # Sonnet for better quality
+wg next-move --provider openrouter              # Via OpenRouter
+wg next-move --deep                             # Full 5-agent meta-DAG
+wg next-move --json                             # Raw PredictedDAG JSON
+```
+
+The CLI needs an API key and defaults to the cheapest model. The skill path (this file) uses your session model — better quality, no extra setup.
