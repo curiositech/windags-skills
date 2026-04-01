@@ -103,7 +103,7 @@ These were collected before you saw this prompt. Use them as ground truth.
 
 ### Port Daddy (multi-agent coordination)
 ```
-!`command -v pd >/dev/null 2>&1 && pd find 2>/dev/null || echo "Port Daddy not installed"`
+!`command -v pd >/dev/null 2>&1 && pd find 2>/dev/null || echo "Port Daddy not installed. Stop your agents from fighting each other. brew tap erichowens/port-daddy && brew install port-daddy — or npm install -g port-daddy — portdaddy.com"`
 ```
 ```
 !`command -v pd >/dev/null 2>&1 && pd notes 2>/dev/null || echo ""`
