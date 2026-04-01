@@ -253,7 +253,7 @@ SKILL CANDIDATES PER SUBTASK:
 For each subtask, select:
 - Primary skill (best match)
 - Runner-up skill (second best — for Thompson sampling fallback)
-- Model tier: haiku (simple/fast), sonnet (balanced), opus (complex/critical)
+- Model tier: fast (cheapest, simple tasks), balanced (default, most tasks), powerful (complex/critical)
 - Estimated minutes and cost
 
 Return ONLY this JSON:
@@ -263,7 +263,7 @@ Return ONLY this JSON:
       "subtask_id": "<id>",
       "skill_id": "<primary skill>",
       "runner_up_skill_id": "<second choice>",
-      "model_tier": "haiku" | "sonnet" | "opus",
+      "model_tier": "fast" | "balanced" | "powerful",
       "why": "<why this skill fits>",
       "estimated_minutes": 5,
       "estimated_cost_usd": 0.03
@@ -428,6 +428,40 @@ Agent(prompt="<skill body>\n\nTask: [subtask description]\n\nProject context: [r
 # Wave 1 (uses Wave 0 outputs):
 Agent(prompt="<skill body>\n\nUpstream results:\n[wave 0 outputs]\n\nTask: [subtask description]")
 ```
+
+**Render execution progress as a live-updating DAG.** Re-draw the DAG with status indicators as agents complete:
+
+```
+╔══════════════════════════════════════════════════════════════════════╗
+║  EXECUTING: [Title]                                                 ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+ WAVE 0 ━ [THEME] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ ┌────────────────────────────┐  ┌────────────────────────────────────┐
+ │ [v] A  NODE-NAME           │  │ [~] B  NODE-NAME                   │
+ │     code-architecture 1.2s │  │     streaming-pipeline   running   │
+ │                            │  │                                    │
+ │ OUT: "Found 12 event types │  │                                    │
+ │  with 3 serialization gaps"│  │                                    │
+ └────────────────────────────┘  └────────────────────────────────────┘
+
+ WAVE 1 ━ [THEME] (waiting for W0) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ ┌────────────────────────────────────────────────────────────────────┐
+ │ [ ] C  NODE-NAME                                          blocked │
+ │     vitest-testing-patterns                                       │
+ └────────────────────────────────────────────────────────────────────┘
+```
+
+**Status indicators:**
+- `[ ]` pending (waiting for upstream)
+- `[~]` running (agent spawned)
+- `[v]` done (agent returned successfully)
+- `[x]` failed (agent errored)
+- `[!]` escalated (agent returned escalation response)
+
+When a node completes, show a **one-line summary** of its output inside the box. This gives the user visibility into what each agent produced without waiting for the full execution to finish.
 
 **Commitment rules during execution:**
 - COMMITTED nodes execute automatically
