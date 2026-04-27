@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://windags.ai/skills/next-move/schemas/predicted-dag.schema.json",
+  "title": "PredictedDAG",
+  "description": "Top-level output of the /next-move pipeline. Validated by validatePredictedDAG() in packages/core/src/context/validate-prediction.ts.",
+  "type": "object",
+  "required": [
+    "title",
+    "problem_classification",
+    "confidence",
+    "waves",
+    "estimated_total_minutes",
+    "estimated_total_cost_usd",
+    "premortem"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short human-readable title for the predicted move"
+    },
+    "problem_classification": {
+      "enum": ["well-structured", "ill-structured", "wicked"],
+      "description": "Sensemaker's classification of the problem shape"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Overall confidence in this prediction"
+    },
+    "halt_reason": {
+      "type": ["string", "null"],
+      "description": "Non-null when the pipeline should have halted but didn't. Investigate."
+    },
+    "waves": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/PredictedWave" }
+    },
+    "estimated_total_minutes": { "type": "number", "minimum": 0 },
+    "estimated_total_cost_usd": { "type": "number", "minimum": 0 },
+    "premortem": { "$ref": "#/definitions/PreMortemSummary" },
+    "topology": {
+      "enum": ["dag", "team-loop", "swarm", "blackboard", "team-builder", "recurring", "workflow"],
+      "description": "Planning topology — what the problem shape is"
+    },
+    "topologyReason": {
+      "type": "string",
+      "description": "Why this topology was chosen, including any runtime divergence note"
+    },
+    "topologyDetail": {
+      "type": "object",
+      "description": "Topology-specific config (TeamLoopPrediction, SwarmPrediction, etc.). Omit for vanilla DAG."
+    },
+    "skill_constellation": {
+      "type": "object",
+      "description": "Skill loading plan attached at execution time"
+    }
+  },
+  "definitions": {
+    "PredictedWave": {
+      "type": "object",
+      "required": ["wave_number", "nodes", "parallelizable"],
+      "properties": {
+        "wave_number": { "type": "integer", "minimum": 0 },
+        "parallelizable": { "type": "boolean" },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PredictedNode" }
+        }
+      }
+    },
+    "PredictedNode": {
+      "type": "object",
+      "required": [
+        "id",
+        "skill_id",
+        "role_description",
+        "why",
+        "input_contract",
+        "output_contract",
+        "commitment_level",
+        "model_tier",
+        "estimated_minutes",
+        "estimated_cost_usd",
+        "cascade_depth"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "skill_id": { "type": "string", "minLength": 1, "description": "Must exist in the loaded skill catalog" },
+        "role_description": { "type": "string" },
+        "why": { "type": "string" },
+        "input_contract": { "type": "string" },
+        "output_contract": { "type": "string" },
+        "commitment_level": { "enum": ["COMMITTED", "TENTATIVE", "EXPLORATORY"] },
+        "model_tier": { "enum": ["haiku", "sonnet", "opus"] },
+        "estimated_minutes": { "type": "number", "minimum": 0 },
+        "estimated_cost_usd": { "type": "number", "minimum": 0 },
+        "cascade_depth": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "PreMortemSummary": {
+      "type": "object",
+      "required": ["recommendation", "risks"],
+      "properties": {
+        "recommendation": { "enum": ["PROCEED", "ESCALATE_TO_HUMAN", "ACCEPT_WITH_MONITORING"] },
+        "risks": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/PreMortemRisk" }
+        }
+      }
+    },
+    "PreMortemRisk": {
+      "type": "object",
+      "required": ["description", "severity", "affected_nodes", "mitigation"],
+      "properties": {
+        "description": { "type": "string" },
+        "severity": { "enum": ["low", "medium", "high"] },
+        "affected_nodes": { "type": "array", "items": { "type": "string" } },
+        "mitigation": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://windags.ai/skills/next-move/schemas/premortem-output.schema.json",
+  "title": "PreMortemOutput",
+  "description": "PreMortem stage output: failure-oriented risk analysis. Empty risks array is acceptable for trivial plans but suspicious for plans with 4+ nodes.",
+  "type": "object",
+  "required": ["recommendation", "risks"],
+  "properties": {
+    "recommendation": {
+      "enum": ["PROCEED", "ESCALATE_TO_HUMAN", "ACCEPT_WITH_MONITORING"],
+      "description": "Top-level go/no-go. ESCALATE_TO_HUMAN means a human must approve before any execution."
+    },
+    "risks": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/PreMortemRisk" }
+    }
+  },
+  "definitions": {
+    "PreMortemRisk": {
+      "type": "object",
+      "required": ["description", "severity", "affected_nodes", "mitigation"],
+      "properties": {
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "description": "What could go wrong, in concrete terms"
+        },
+        "severity": {
+          "enum": ["low", "medium", "high"],
+          "description": "high = blocker if mitigation fails. medium = costly if it materializes. low = annoying but recoverable."
+        },
+        "affected_nodes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "Which predicted nodes this risk applies to"
+        },
+        "mitigation": {
+          "type": "string",
+          "minLength": 10,
+          "description": "Specific countermeasure — not 'be careful'"
+        }
+      }
+    }
+  }
+}

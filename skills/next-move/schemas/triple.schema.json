@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://windags.ai/skills/next-move/schemas/triple.schema.json",
+  "title": "NextMoveTriple",
+  "description": "A complete (context, prediction, feedback) triple stored in .windags/triples/. The training datum for the feedback loop.",
+  "type": "object",
+  "required": ["id", "context", "predicted_dag", "feedback", "timestamp", "session_id"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID v4"
+    },
+    "context": {
+      "type": "object",
+      "description": "ContextSnapshot at prediction time — see types/next-move.ts for full shape",
+      "required": [
+        "git_status",
+        "git_branch",
+        "recent_commits",
+        "modified_files",
+        "staged_files",
+        "claude_md",
+        "project_name",
+        "test_status",
+        "conversation_summary",
+        "active_tasks",
+        "time_in_session_minutes",
+        "available_skills",
+        "recently_used_skills"
+      ]
+    },
+    "predicted_dag": {
+      "$ref": "predicted-dag.schema.json"
+    },
+    "feedback": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "human-feedback.schema.json" }
+      ],
+      "description": "null until the user accepts/rejects/modifies"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601"
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

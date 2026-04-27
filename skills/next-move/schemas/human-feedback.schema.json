@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://windags.ai/skills/next-move/schemas/human-feedback.schema.json",
+  "title": "HumanFeedback",
+  "description": "User feedback captured after reviewing/editing a predicted plan. The feedback portion of a NextMoveTriple.",
+  "type": "object",
+  "required": ["accepted", "modifications", "rating"],
+  "properties": {
+    "accepted": {
+      "type": "boolean",
+      "description": "Did the user run the plan as predicted (possibly after mutations)?"
+    },
+    "modifications": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Free-text descriptions of what changed (e.g. 'swapped skill X for Y')"
+    },
+    "rating": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Overall usefulness rating"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-text notes from the user"
+    },
+    "structuredModifications": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/DAGMutation" },
+      "description": "Machine-parseable mutations (preferred over the prose modifications array)"
+    }
+  },
+  "definitions": {
+    "DAGMutation": {
+      "type": "object",
+      "required": ["type", "timestamp"],
+      "properties": {
+        "type": {
+          "enum": ["skill_swap", "topology_change", "node_add", "node_drop", "model_tier_change", "wave_reorder", "restart"]
+        },
+        "before": { "description": "Relevant subtree before the mutation" },
+        "after": { "description": "Relevant subtree after the mutation" },
+        "reason": { "type": "string", "description": "User-supplied or inferred reason" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

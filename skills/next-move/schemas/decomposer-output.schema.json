@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://windags.ai/skills/next-move/schemas/decomposer-output.schema.json",
+  "title": "DecomposerOutput",
+  "description": "Decomposer stage output: subtask graph with wave assignments. 3-7 subtasks is the sweet spot.",
+  "type": "object",
+  "required": ["subtasks"],
+  "properties": {
+    "subtasks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": { "$ref": "#/definitions/Subtask" },
+      "description": "Decomposed unit-of-work tasks. Each is one skilled agent's job."
+    }
+  },
+  "definitions": {
+    "Subtask": {
+      "type": "object",
+      "required": ["id", "description", "depends_on", "wave"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z0-9-]+$",
+          "description": "kebab-case identifier"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "description": "What the agent on this subtask should accomplish"
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IDs of subtasks this one waits for. Must form a DAG (no cycles)."
+        },
+        "wave": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Wave number — equal-wave subtasks run in parallel"
+        }
+      }
+    }
+  }
+}

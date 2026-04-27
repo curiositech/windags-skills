@@ -138,6 +138,41 @@ Skills follow the [Agent Skills](https://agentskills.io) open standard and work 
 
 ---
 
+## Install
+
+### Claude Code (one command)
+
+```bash
+claude plugin marketplace add curiositech/windags-skills
+claude plugin install windags-skills
+```
+
+This installs all 463+ skills + the 5 `/next-move` subagents (sensemaker, decomposer, skill-selector, premortem, synthesizer).
+
+### Cross-tool install (Codex, Gemini CLI, Cursor, Aider, …)
+
+Clone the plugin and run the installer. It detects which tools you have under `$HOME` and links skills + subagents into the right place. No hardcoded paths — uses `$HOME` and the plugin checkout dir.
+
+```bash
+git clone https://github.com/curiositech/windags-skills.git ~/coding/windags-skills
+~/coding/windags-skills/scripts/install.sh
+```
+
+What it does (idempotent — safe to re-run after `git pull`):
+
+| Tool | What gets installed |
+|---|---|
+| Claude Code | `~/.claude/skills/{next-move, windags-*}` + `~/.claude/agents/{5 subagents}.md` |
+| Codex | `~/.codex/skills/{next-move, windags-*}` + `~/.codex/AGENTS.md` |
+| Cursor / Cline / Aider | `~/AGENTS.md` (auto-discovered by AGENTS.md-aware tools) |
+| Gemini CLI | Marked block appended to `~/.gemini/GEMINI.md` |
+
+Override the install location with `WINDAGS_HOME=/path ./install.sh`. Preview without changes with `--dry-run`.
+
+The MCP server (BM25 skill search + history) lives at `<plugin>/mcp-server/dist/index.js` — wire it into any MCP-aware client.
+
+---
+
 ## License
 
 **BUSL-1.1** (Business Source License). Free for non-commercial and personal use. Converts to Apache 2.0 on **2030-03-03**.
