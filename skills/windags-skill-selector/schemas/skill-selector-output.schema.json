@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://windags.ai/skills/windags-skill-selector/schemas/skill-selector-output.schema.json",
+  "title": "SkillSelectorOutput",
+  "description": "Stage 3a output: per-subtask primary/runner-up selections with model tier and cost estimates.",
+  "type": "object",
+  "required": ["selections"],
+  "properties": {
+    "selections": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/Selection" }
+    }
+  },
+  "definitions": {
+    "Selection": {
+      "type": "object",
+      "required": ["subtask_id", "primary_skill", "runner_up", "model_tier", "estimated_minutes", "estimated_cost_usd", "reasoning"],
+      "properties": {
+        "subtask_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Must match a subtask id from DecomposerOutput"
+        },
+        "primary_skill": {
+          "type": ["string", "null"],
+          "description": "Skill id from the candidate list. Null only when no candidate fits — surface as catalog gap."
+        },
+        "runner_up": {
+          "type": ["string", "null"],
+          "description": "Second-best candidate. Null when there's exactly one viable choice or no candidate fits."
+        },
+        "model_tier": {
+          "enum": ["haiku", "sonnet", "opus"],
+          "description": "Cognitive load tier. Default sonnet; haiku for mechanical; opus only for genuinely hard."
+        },
+        "estimated_minutes": {
+          "type": "number",
+          "minimum": 0
+        },
+        "estimated_cost_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "reasoning": {
+          "type": "string",
+          "minLength": 10,
+          "description": "One sentence: why primary, why runner-up. Names the trade-off."
+        }
+      }
+    }
+  }
+}

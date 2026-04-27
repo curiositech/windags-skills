@@ -1,7 +1,7 @@
 {
   "name": "windags-skills",
-  "version": "2.3.1",
-  "description": "463+ agent skills + /next-move prediction pipeline (v3: !command context injection, port-daddy, session model inheritance) + BM25 skill search. Built by WinDAGs.",
+  "version": "2.4.0",
+  "description": "463+ agent skills + /next-move prediction pipeline + 5 Claude Code subagents (sensemaker, decomposer, skill-selector, premortem, synthesizer) + BM25 skill search MCP. Built by WinDAGs.",
   "author": {
     "name": "Curiositech",
     "email": "info@curiositech.ai"

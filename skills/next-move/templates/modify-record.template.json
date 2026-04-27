@@ -1,0 +1,11 @@
+{
+  "type": "<<skill_swap | topology_change | node_add | node_drop | model_tier_change | wave_reorder | restart>>",
+  "before": {
+    "<<the relevant subtree before the mutation>>": "<<...>>"
+  },
+  "after": {
+    "<<the relevant subtree after the mutation>>": "<<...>>"
+  },
+  "reason": "<<user-supplied reason or short inferred summary>>",
+  "timestamp": "<<ISO 8601 — e.g. 2026-04-19T07:32:00.000Z>>"
+}

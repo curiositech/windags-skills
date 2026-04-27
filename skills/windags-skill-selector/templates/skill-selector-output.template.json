@@ -1,0 +1,13 @@
+{
+  "selections": [
+    {
+      "subtask_id": "<<must match a subtask id from DecomposerOutput>>",
+      "primary_skill": "<<skill id from the candidate list, or null if no fit>>",
+      "runner_up": "<<second-best candidate, or null>>",
+      "model_tier": "haiku",
+      "estimated_minutes": 0,
+      "estimated_cost_usd": 0,
+      "reasoning": "<<one sentence: why primary, why runner-up, naming the trade-off>>"
+    }
+  ]
+}

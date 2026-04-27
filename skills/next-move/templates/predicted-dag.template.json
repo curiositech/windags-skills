@@ -1,0 +1,35 @@
+{
+  "title": "<<short human-readable title>>",
+  "problem_classification": "<<well-structured | ill-structured | wicked>>",
+  "confidence": 0.0,
+  "halt_reason": null,
+  "topology": "dag",
+  "topologyReason": "<<why this topology, including any runtime divergence note>>",
+  "waves": [
+    {
+      "wave_number": 0,
+      "parallelizable": true,
+      "nodes": [
+        {
+          "id": "<<kebab-case node id>>",
+          "skill_id": "<<must exist in catalog>>",
+          "role_description": "<<what this agent does in context>>",
+          "why": "<<why this skill, why now>>",
+          "input_contract": "<<what this node needs from upstream or context>>",
+          "output_contract": "<<what this node promises to deliver>>",
+          "commitment_level": "COMMITTED",
+          "model_tier": "haiku",
+          "estimated_minutes": 0,
+          "estimated_cost_usd": 0.0,
+          "cascade_depth": 0
+        }
+      ]
+    }
+  ],
+  "estimated_total_minutes": 0,
+  "estimated_total_cost_usd": 0.0,
+  "premortem": {
+    "recommendation": "PROCEED",
+    "risks": []
+  }
+}
