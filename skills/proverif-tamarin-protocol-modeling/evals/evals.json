@@ -1,0 +1,56 @@
+{
+  "skill_name": "proverif-tamarin-protocol-modeling",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to verify that session notes in Port Daddy remain confidential when stored in an append-only log. An attacker can observe the log (it's on a public channel) but should not be able to read note contents without a valid Harbor Card. Should I use ProVerif or Tamarin for this, and how would I model the encryption?",
+      "expected_output": "Recommends ProVerif because this is a secrecy property on stateless message-passing (no mutable global state needed). Provides a model using symmetric encryption (senc/sdec) with key derivation from the Harbor Card token. Includes both a secrecy query (attacker cannot learn note content) and a reachability query (to avoid vacuous truth). References the escrow secrecy extension pattern from harbor_card_v3_delegation.pv.",
+      "expectations": [
+        "Correctly selects ProVerif over Tamarin with reasoning about stateless vs stateful",
+        "Models encryption with senc/sdec and a key derived from the Harbor Card token",
+        "Includes a secrecy query: query attacker(session_note_content)",
+        "Includes a reachability query to guard against vacuous truth",
+        "Warns that this does NOT prove resistance to backup/restore replay (Dolev-Yao limitation)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "We dismissed a Harbor Card token (revoked it via pd salvage dismiss), but an attacker restored the database from a backup taken before the dismissal. Now the old token works again. How do I formally model this attack and prove that epoch counters fix it? The current ProVerif model (harbor_card_v3_delegation.pv) doesn't cover this.",
+      "expected_output": "Identifies that ProVerif cannot model this because backup/restore violates the monotonic state assumption of applied pi calculus. Recommends Tamarin with multiset rewriting rules. Provides a Tamarin model sketch with Issue, Dismiss, Verify, and Backup_Restore_Attack rules. Shows that the no_replay_after_dismiss lemma fails with the attack rule enabled. Then models epoch counters as the mitigation and shows the lemma succeeds when tokens must match the current epoch.",
+      "expectations": [
+        "Correctly identifies that ProVerif cannot model database rollback (monotonic state assumption)",
+        "Recommends Tamarin for this stateful property",
+        "Provides Tamarin rules for Issue, Dismiss, Verify, and a Backup_Restore_Attack rule",
+        "Shows that the replay resistance lemma fails when backup restore is possible",
+        "Models epoch counters as mitigation and explains why they survive backup restore",
+        "References ADR-0018 Attack Vector 2 (Backup/Restore Attack)"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "My ProVerif model for Harbor Card delegation has been running for 15 minutes and hasn't terminated. The model includes insert/get tables for a revocation list, three phases, and recursive equational theories for capability attenuation. What's wrong and how do I fix it?",
+      "expected_output": "Diagnoses multiple non-termination causes: insert/get tables cause state-space explosion, three phases with complex equational theories explode combinatorially, and recursive equational theories can cause non-convergence. Recommends factoring the model: use ProVerif for message-level properties (delegation chain correctness, secrecy) without tables, and use Tamarin for the revocation list (mutable state). Advises reducing to at most 2 phases and checking equational theory convergence.",
+      "expectations": [
+        "Identifies insert/get tables as a primary cause of state-space explosion",
+        "Identifies three phases as contributing to non-termination",
+        "Identifies recursive equational theories as a convergence risk",
+        "Recommends factoring into separate models (ProVerif for stateless, Tamarin for stateful)",
+        "Does NOT suggest simply adding [precise] annotations as a fix for table-induced non-termination",
+        "Suggests using -html output to diagnose where ProVerif is stuck"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "ProVerif says my authentication query 'event(Accepted(a,h,cap)) ==> event(Issued(a,h,cap))' is true. Can I tell my security team that the Harbor Card protocol is cryptographically secure in the real world?",
+      "expected_output": "Warns that symbolic security does not automatically imply computational security. Requires checking: (1) Is the Accepted event actually reachable? A vacuously true proof proves nothing. (2) Does the implementation use EUF-CMA signatures (Ed25519 qualifies)? (3) If encryption is added, is it IND-CCA2? (4) Are there algebraic interactions between primitives? Lists specific Dolev-Yao limitations that the proof does NOT cover: backup/restore replay, PID reuse, clock manipulation, DoS, covert channels. References the Abadi-Rogaway computational soundness theorem.",
+      "expectations": [
+        "Warns about vacuous truth and requires a reachability query",
+        "Explains the computational soundness gap (symbolic vs computational)",
+        "Lists specific conditions for soundness transfer (IND-CCA2, EUF-CMA)",
+        "Confirms Ed25519 qualifies as EUF-CMA",
+        "Lists at least 3 Dolev-Yao limitations from the ADR-0018 attack vectors",
+        "Does NOT claim the ProVerif result alone proves real-world security"
+      ]
+    }
+  ]
+}

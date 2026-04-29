@@ -1,0 +1,53 @@
+{
+  "skill_name": "mechanism-design-for-agent-labor",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to design a bond pricing function for my agent coordination system. Agents claim files, work for 10-60 minutes, and either succeed or crash. Some files are critical (auth, database migrations) and some are routine (CSS, docs). How should I price the bonds?",
+      "expected_output": "A multi-factor pricing function with at least scope, duration, and history as inputs. Must include different tiers for critical vs routine files. Must address what happens on crash (partial settlement).",
+      "expectations": [
+        "Output includes a pricing formula or decision tree with at least 3 input factors",
+        "Critical files receive higher bond amounts than routine files",
+        "Principal history affects bond pricing (discount or penalty)",
+        "Settlement logic covers success, partial completion, and sabotage cases",
+        "At least one failure mode is named with detection and fix"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "An agent with 3 prior completions and 1 salvage event wants write access to our production database migration files for 45 minutes. What should the bond be, and why?",
+      "expected_output": "A specific bond calculation showing the reasoning. Should flag the high salvage rate (33%), the critical file scope, and the long duration. Bond should be significantly higher than for a routine task.",
+      "expectations": [
+        "Calculates a specific bond amount with shown work",
+        "Flags the 33% salvage rate as a risk factor",
+        "Identifies database migrations as critical-scope files",
+        "Duration of 45 minutes increases the bond",
+        "Compares this bond to what a more experienced principal would pay"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We're seeing agents post bonds, do legitimate work very slowly, and effectively lock up critical files for the maximum duration. They're not sabotaging anything — they're just slow. But other agents can't work on those files. How do we fix this?",
+      "expected_output": "Identifies this as a griefing attack. Proposes solutions: duration-based bond escalation (bond increases per minute held), milestone checkpoints, or allowing concurrent advisory claims even when bonds are posted.",
+      "expectations": [
+        "Names this as a griefing or resource-locking attack",
+        "Proposes at least two mitigation strategies",
+        "At least one strategy involves time-based bond escalation",
+        "Considers the trade-off between preventing griefing and allowing legitimate slow work",
+        "Does NOT suggest simply lowering the duration limit (that punishes legitimate work)"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Our settlement oracle is a test suite. Agents have learned to write code that passes tests but is unmaintainable garbage. The tests say 'pass' but humans say 'fail'. How do we fix settlement?",
+      "expected_output": "Identifies oracle manipulation. Proposes multi-oracle settlement: automated tests + evidence trail review + random human audit. Discusses the cost of human auditing and how to make it economically sustainable.",
+      "expectations": [
+        "Identifies this as an oracle manipulation or gaming problem",
+        "Proposes multiple verification methods (not just better tests)",
+        "Includes human review as at least one oracle",
+        "Addresses the cost of human auditing",
+        "Proposes a sampling strategy (not 100% human review)"
+      ]
+    }
+  ]
+}

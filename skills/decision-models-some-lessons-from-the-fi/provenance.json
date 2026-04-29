@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Decision_models_some_lessons_from_the_fi.pdf",
+    "path": "../batch_ndm_remaining/Decision_models_some_lessons_from_the_fi.pdf",
+    "chars": 53604,
+    "tokens_approx": 13401
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T14:40:17.370832Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 16891,
+        "output": 22084
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T14:40:17.379883Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1936,
+        "output": 3349
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 547.8871779441833,
+  "generated_at": "2026-02-24T14:40:17.387658Z"
+}

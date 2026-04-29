@@ -1,0 +1,42 @@
+{
+  "name": "review-workspace",
+  "surfaces": {
+    "primary": "flow",
+    "support": [
+      "nodeDetails",
+      "taskList"
+    ]
+  },
+  "breakpoints": {
+    "wide": 1440,
+    "medium": 1100
+  },
+  "presets": {
+    "wide": {
+      "visible": [
+        "flow",
+        "nodeDetails",
+        "taskList"
+      ],
+      "notes": "Only valid if summed minimums fit the measured work area."
+    },
+    "medium": {
+      "visible": [
+        "flow",
+        "nodeDetails"
+      ],
+      "toggleable": [
+        "taskList"
+      ]
+    },
+    "narrow-desktop": {
+      "visible": [
+        "flow"
+      ],
+      "toggleable": [
+        "nodeDetails",
+        "taskList"
+      ]
+    }
+  }
+}

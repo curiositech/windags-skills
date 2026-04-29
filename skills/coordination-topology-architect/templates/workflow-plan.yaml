@@ -1,0 +1,36 @@
+topology: workflow
+objective: ""
+entry_node: coordinator
+workflow:
+  nodes:
+    - id: coordinator
+      role: coordinator
+      skillId: ""
+      description: ""
+      modelTier: sonnet
+    - id: worker-a
+      role: worker
+      skillId: ""
+      description: ""
+      modelTier: sonnet
+    - id: reviewer
+      role: reviewer
+      skillId: ""
+      description: ""
+      modelTier: sonnet
+  edges:
+    - from: coordinator
+      to: worker-a
+      condition: default
+    - from: worker-a
+      to: reviewer
+      condition: default
+    - from: reviewer
+      to: delivery
+      condition: approved
+    - from: reviewer
+      to: worker-a
+      condition: rejected
+      isBackEdge: true
+  max_cycle_iterations: 3
+  max_duration_ms: 600000

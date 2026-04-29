@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "The_role_of_cognitive_systems_engineerin.pdf",
+    "path": "../batch_ndm_remaining/The_role_of_cognitive_systems_engineerin.pdf",
+    "chars": 65826,
+    "tokens_approx": 16456
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T16:05:37.475464Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 18652,
+        "output": 22961
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T16:05:37.484577Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1816,
+        "output": 2817
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 564.8076219558716,
+  "generated_at": "2026-02-24T16:05:37.492755Z"
+}

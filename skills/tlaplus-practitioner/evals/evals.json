@@ -1,0 +1,75 @@
+[
+  {
+    "name": "advisory_lock_ttl_spec",
+    "prompt": "I have a distributed lock system where agents acquire named locks with a TTL. If the agent crashes, the lock should expire and become available. Write me a TLA+ spec that models this and tell me what invariants to check.",
+    "expected_decision_path": "shared mutable state -> YES -> TTL -> YES -> Advisory Lock Pattern (Section 1)",
+    "expected_outputs": [
+      "MutualExclusion invariant: no two agents hold the same lock",
+      "TypeOK invariant with bounded clock and TTL",
+      "Crash action that changes agent state without releasing lock",
+      "Tick action that advances clock",
+      "LockEventuallyFrees liveness property with WF_vars(Tick)",
+      "Bounded constants: Agents={a1,a2,a3}, MaxTTL=5"
+    ],
+    "anti_patterns_to_avoid": [
+      "Using Nat instead of 0..MaxTTL for the clock",
+      "Omitting the Crash action (makes the spec trivially safe)",
+      "Forgetting fairness on Tick when checking liveness"
+    ]
+  },
+  {
+    "name": "crash_reap_salvage_lifecycle",
+    "prompt": "Port Daddy agents register, send heartbeats, and can crash. A reaper detects dead agents after a threshold of missed heartbeats and puts them in a salvage queue. Another agent can claim the dead agent's work. Write a TLA+ spec for this lifecycle. I need to be sure that (1) no alive agent gets reaped and (2) at most one agent claims any dead agent's salvage.",
+    "expected_decision_path": "shared mutable state -> YES -> TTL -> NO -> crash leaves orphaned state -> YES -> Crash-Reap-Salvage Pattern (Section 2)",
+    "expected_outputs": [
+      "NoFalseReaping safety invariant: dead status implies heartbeat gap >= DeadThreshold",
+      "SingleClaimer safety invariant: at most one salvager per dead agent",
+      "Heartbeat action that updates the agent's timestamp",
+      "Crash action transitioning alive -> stale",
+      "Reap action with guard: clock - heartbeat[a] >= DeadThreshold",
+      "Salvage action that removes from queue and marks salvaged",
+      "EventualSalvage liveness property with fairness",
+      "BondedCommons worked example referenced as prior art"
+    ],
+    "anti_patterns_to_avoid": [
+      "Modeling SQL schema details instead of state transitions",
+      "Putting all actions in one monolithic Next clause without named sub-actions",
+      "Skipping TypeOK"
+    ]
+  },
+  {
+    "name": "counterexample_interpretation",
+    "prompt": "TLC found this counterexample for my lock spec: State 1 (Init): lock.owner = '', agentState = [a1 -> idle, a2 -> idle]. State 2 (Acquire a1): lock.owner = a1, agentState = [a1 -> holding, a2 -> idle]. State 3 (Crash a1): lock.owner = a1, agentState = [a1 -> crashed, a2 -> idle]. State 4 (back to state 3). The violated property is LockEventuallyFrees. What went wrong and how do I fix it?",
+    "expected_decision_path": "TLC counterexample -> PROPERTY violation -> lasso trace -> system loops forever without progress -> missing fairness on Tick",
+    "expected_outputs": [
+      "Diagnosis: lasso at state 3-4 means infinite loop without Tick advancing clock",
+      "The lock never expires because clock never advances",
+      "Fix: add WF_vars(Tick) to the Spec definition",
+      "Explanation of weak fairness: if Tick is continuously enabled it must eventually fire",
+      "Reference to Failure Mode 2 (liveness fails despite correct logic)"
+    ],
+    "anti_patterns_to_avoid": [
+      "Suggesting to remove the liveness property instead of fixing the spec",
+      "Suggesting strong fairness when weak fairness suffices",
+      "Ignoring the lasso structure of the counterexample"
+    ]
+  },
+  {
+    "name": "escrow_bond_state_machine",
+    "prompt": "I'm building an escrow system where agents post a bond when they claim a resource. The bond can be released (agent completes work), forfeited (agent violates terms), or expired (timeout). I need to make sure a forfeited bond can never be released and that the total value across all states is conserved. What should my TLA+ spec look like?",
+    "expected_decision_path": "shared mutable state -> YES -> TTL -> NO -> crash leaves orphaned state -> NO -> Escrow State Machine Pattern (Section 3)",
+    "expected_outputs": [
+      "State transitions: open -> bonded -> released OR forfeited OR expired",
+      "NoDoubleSpend invariant: forfeited bonds cannot transition to released",
+      "Conservation invariant: sum of all bond values across states equals initial total",
+      "Terminal state check: every bond eventually reaches {released, forfeited, expired}",
+      "Bounded time parameter for expiration",
+      "Quality gate: >1M states explored with zero violations"
+    ],
+    "anti_patterns_to_avoid": [
+      "Allowing direct transition from forfeited to released",
+      "Using unbounded Nat for bond values",
+      "Skipping the conservation invariant"
+    ]
+  }
+]

@@ -1,0 +1,43 @@
+{
+  "skill": "windags-architect-v1",
+  "updatedAt": "2026-04-18T22:42:57",
+  "provenance": {
+    "kind": "internal-worktree-recovered",
+    "sourceRepo": "workgroup-ai",
+    "recoveredAt": "2026-04-17T02:52:25-07:00",
+    "recoveredFrom": "/Users/erichowens/coding/workgroup-ai/.claude/worktrees/agent-aa6fba4b/skills/windags-architect-v1",
+    "worktree": "agent-aa6fba4b",
+    "ctaOverlay": "/Users/erichowens/coding/workgroup-ai/.windags/cta-upgrades/windags-architect-v1/after.md",
+    "owners": [
+      "some-claude-skills"
+    ]
+  },
+  "authorship": {
+    "maintainers": [
+      "some-claude-skills"
+    ]
+  },
+  "lineCount": 247,
+  "structuralComplete": true,
+  "structure": {
+    "decisionPoints": true,
+    "failureModes": true,
+    "workedExamples": true,
+    "qualityGates": true,
+    "notFor": true,
+    "inlineMermaid": 1
+  },
+  "affordances": {
+    "scripts": false,
+    "templates": false,
+    "examples": false,
+    "references": true,
+    "assets": false,
+    "diagrams": true,
+    "referenceFiles": 11,
+    "referenceIndex": true,
+    "diagramCompanions": 2,
+    "visualPreviewCapability": false
+  },
+  "validatorPassed": true
+}

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Swiss Modern Website Design"
+  short_description: "Help with Swiss modern website design systems"
+  brand_color: "#DD1F26"
+  default_prompt: "Use $swiss-modern-website-design to design a typography-first Swiss modern website with disciplined grids and restrained color."

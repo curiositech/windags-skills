@@ -1,0 +1,38 @@
+{
+  "skill": "legal-advertorial-writer",
+  "updatedAt": "2026-04-18T22:42:21",
+  "provenance": {
+    "kind": "first-party",
+    "owners": [
+      "some-claude-skills"
+    ]
+  },
+  "authorship": {
+    "maintainers": [
+      "some-claude-skills"
+    ]
+  },
+  "lineCount": 178,
+  "structuralComplete": true,
+  "structure": {
+    "decisionPoints": true,
+    "failureModes": true,
+    "workedExamples": true,
+    "qualityGates": true,
+    "notFor": true,
+    "inlineMermaid": 1
+  },
+  "affordances": {
+    "scripts": false,
+    "templates": false,
+    "examples": false,
+    "references": true,
+    "assets": false,
+    "diagrams": true,
+    "referenceFiles": 3,
+    "referenceIndex": true,
+    "diagramCompanions": 2,
+    "visualPreviewCapability": false
+  },
+  "validatorPassed": true
+}

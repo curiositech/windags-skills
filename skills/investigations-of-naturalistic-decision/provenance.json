@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Investigations_of_Naturalistic_Decision.pdf",
+    "path": "../batch_ndm_remaining/Investigations_of_Naturalistic_Decision.pdf",
+    "chars": 96413,
+    "tokens_approx": 24103
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T15:02:02.249208Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 26894,
+        "output": 26686
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T15:02:02.257986Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1972,
+        "output": 2902
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 667.8901078701019,
+  "generated_at": "2026-02-24T15:02:02.266376Z"
+}

@@ -1,0 +1,69 @@
+{
+  "skill": "empirical-systems-evaluation",
+  "version": "1.0.0",
+  "evals": [
+    {
+      "id": "eval-001-crash-recovery-design",
+      "name": "Design a crash recovery benchmark",
+      "prompt": "I built a multi-agent coordination system where 12 agents collaborate on code tasks. When an agent crashes, the system redistributes its work using session context. I want to prove this is better than naive reassignment. Design the experiment for me. I can run about 200 trials total.",
+      "expected_behaviors": [
+        "Identifies at least two baselines: one Tier A (context-aware round-robin or similar strong alternative) and one Tier B (naive/random), not just 'no coordination'",
+        "Calculates sample size allocation across conditions given the 200-trial budget (roughly 65-70 per condition for 3 conditions) and notes this is marginal for medium effect sizes",
+        "Specifies both automated metrics (salvage latency, completion rate) and human-evaluated metrics (recovery fidelity) with concrete rubrics",
+        "Includes inter-rater reliability requirements (Cohen's kappa >= 0.60) for human evaluation",
+        "Recommends non-parametric tests for latency (Kruskal-Wallis) with justification",
+        "States Bonferroni or Holm correction for multiple primary metrics",
+        "Includes a threats-to-validity section addressing scale (12 agents != 100 agents) and crash model limitations"
+      ],
+      "anti_behaviors": [
+        "Suggests comparing only to 'no coordination at all' (strawman baseline, Tier F)",
+        "Reports only means without requiring confidence intervals or variance measures",
+        "Recommends parametric tests for latency data without checking normality",
+        "Ignores multiple comparison correction when testing multiple metrics",
+        "Omits human evaluation entirely for quality/fidelity judgments"
+      ]
+    },
+    {
+      "id": "eval-002-suspicious-results",
+      "name": "Audit suspicious benchmark results",
+      "prompt": "Here are results from our coordination protocol benchmark: We tested 4 systems across 15 metrics. System D (ours) was statistically significant (p < 0.05) on 6 of 15 metrics. All tests were t-tests. We ran 20 trials per system. Mean latencies: System A 450ms, System B 380ms, System C 520ms, System D 290ms. No confidence intervals or effect sizes reported. What's wrong with this analysis?",
+      "expected_behaviors": [
+        "Identifies multiple comparison problem: 15 metrics x 6 pairwise comparisons = 90 tests, expecting ~4.5 false positives at alpha=0.05, so 6 'significant' results is barely above chance",
+        "Flags missing confidence intervals and effect sizes as a critical omission (failure mode 12c)",
+        "Questions whether t-tests are appropriate for latency data (likely skewed, should check normality or use non-parametric)",
+        "Notes 20 trials per system is underpowered for medium effect sizes (need ~64 per group)",
+        "Identifies potential p-hacking: were these 6 metrics pre-registered or found post-hoc?",
+        "Recommends Bonferroni or Holm correction, recalculating which results survive",
+        "Requests standard deviations or IQRs to assess practical significance"
+      ],
+      "anti_behaviors": [
+        "Accepts the 6 significant results at face value without questioning multiple comparisons",
+        "Ignores the missing variance/CI information",
+        "Does not question the choice of parametric t-tests for latency",
+        "Focuses only on one issue instead of identifying the multiple overlapping problems"
+      ]
+    },
+    {
+      "id": "eval-003-human-eval-protocol",
+      "name": "Design human evaluation for salvage fidelity",
+      "prompt": "We need human raters to judge whether our salvage system recovers agent work faithfully. We have 50 crash-recovery scenarios and outputs from 2 systems. We can recruit 4 raters who are experienced engineers. Design the complete human evaluation protocol, including the rubric, the reliability check, and what to do if raters disagree a lot.",
+      "expected_behaviors": [
+        "Designs a concrete anchored rating scale (not vague 'good/bad') with at least 4-5 levels and behavioral anchors for each level",
+        "Specifies blinding: raters must not know which system produced which output",
+        "Requires a calibration/pilot phase (e.g., 5-10 practice scenarios with discussion before real rating)",
+        "Specifies Cohen's kappa (or Fleiss' kappa for 4 raters) with the threshold: kappa < 0.40 means stop and revise rubric",
+        "Provides a disagreement resolution protocol (e.g., majority vote for 4 raters, or discussion-to-consensus)",
+        "Recommends randomizing presentation order of outputs across raters",
+        "Addresses rater fatigue: 50 scenarios x 2 outputs = 100 evaluations per rater, suggests session breaks",
+        "Specifies how to aggregate ratings for statistical analysis (median of raters, or use all ratings with rater as random effect)"
+      ],
+      "anti_behaviors": [
+        "Provides only a vague rubric like '1=poor, 5=excellent' without behavioral anchors",
+        "Omits inter-rater reliability calculation entirely",
+        "Does not mention blinding the raters to condition",
+        "Ignores the calibration/training phase",
+        "Suggests averaging all rater scores without checking agreement first"
+      ]
+    }
+  ]
+}

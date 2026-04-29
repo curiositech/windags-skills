@@ -1,0 +1,73 @@
+[
+  {
+    "id": "eval-001-sen-advisory-claims",
+    "prompt": "I'm building a multi-agent system where agents claim files they intend to edit. Should these claims be enforced (preventing other agents from editing) or advisory (just notifications)? The agents have private knowledge about their planned changes that the coordinator can't see.",
+    "expected_concepts": [
+      "Sen's Impossibility of a Paretian Liberal",
+      "private preferences vs. global allocation",
+      "Lockean advisory claims vs. Hobbesian enforced locks",
+      "impossibility of satisfying both Pareto efficiency and individual liberalism",
+      "Ostromian graduated governance as pragmatic middle path"
+    ],
+    "expected_decision_tree": "Decision Tree 2 (Sen's Impossibility)",
+    "should_NOT_contain": [
+      "trolley problem",
+      "AI alignment",
+      "consciousness",
+      "moral philosophy"
+    ]
+  },
+  {
+    "id": "eval-002-rawls-port-assignment",
+    "prompt": "I have a port assignment system that gives deterministic ports to services based on their identity string. All services get ports in the same range using the same hash function. A colleague suggests we should give database services priority access to lower ports because they're 'more important.' How should I think about this?",
+    "expected_concepts": [
+      "Rawls' veil of ignorance",
+      "maximin principle",
+      "difference principle -- unequal allocation justified only if it benefits worst-off",
+      "role-based vs. identity-based differentiation",
+      "Decision Tree 3 (Rawlsian capability assignment)"
+    ],
+    "expected_decision_tree": "Decision Tree 3 (Rawls' Veil for Capability Assignment)",
+    "should_NOT_contain": [
+      "trolley problem",
+      "general ethics",
+      "AI safety"
+    ]
+  },
+  {
+    "id": "eval-003-hobbesian-vs-ostromian",
+    "prompt": "Our system has a single coordinator process that manages all resource allocation for 50+ microservices. It works fine but it's become a bottleneck and single point of failure. When it goes down, nothing can allocate resources. Some team members want to add a backup coordinator; others want to decentralize entirely. What framework should I use to think about this?",
+    "expected_concepts": [
+      "Hobbesian Leviathan -- centralized sovereign with absolute authority",
+      "Ostromian polycentric governance as alternative to centralization",
+      "Ostrom's 8 design principles for commons",
+      "graduated sanctions (not binary allow/deny)",
+      "Failure Mode 1: Phantom Leviathan",
+      "Decision Tree 1 (Hobbesian/Lockean/Ostromian classification)"
+    ],
+    "expected_decision_tree": "Decision Tree 1 (System Classification)",
+    "should_NOT_contain": [
+      "moral philosophy",
+      "consciousness",
+      "trolley problem"
+    ]
+  },
+  {
+    "id": "eval-004-anti-pattern-detection",
+    "prompt": "In our architecture review, I noticed we use enforced mutexes for database writes (because corruption is catastrophic), advisory conventions for port selection (documented in a wiki nobody reads), and a consensus protocol for API schema changes that requires unanimous approval from all 12 service owners. Identify any problems with this setup.",
+    "expected_concepts": [
+      "Anti-Pattern 1: Philosophy Shopping -- mixing models is fine across resource classes but must be deliberate",
+      "Anti-Pattern 3: Invisible Social Contract -- wiki nobody reads is not legitimate governance",
+      "Failure Mode 2: Rousseau's Tyranny of Consensus -- unanimity is not the general will",
+      "Hobbesian mutexes for DB writes is appropriate (catastrophic conflict)",
+      "Lockean advisory conventions need to be made visible and consented to",
+      "Rousseauian consensus should use quorum, not unanimity"
+    ],
+    "expected_decision_tree": "Multiple trees applicable",
+    "should_NOT_contain": [
+      "AI alignment",
+      "ethics of consciousness",
+      "trolley problem"
+    ]
+  }
+]

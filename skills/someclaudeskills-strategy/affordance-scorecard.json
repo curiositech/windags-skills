@@ -1,0 +1,43 @@
+{
+  "skill": "someclaudeskills-strategy",
+  "updatedAt": "2026-04-18T22:42:46",
+  "provenance": {
+    "kind": "internal-worktree-recovered",
+    "sourceRepo": "workgroup-ai",
+    "recoveredAt": "2026-04-17T02:52:24-07:00",
+    "recoveredFrom": "/Users/erichowens/coding/workgroup-ai/.claude/worktrees/agent-aa6fba4b/skills/someclaudeskills-strategy",
+    "worktree": "agent-aa6fba4b",
+    "ctaOverlay": "/Users/erichowens/coding/workgroup-ai/.windags/cta-upgrades/someclaudeskills-strategy/after.md",
+    "owners": [
+      "some-claude-skills"
+    ]
+  },
+  "authorship": {
+    "maintainers": [
+      "some-claude-skills"
+    ]
+  },
+  "lineCount": 257,
+  "structuralComplete": true,
+  "structure": {
+    "decisionPoints": true,
+    "failureModes": true,
+    "workedExamples": true,
+    "qualityGates": true,
+    "notFor": true,
+    "inlineMermaid": 1
+  },
+  "affordances": {
+    "scripts": false,
+    "templates": false,
+    "examples": false,
+    "references": false,
+    "assets": false,
+    "diagrams": true,
+    "referenceFiles": 0,
+    "referenceIndex": false,
+    "diagramCompanions": 2,
+    "visualPreviewCapability": false
+  },
+  "validatorPassed": true
+}

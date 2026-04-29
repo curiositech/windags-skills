@@ -1,0 +1,38 @@
+{
+  "skill": "backend-authoritative-runtime-refactor",
+  "updatedAt": "2026-04-19T00:01:13",
+  "provenance": {
+    "kind": "first-party",
+    "owners": [
+      "some-claude-skills"
+    ]
+  },
+  "authorship": {
+    "maintainers": [
+      "some-claude-skills"
+    ]
+  },
+  "lineCount": 124,
+  "structuralComplete": false,
+  "structure": {
+    "decisionPoints": false,
+    "failureModes": false,
+    "workedExamples": false,
+    "qualityGates": false,
+    "notFor": true,
+    "inlineMermaid": 0
+  },
+  "affordances": {
+    "scripts": false,
+    "templates": false,
+    "examples": false,
+    "references": true,
+    "assets": false,
+    "diagrams": false,
+    "referenceFiles": 2,
+    "referenceIndex": true,
+    "diagramCompanions": 0,
+    "visualPreviewCapability": false
+  },
+  "validatorPassed": true
+}

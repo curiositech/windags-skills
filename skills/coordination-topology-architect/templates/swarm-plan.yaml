@@ -1,0 +1,18 @@
+topology: swarm
+objective: ""
+swarm:
+  seedMessage: ""
+  agents:
+    - id: scout-a
+      skillId: ""
+      subscribes:
+        - seed
+        - finding
+      publishes:
+        - finding
+        - contradiction
+      modelTier: sonnet
+  convergence:
+    strategy: quorum
+    threshold: 3
+  maxDurationMinutes: 20
