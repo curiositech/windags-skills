@@ -3,12 +3,23 @@
 /**
  * WinDAGs MCP Server (standalone)
  *
- * Self-contained MCP server for the windags-skills plugin.
- * No @workgroup-ai/core dependency — inlines skill loading + triple store.
+ * Self-contained MCP server for the windags-skills plugin. Light deps only —
+ * no @workgroup-ai/core dependency, no native modules, no ML model downloads.
  *
- * Tools (zero API keys):
- *   - windags_skill_search: BM25 ranked skill catalog search
- *   - windags_history: View recent /next-move predictions
+ * Retrieval strategy:
+ *   - When online: forward graft/reference to api.windags.ai (server-side
+ *     cascade: BM25 + attribution + future Tool2Vec/cross-encoder).
+ *   - When offline or the server is reachable but empty: fall back to local
+ *     wink-bm25 over the bundled SKILL.md frontmatter.
+ *
+ * Tools:
+ *   - windags_skill_search    — top-K candidates (cheap, descriptions only)
+ *   - windags_skill_graft     — full skill bodies + reference manifests
+ *   - windags_skill_reference — load one reference file on demand
+ *   - windags_history         — recent /next-move predictions
+ *
+ * Telemetry: opt-in via WINDAGS_TELEMETRY env var ("off" disables, "anonymous"
+ * is the default, "full" sends raw task text). Never blocks tool calls.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -126,6 +137,66 @@ function searchSkills(query, limit) {
 }
 
 // ---------------------------------------------------------------------------
+// Server-side cascade forwarder (api.windags.ai)
+// ---------------------------------------------------------------------------
+
+const API_ENDPOINT = process.env.WINDAGS_API_ENDPOINT ?? "https://api.windags.ai";
+const API_TIMEOUT_MS = 4000;
+const TELEMETRY_MODE = (process.env.WINDAGS_TELEMETRY ?? "anonymous").toLowerCase();
+
+async function tryRemoteGraft(task, count) {
+  if (TELEMETRY_MODE === "off") return null;
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), API_TIMEOUT_MS);
+    const res = await fetch(`${API_ENDPOINT}/v1/graft`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task, count }),
+      signal: ctl.signal,
+    });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !Array.isArray(data.primary)) return null;
+    if (data.primary.length === 0) return null; // empty manifest → fall back to local
+    return data;
+  } catch {
+    return null; // network error, timeout, abort — silent fallback
+  }
+}
+
+function localGraft(task, count) {
+  // BM25 fallback — no body, no reference manifest, just descriptions.
+  // Honest about its limits via the reasoning field.
+  const results = searchSkills(task, count * 3);
+  const primaryCount = Math.min(count, results.length);
+  const primary = results.slice(0, primaryCount).map(r => ({
+    id: r.id,
+    name: r.name,
+    body: `# ${r.name}\n\n${r.description}\n\n_(local BM25 fallback — full body unavailable. Run online for the full graft.)_`,
+    category: r.category,
+    score: r.score,
+    referenceSummaries: {},
+    availableFiles: [],
+  }));
+  const secondary = results.slice(primaryCount, primaryCount + count * 2).map(r => ({
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    category: r.category,
+    tags: r.tags,
+  }));
+  return {
+    task,
+    primary,
+    secondary,
+    reasoning: "Local BM25 fallback (offline or server empty). Selected " +
+      primary.map(p => p.id).join(", "),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Triple Store (inlined — just reads JSON files from .windags/triples/)
 // ---------------------------------------------------------------------------
 
@@ -163,6 +234,88 @@ server.tool(
       return {
         content: [{ type: "text", text: JSON.stringify({ query, total_matches: results.length, skills: results }, null, 2) }],
       };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: err.message }, null, 2) }],
+        isError: true,
+      };
+    }
+  }
+);
+
+server.tool(
+  "windags_skill_graft",
+  "Get expert domain knowledge for a task. Returns full SKILL.md bodies + " +
+    "reference manifests for primary skills, plus descriptions of related " +
+    "secondary skills. When online, uses the server-side cascade at " +
+    "api.windags.ai. Falls back to local BM25 (description-only) when offline.",
+  {
+    task: z.string().describe("Description of the task you need expertise for"),
+    count: z.number().optional().default(2).describe("Number of primary skills to graft (default: 2)"),
+  },
+  async ({ task, count }) => {
+    try {
+      const n = Math.max(1, Math.min(count ?? 2, 8));
+      const remote = await tryRemoteGraft(task, n);
+      const result = remote ?? localGraft(task, n);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: err.message }, null, 2) }],
+        isError: true,
+      };
+    }
+  }
+);
+
+server.tool(
+  "windags_skill_reference",
+  "Load the full content of a reference file from a skill. Use when a grafted " +
+    "skill's referenceSummaries indicate deeper material you need. Reads from " +
+    "the locally bundled skill directory (path-traversal safe).",
+  {
+    skill_id: z.string().describe("The skill ID (e.g., 'caching-strategies')"),
+    file_path: z.string().describe("Path within the skill directory (e.g., 'references/redis-patterns.md')"),
+  },
+  async ({ skill_id, file_path }) => {
+    try {
+      const skillsDir = findSkillsDir();
+      const skillDir = path.join(skillsDir, skill_id);
+      if (!fs.existsSync(skillDir)) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: `Skill '${skill_id}' not found` }) }],
+          isError: true,
+        };
+      }
+      const normalized = file_path.replace(/\.\./g, "").replace(/^\//, "");
+      const fullPath = path.join(skillDir, normalized);
+      if (!fullPath.startsWith(skillDir + path.sep) && fullPath !== skillDir) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: "Invalid path" }) }],
+          isError: true,
+        };
+      }
+      if (!fs.existsSync(fullPath)) {
+        const available = [];
+        for (const sub of ["references", "diagrams", "examples", "scripts", "templates"]) {
+          const dir = path.join(skillDir, sub);
+          if (!fs.existsSync(dir)) continue;
+          for (const f of fs.readdirSync(dir)) {
+            if (!f.startsWith(".") && f !== "INDEX.md") available.push(`${sub}/${f}`);
+          }
+        }
+        return {
+          content: [{ type: "text", text: JSON.stringify({
+            error: `File '${file_path}' not found in skill '${skill_id}'`,
+            available_files: available,
+          }, null, 2) }],
+          isError: true,
+        };
+      }
+      const content = fs.readFileSync(fullPath, "utf-8");
+      return { content: [{ type: "text", text: content }] };
     } catch (err) {
       return {
         content: [{ type: "text", text: JSON.stringify({ success: false, error: err.message }, null, 2) }],
