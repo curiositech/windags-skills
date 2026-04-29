@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Knowledge_Elicitation_of_Recognition_Pri.pdf",
+    "path": "../batch_ndm_remaining/Knowledge_Elicitation_of_Recognition_Pri.pdf",
+    "chars": 135572,
+    "tokens_approx": 33893
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T15:12:51.796396Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 41893,
+        "output": 25842
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T15:12:51.806975Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1915,
+        "output": 3391
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 634.5473787784576,
+  "generated_at": "2026-02-24T15:12:51.815398Z"
+}

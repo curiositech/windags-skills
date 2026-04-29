@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "How to Solve It_ A New Aspect  - Polya, G._7564.epub",
+    "path": "../texts/unprocessed/How to Solve It_ A New Aspect  - Polya, G._7564.epub",
+    "chars": 432278,
+    "tokens_approx": 108069
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-25T23:32:38.720906Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 104904,
+        "output": 27078
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-25T23:32:38.730386Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1562,
+        "output": 3078
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 636.5897982120514,
+  "generated_at": "2026-02-25T23:32:38.739473Z"
+}

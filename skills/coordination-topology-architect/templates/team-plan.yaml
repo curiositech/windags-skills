@@ -1,0 +1,30 @@
+topology: team-loop
+objective: ""
+team:
+  managerSkillId: ""
+  maxRounds: 4
+  roles:
+    - id: lead
+      title: ""
+      goal: ""
+      skillId: ""
+      capabilities: []
+    - id: specialist
+      title: ""
+      goal: ""
+      skillId: ""
+      capabilities: []
+manager_decision_contract:
+  assignments:
+    - roleId: ""
+      task: ""
+      priority: high
+  status: needs-work
+  reasoning: ""
+  feedback: {}
+  newRole:
+    id: ""
+    title: ""
+    goal: ""
+    skillId: ""
+    capabilities: []

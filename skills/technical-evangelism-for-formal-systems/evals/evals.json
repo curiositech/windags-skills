@@ -1,0 +1,44 @@
+{
+  "skill_name": "technical-evangelism-for-formal-systems",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to write a blog post explaining Port Daddy's file claim system to developers who have never heard of TLA+ or formal verification. They use multi-agent setups (Claude Code, Cursor, Copilot agents) and have experienced agents stomping on each other's files. The post should drive installs. Target length: 1500-2000 words.",
+      "expected_output": "A blog post outline or draft that leads with a recognizable pain scenario (agents overwriting each other), introduces file claims as the solution with a runnable demo, explains the formal guarantee in plain English without showing TLA+ specs, and ends with a copy-pasteable install + first-use command sequence. Should not contain undefined jargon in the first 100 words.",
+      "expectations": [
+        "Opens with a concrete failure scenario (file collision, lost work, silent corruption) -- not with 'formal verification' or 'TLA+'",
+        "Includes a runnable code block showing pd begin, pd session files claim, and the conflict detection response",
+        "Explains the safety guarantee in one English sentence without referencing temporal logic or model checking",
+        "CTA is a runnable install command (npm install -g port-daddy && pd start), not a 'learn more' link",
+        "Does not use more than 1 superlative per 500 words",
+        "A developer could follow the instructions and have pd begin working within 15 minutes"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I'm giving a 25-minute conference talk at a practitioner conference (think QCon or Strange Loop). The audience is senior backend engineers who manage distributed systems but have zero formal methods background. I want to explain why multi-agent AI coordination needs formally verified guarantees, using Port Daddy as the running example. Help me design the talk structure, including where to put the Hobbes slide.",
+      "expected_output": "A 25-minute talk outline with time allocations, the Hobbes slide positioned after the failure demo but before the live demo, a clear narrative arc from problem to solution, and speaker notes for the tricky transitions (especially the formalism bridge).",
+      "expectations": [
+        "Time allocations for each section that sum to approximately 25 minutes",
+        "The Hobbes slide appears AFTER the audience has seen/felt the coordination failure, not as the opener",
+        "Includes a live demo section with specific pd commands to run on stage",
+        "Avoids jargon in slide titles -- uses problem-language, not solution-language",
+        "Identifies at least 2 of the 4 failure modes (leading with formalism, leading with hype, undersimplifying, oversimplifying) and explains how the talk avoids them",
+        "Ends with a CTA that the audience can act on from their laptop during the Q&A break"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We want to submit a paper about Port Daddy's coordination protocol to an academic venue. The core contribution is a formally verified agent coordination system with collateralized work contracts (file claims as bonds, session context as collateral, salvage as settlement). We have TLA+ specs, a working implementation with 3200+ tests, and real-world usage data from multi-agent development workflows. Which venue should we target, and how should we position the paper for that venue's reviewers?",
+      "expected_output": "A venue recommendation with justification, a positioning strategy tailored to the expected reviewer audience, an outline of what the paper should emphasize vs. de-emphasize, and specific advice on how to present the mechanism design concepts (bonds, collateral, settlement) to that venue's reviewers.",
+      "expectations": [
+        "Recommends a specific venue (AAMAS, EC, ICSE, or similar) with reasoning tied to the paper's contribution type",
+        "Explains what the reviewers at that venue will look for and how to satisfy them",
+        "Addresses how to present 'collateralized work contracts' to reviewers who may not use that framing",
+        "Distinguishes between what to put in the main paper vs. appendix (e.g., full TLA+ specs in appendix)",
+        "Includes rebuttal prep for at least 2 likely reviewer objections",
+        "Does NOT recommend trying to publish at a venue where the contribution would be a poor fit (e.g., does not suggest IEEE S&P unless security is the core angle)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "skill": "windags-resilience",
+  "updatedAt": "2026-04-18T22:42:59",
+  "provenance": {
+    "kind": "first-party",
+    "owners": [
+      "some-claude-skills"
+    ]
+  },
+  "authorship": {
+    "maintainers": [
+      "some-claude-skills"
+    ]
+  },
+  "lineCount": 383,
+  "structuralComplete": true,
+  "structure": {
+    "decisionPoints": true,
+    "failureModes": true,
+    "workedExamples": true,
+    "qualityGates": true,
+    "notFor": true,
+    "inlineMermaid": 5
+  },
+  "affordances": {
+    "scripts": false,
+    "templates": false,
+    "examples": false,
+    "references": true,
+    "assets": false,
+    "diagrams": true,
+    "referenceFiles": 4,
+    "referenceIndex": true,
+    "diagramCompanions": 6,
+    "visualPreviewCapability": false
+  },
+  "validatorPassed": true
+}

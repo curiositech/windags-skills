@@ -1,0 +1,44 @@
+{
+  "skill_name": "ostrom-commons-governance",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a multi-agent coordination daemon where agents claim ports, files, and locks. Agents register with unique IDs, communicate via pub/sub, and get reaped after 20 minutes without a heartbeat. I want to audit this system against Ostrom's 8 principles. Walk me through each principle and tell me what's satisfied, what's weak, and what's missing.",
+      "expected_output": "A systematic audit of all 8 principles with specific evidence from the described system. Should identify agent registry as satisfying Principle 1 (boundaries), heartbeat costs as partial Principle 2 (proportionality), likely gaps in Principle 3 (collective choice — who sets the rules?) and Principle 8 (nested enterprises — is governance flat?). Should produce an audit summary table.",
+      "expectations": [
+        "All 8 principles are individually evaluated, not skipped or grouped",
+        "Each principle evaluation cites specific system features as evidence",
+        "At least one principle is identified as a GAP with a remediation plan",
+        "Principle 3 (collective choice) is flagged as weak or missing since agents cannot change rules",
+        "Principle 5 (graduated sanctions) evaluates the heartbeat -> stale -> dead -> reap progression as graduated",
+        "An audit summary table with status for all 8 principles is produced"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Our agent system has a problem: we added monitoring (full activity logs, immutable session notes) but agents are complaining that only the system admin can see the logs. Agents cannot query each other's activity or inspect the daemon's decision history. One team says 'we have monitoring, Principle 4 is satisfied.' Another says it isn't. Who is right?",
+      "expected_output": "The second team is right. Identifies this as the Panopticon failure mode / Surveillance Commons anti-pattern. Ostrom's Principle 4 requires monitors to be accountable to the governed. Monitoring that only the operator can see is surveillance, not governance. Must recommend making logs agent-queryable.",
+      "expectations": [
+        "Correctly identifies that Principle 4 is NOT fully satisfied despite extensive logging",
+        "Names this as a Panopticon or Surveillance Commons pattern",
+        "Explains Ostrom's requirement that monitors be accountable to appropriators",
+        "Distinguishes between surveillance (operator-only) and governance (community-visible)",
+        "Provides concrete fix: make activity endpoints queryable by all agents",
+        "Does NOT conflate monitoring existence with monitoring accountability"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "We want to add nested governance to our coordination system. Right now all agents share the same lock TTL (5 minutes), the same heartbeat threshold (10 minutes), and the same sanction rules. But we have 12 projects and they have very different needs — one project has agents that hold locks for 30 seconds, another has agents that legitimately need 2-hour locks. How should we implement Principle 8 (nested enterprises) without over-engineering it?",
+      "expected_output": "Proposes a two-level nesting (system and project) as the starting point. Projects can override system defaults for specific parameters. Warns against over-nesting (the Infinite Hierarchy anti-pattern). Scope-aware rule resolution: check project config, fall back to system config. Project rules refine but cannot contradict system rules.",
+      "expectations": [
+        "Recommends starting with exactly two governance levels (system and project), not more",
+        "Warns against the Infinite Hierarchy anti-pattern explicitly",
+        "Proposes a config override mechanism (project-level settings that override system defaults)",
+        "Specifies that project rules must refine, not contradict, system rules",
+        "Addresses the concrete example: different lock TTLs per project",
+        "Suggests a rule-resolution strategy (check local scope first, fall back to global)"
+      ]
+    }
+  ]
+}

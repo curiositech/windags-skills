@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Revisiting_interview_data_analysing_turn.pdf",
+    "path": "../batch_ndm_remaining/Revisiting_interview_data_analysing_turn.pdf",
+    "chars": 398275,
+    "tokens_approx": 99568
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T15:45:01.095310Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 100650,
+        "output": 23190
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T15:45:01.105053Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1844,
+        "output": 3109
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 590.9667420387268,
+  "generated_at": "2026-02-24T15:45:01.113284Z"
+}

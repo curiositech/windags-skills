@@ -1,0 +1,38 @@
+{
+  "skill": "swiss-modern-website-design",
+  "updatedAt": "2026-04-18T22:42:48",
+  "provenance": {
+    "kind": "first-party",
+    "owners": [
+      "some-claude-skills"
+    ]
+  },
+  "authorship": {
+    "maintainers": [
+      "some-claude-skills"
+    ]
+  },
+  "lineCount": 281,
+  "structuralComplete": true,
+  "structure": {
+    "decisionPoints": true,
+    "failureModes": true,
+    "workedExamples": true,
+    "qualityGates": true,
+    "notFor": true,
+    "inlineMermaid": 1
+  },
+  "affordances": {
+    "scripts": true,
+    "templates": true,
+    "examples": false,
+    "references": true,
+    "assets": true,
+    "diagrams": true,
+    "referenceFiles": 5,
+    "referenceIndex": true,
+    "diagramCompanions": 3,
+    "visualPreviewCapability": false
+  },
+  "validatorPassed": true
+}

@@ -1,0 +1,44 @@
+{
+  "skill_name": "game-theoretic-agent-incentives",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We have a multi-agent system where agents claim files before editing them, but claims are advisory — nothing enforces them. Agents interact repeatedly, and every claim and edit is logged in an immutable audit trail. Prove that truthful file claim signaling is a Nash equilibrium under these conditions. Be precise about strategy profiles, deviation analysis, and the exact conditions required.",
+      "expected_output": "A formal equilibrium proof showing: (1) a specific trigger strategy profile (e.g., graduated punishment), (2) deviation analysis proving the one-shot gain from false claiming is outweighed by discounted future punishment cost, (3) explicit conditions — observable history via immutable notes, persistent identity (no Sybil), and discount factor above a computed threshold. Must reference the folk theorem as the enabling result and explain why removing any condition (observability, identity persistence, or patience) breaks the equilibrium.",
+      "expectations": [
+        "Defines a concrete strategy profile with initial action, punishment trigger, punishment duration, and forgiveness rule",
+        "Computes or bounds the one-shot deviation gain vs discounted punishment cost",
+        "States the minimum discount factor (delta threshold) for cooperation to hold",
+        "Explains that immutable note trail provides the observability required by the folk theorem",
+        "Identifies Sybil attacks (identity re-registration) as the primary threat to the equilibrium",
+        "Does NOT conclude that advisory claims are useless because defection dominates the one-shot stage game"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Our daemon coordinates 8 agents working on a monorepo. Two agents frequently want the same files, causing merge conflicts even though both file claims correctly. We want the daemon to act as a mediator that tells each agent which files to work on. Design this as a correlated equilibrium. How does this improve on the Nash equilibrium, and what are the obedience constraints?",
+      "expected_output": "A correlated equilibrium design where the daemon is the correlating device. Must specify: the signal space (which agent gets priority for which files), the correlation distribution (how the daemon decides), and the obedience constraints (why each agent follows the recommendation). Must show that this Pareto-dominates the unmediated Nash equilibrium where both agents race for the same files. Should mention the price of anarchy reduction from daemon mediation.",
+      "expectations": [
+        "Models the daemon as the correlating device that sends private recommendations",
+        "Specifies what signal each agent receives (e.g., 'claim file X' or 'wait for file X')",
+        "Verifies obedience constraints: each agent prefers following its recommendation given others follow theirs",
+        "Shows welfare improvement over unmediated Nash equilibrium (fewer conflicts, more parallel work)",
+        "Addresses what happens if an agent ignores the daemon recommendation (deviation payoff analysis)",
+        "Does NOT require enforcement — the equilibrium relies on incentives, not locks"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "An agent in our system has started re-registering under new identities after causing merge conflicts. It claims files, edits conflicting files it didn't claim, then re-registers as a 'new' agent with a clean history. Other agents can't punish it because the identity disappears. What game-theoretic concept explains why this breaks cooperation, and how do we fix it?",
+      "expected_output": "Identifies this as a Sybil attack that destroys the shadow of the future, making the discount factor effectively zero. The folk theorem no longer applies because punishment cannot be directed at a persistent identity. Proposes fixes: identity anchoring (tie to worktree, SSH key), registration cost (bonding), cool-down periods, and reputation migration. Should explain that this is fundamentally about restoring the conditions for the folk theorem, not about adding enforcement.",
+      "expectations": [
+        "Names the attack as a Sybil attack or identity laundering",
+        "Explains that it destroys the shadow of the future by setting the effective discount factor to zero",
+        "References the folk theorem's requirement for persistent identities and observable histories",
+        "Proposes at least two concrete countermeasures (identity anchoring, registration cost, cooldown, reputation carry-over)",
+        "Explains why enforcement alone is insufficient — a new identity bypasses any lock-based system too",
+        "Does NOT suggest evolutionary game theory or biological analogies to analyze this"
+      ]
+    }
+  ]
+}

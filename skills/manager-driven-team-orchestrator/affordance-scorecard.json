@@ -1,0 +1,38 @@
+{
+  "skill": "manager-driven-team-orchestrator",
+  "updatedAt": "2026-04-19T00:01:14",
+  "provenance": {
+    "kind": "first-party",
+    "owners": [
+      "some-claude-skills"
+    ]
+  },
+  "authorship": {
+    "maintainers": [
+      "some-claude-skills"
+    ]
+  },
+  "lineCount": 124,
+  "structuralComplete": false,
+  "structure": {
+    "decisionPoints": true,
+    "failureModes": true,
+    "workedExamples": false,
+    "qualityGates": true,
+    "notFor": true,
+    "inlineMermaid": 0
+  },
+  "affordances": {
+    "scripts": false,
+    "templates": false,
+    "examples": false,
+    "references": false,
+    "assets": false,
+    "diagrams": false,
+    "referenceFiles": 0,
+    "referenceIndex": false,
+    "diagramCompanions": 0,
+    "visualPreviewCapability": false
+  },
+  "validatorPassed": true
+}

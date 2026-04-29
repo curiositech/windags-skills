@@ -1,0 +1,42 @@
+{
+  "skill": "next-move-marketing",
+  "updatedAt": "2026-04-18T22:42:30",
+  "provenance": {
+    "kind": "internal-worktree-recovered",
+    "sourceRepo": "workgroup-ai",
+    "recoveredAt": "2026-04-17T02:52:21-07:00",
+    "recoveredFrom": "/Users/erichowens/coding/workgroup-ai/.claude/worktrees/agent-aa6fba4b/skills/next-move-marketing",
+    "worktree": "agent-aa6fba4b",
+    "owners": [
+      "some-claude-skills"
+    ]
+  },
+  "authorship": {
+    "maintainers": [
+      "some-claude-skills"
+    ]
+  },
+  "lineCount": 361,
+  "structuralComplete": true,
+  "structure": {
+    "decisionPoints": true,
+    "failureModes": true,
+    "workedExamples": true,
+    "qualityGates": true,
+    "notFor": true,
+    "inlineMermaid": 1
+  },
+  "affordances": {
+    "scripts": false,
+    "templates": false,
+    "examples": false,
+    "references": false,
+    "assets": false,
+    "diagrams": true,
+    "referenceFiles": 0,
+    "referenceIndex": false,
+    "diagramCompanions": 2,
+    "visualPreviewCapability": false
+  },
+  "validatorPassed": true
+}

@@ -1,0 +1,22 @@
+topology: blackboard
+objective: ""
+blackboard:
+  boardKeys:
+    - facts
+    - hypotheses
+    - evidence
+    - unresolved
+  initialState:
+    facts: []
+    hypotheses: []
+    evidence: []
+    unresolved: []
+  agents:
+    - skillId: ""
+      reads:
+        - evidence
+        - unresolved
+      writes:
+        - hypotheses
+      activationCondition: ""
+  completionCondition: ""

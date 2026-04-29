@@ -1,0 +1,53 @@
+{
+  "skill_name": "runtime-verification-for-agents",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I have a TLA+ invariant that says 'no agent can hold more than 3 file claims simultaneously.' My daemon processes about 200 file claim requests per second. Should I check this synchronously on every claimFile() call, or use sampled checking? What are the trade-offs?",
+      "expected_output": "A decision tree analysis landing on synchronous checking (safety-critical, cheap per-check). Must discuss the cost of a COUNT query per call, propose caching the count in-memory, and address what happens if the check fails mid-burst.",
+      "expectations": [
+        "Identifies this as a safety-critical invariant requiring synchronous checking",
+        "Calculates or estimates the per-check cost and compares it to the latency budget",
+        "Proposes maintaining a cached count per agent to avoid repeated COUNT queries",
+        "Discusses the false positive risk from stale cache during concurrent operations",
+        "Addresses remediation: reject the claim, not salvage the agent"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "My Arbiter agent keeps crashing every 3-4 hours. While it's down, no invariants are being checked and violations are accumulating silently. The main daemon doesn't even know the Arbiter is dead. How do I fix this?",
+      "expected_output": "Identifies this as the 'who watches the watchman' problem. Proposes a heartbeat canary in the main daemon, restart policy with crash-loop detection, and an out-of-band alert mechanism.",
+      "expectations": [
+        "Names the 'who watches the watchman' or 'quis custodiet' problem",
+        "Proposes a heartbeat canary mechanism with specific timing (e.g., publish every N seconds, alert if missed for 2N)",
+        "Includes a crash-loop breaker (e.g., halt after 3 crashes in 10 minutes rather than infinite restart)",
+        "Proposes an out-of-band alert channel (not dependent on the Arbiter itself)",
+        "Recommends a full sweep immediately after restart to catch violations accumulated during downtime"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "After deploying runtime monitors for NoteMonotonicity, we're getting 50+ violation alerts per hour. Investigation shows they're all false positives caused by NTP clock adjustments on our server. The ops team is ignoring all Arbiter alerts now. How do we fix the alert fatigue without losing real violation detection?",
+      "expected_output": "Identifies clock skew as root cause and alert fatigue as the secondary damage. Proposes switching from wall-clock to HLC/Lamport clocks for temporal ordering, adding a re-check gate before alerting, and implementing severity tiers with digest aggregation for low-severity violations.",
+      "expectations": [
+        "Identifies NTP clock adjustments as the root cause of false positives",
+        "Names alert fatigue as a critical secondary problem that undermines the entire monitoring system",
+        "Proposes Hybrid Logical Clocks or Lamport clocks as a structural fix for temporal ordering",
+        "Recommends a double-check gate: re-verify with a fresh snapshot before triggering remediation",
+        "Proposes severity tiers so low-confidence violations aggregate into digests rather than individual alerts"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "I want to compile the TLA+ CrashRecovery liveness property ('dead agents are eventually salvaged') into a runtime monitor. But liveness properties can't be checked at a single point in time — they're about eventual behavior. How do I turn this into something I can actually monitor?",
+      "expected_output": "Explains the fundamental difference between safety and liveness in runtime verification. Proposes bounded liveness: convert 'eventually salvaged' into 'salvaged within T seconds.' Uses a sampled monitor that tracks dead-agent timestamps and alerts when any agent exceeds the bound.",
+      "expectations": [
+        "Explains that liveness properties require observing behavior over time, not at a single state",
+        "Proposes bounded liveness as the compilation strategy: 'eventually' becomes 'within T seconds'",
+        "Chooses sampled checking (not synchronous) as the appropriate strategy for liveness",
+        "Describes the monitor state: a map of dead-agent-id to death-timestamp",
+        "Specifies what happens when the bound is exceeded: alert vs auto-trigger reaper vs escalate to operator"
+      ]
+    }
+  ]
+}

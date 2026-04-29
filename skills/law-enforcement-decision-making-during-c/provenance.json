@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "Law_enforcement_decision_making_during_c.pdf",
+    "path": "../batch_ndm_remaining/Law_enforcement_decision_making_during_c.pdf",
+    "chars": 244388,
+    "tokens_approx": 61097
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T15:23:59.555196Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 58836,
+        "output": 26852
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T15:23:59.565300Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1483,
+        "output": 2852
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 652.7511541843414,
+  "generated_at": "2026-02-24T15:23:59.573947Z"
+}

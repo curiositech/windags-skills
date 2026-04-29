@@ -1,0 +1,17 @@
+topology: recurring
+objective: ""
+recurring:
+  node:
+    id: repeated-check
+    skill_id: ""
+    role_description: ""
+    why: ""
+    input_contract: ""
+    output_contract: ""
+    commitment_level: COMMITTED
+    model_tier: sonnet
+    estimated_minutes: 5
+    estimated_cost_usd: 0.02
+    cascade_depth: 0
+  exitCondition: ""
+  maxIterations: 10

@@ -1,0 +1,77 @@
+:root {
+  --swiss-color-paper: #f7f5ef;
+  --swiss-color-ink: #111111;
+  --swiss-color-muted: #6f6a61;
+  --swiss-color-rule: #d9d3c7;
+  --swiss-color-accent: #dd1f26;
+
+  --swiss-font-sans: "Inter", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --swiss-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+
+  --swiss-text-display: clamp(3rem, 6vw, 6rem);
+  --swiss-text-h1: clamp(2.4rem, 4vw, 4rem);
+  --swiss-text-h2: clamp(1.8rem, 2.8vw, 2.6rem);
+  --swiss-text-h3: clamp(1.3rem, 2vw, 1.75rem);
+  --swiss-text-body: 1rem;
+  --swiss-text-small: 0.8125rem;
+
+  --swiss-leading-tight: 1.02;
+  --swiss-leading-heading: 1.08;
+  --swiss-leading-body: 1.52;
+
+  --swiss-space-1: 0.25rem;
+  --swiss-space-2: 0.5rem;
+  --swiss-space-3: 0.75rem;
+  --swiss-space-4: 1rem;
+  --swiss-space-5: 1.5rem;
+  --swiss-space-6: 2rem;
+  --swiss-space-7: 3rem;
+  --swiss-space-8: 4rem;
+  --swiss-space-9: 6rem;
+  --swiss-space-10: 8rem;
+
+  --swiss-radius-sm: 0.125rem;
+  --swiss-radius-md: 0.25rem;
+  --swiss-shadow-none: none;
+
+  --swiss-max-width: 90rem;
+  --swiss-measure: 62ch;
+  --swiss-grid-columns: 12;
+  --swiss-grid-gap: 1rem;
+}
+
+body {
+  background: var(--swiss-color-paper);
+  color: var(--swiss-color-ink);
+  font-family: var(--swiss-font-sans);
+  font-size: var(--swiss-text-body);
+  line-height: var(--swiss-leading-body);
+}
+
+.swiss-shell {
+  width: min(calc(100% - 2rem), var(--swiss-max-width));
+  margin-inline: auto;
+}
+
+.swiss-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--swiss-grid-columns), minmax(0, 1fr));
+  gap: var(--swiss-grid-gap);
+}
+
+.swiss-rule {
+  border: 0;
+  border-top: 1px solid var(--swiss-color-rule);
+}
+
+.swiss-display {
+  font-size: var(--swiss-text-display);
+  line-height: var(--swiss-leading-tight);
+  letter-spacing: -0.04em;
+  font-weight: 700;
+  max-width: 11ch;
+}
+
+.swiss-body {
+  max-width: var(--swiss-measure);
+}

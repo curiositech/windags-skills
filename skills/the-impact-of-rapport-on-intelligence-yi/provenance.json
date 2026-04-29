@@ -1,0 +1,39 @@
+{
+  "source": {
+    "file": "The_impact_of_rapport_on_intelligence_yi.pdf",
+    "path": "../batch_ndm_remaining/The_impact_of_rapport_on_intelligence_yi.pdf",
+    "chars": 67698,
+    "tokens_approx": 16924
+  },
+  "extractions": [
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "reading",
+      "timestamp": "2026-02-24T15:55:57.663819Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 22328,
+        "output": 26947
+      }
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "model_version": "sonnet-4.6",
+      "pass": "skill",
+      "timestamp": "2026-02-24T15:55:57.673769Z",
+      "script": "intelligent_distill.py",
+      "script_version": "947c722",
+      "pipeline": "single-pass",
+      "tokens": {
+        "input": 1504,
+        "output": 2947
+      }
+    }
+  ],
+  "total_cost_usd": 0.0,
+  "duration_seconds": 641.5686647891998,
+  "generated_at": "2026-02-24T15:55:57.683695Z"
+}

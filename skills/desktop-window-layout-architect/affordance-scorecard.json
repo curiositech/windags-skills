@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "dimensions": [
+    {
+      "id": "surface-model",
+      "label": "Surface Model",
+      "goal": "Keep related work in one primary window until a distinct task lifecycle exists."
+    },
+    {
+      "id": "geometry-contract",
+      "label": "Geometry Contract",
+      "goal": "Define default sizes, minimums, snap-safe widths, and explicit reversible modes."
+    },
+    {
+      "id": "placement-contract",
+      "label": "Placement Contract",
+      "goal": "Use real work-area measurement, remembered normal bounds, and reliable recovery rules."
+    },
+    {
+      "id": "chrome-density",
+      "label": "Chrome Density",
+      "goal": "Preserve field for the work and keep title bars and support controls subordinate."
+    },
+    {
+      "id": "adaptive-presets",
+      "label": "Adaptive Presets",
+      "goal": "Switch modes when minimums do not fit instead of squeezing or overlapping panes."
+    },
+    {
+      "id": "platform-affordances",
+      "label": "Platform Affordances",
+      "goal": "Respect native caption behavior, restore semantics, and platform-specific window expectations."
+    }
+  ],
+  "penalties": {
+    "hardcoded-work-area": {
+      "dimension": "placement-contract",
+      "points": 2
+    },
+    "viewport-as-work-area": {
+      "dimension": "placement-contract",
+      "points": 1
+    },
+    "boolean-maximize-state": {
+      "dimension": "geometry-contract",
+      "points": 2
+    },
+    "snap-without-restore-bounds": {
+      "dimension": "placement-contract",
+      "points": 2
+    },
+    "percentage-first-layout": {
+      "dimension": "adaptive-presets",
+      "points": 2
+    },
+    "sqrt-grid-tiling": {
+      "dimension": "surface-model",
+      "points": 1
+    },
+    "static-cascade": {
+      "dimension": "placement-contract",
+      "points": 1
+    },
+    "unclamped-move": {
+      "dimension": "placement-contract",
+      "points": 2
+    },
+    "resize-without-work-area-clamp": {
+      "dimension": "geometry-contract",
+      "points": 2
+    },
+    "missing-surface-roles": {
+      "dimension": "surface-model",
+      "points": 2
+    },
+    "always-visible-snap-controls": {
+      "dimension": "chrome-density",
+      "points": 1
+    },
+    "heavy-shell-chrome": {
+      "dimension": "chrome-density",
+      "points": 2
+    },
+    "no-persisted-window-state": {
+      "dimension": "platform-affordances",
+      "points": 2
+    }
+  }
+}
