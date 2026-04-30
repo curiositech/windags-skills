@@ -3,23 +3,29 @@
 /**
  * WinDAGs MCP Server (standalone)
  *
- * Self-contained MCP server for the windags-skills plugin. Light deps only —
- * no @workgroup-ai/core dependency, no native modules, no ML model downloads.
+ * Self-contained MCP server for the windags-skills plugin. Light deps —
+ * no @workgroup-ai/core dependency.
  *
- * Retrieval strategy:
- *   - When online: forward graft/reference to api.windags.ai (server-side
- *     cascade: BM25 + attribution + future Tool2Vec/cross-encoder).
- *   - When offline or the server is reachable but empty: fall back to local
- *     wink-bm25 over the bundled SKILL.md frontmatter.
+ * Retrieval (all local, no API keys):
+ *   Stage 1 — Lexical:  wink-bm25 over SKILL.md frontmatter
+ *   Stage 2 — Semantic: cosine vs bundled all-MiniLM-L6-v2 vectors (~800KB)
+ *                       Query is embedded on-demand (Transformers.js, ~25MB
+ *                       quantized model, downloaded once on first call,
+ *                       cached forever in ~/.cache/transformers-js/)
+ *   Stage 3 — Fusion:   reciprocal rank fusion (K=60)
+ *
+ * Stage 4 (cross-encoder rerank) and Stage 5 (attribution k-NN) live on
+ * the /tools page Preview section. Not implemented here yet.
  *
  * Tools:
- *   - windags_skill_search    — top-K candidates (cheap, descriptions only)
- *   - windags_skill_graft     — full skill bodies + reference manifests
+ *   - windags_skill_search    — top-K candidates (RRF cascade, descriptions only)
+ *   - windags_skill_graft     — full SKILL.md bodies for primary + adjacency
  *   - windags_skill_reference — load one reference file on demand
  *   - windags_history         — recent /next-move predictions
  *
- * Telemetry: opt-in via WINDAGS_TELEMETRY env var ("off" disables, "anonymous"
- * is the default, "full" sends raw task text). Never blocks tool calls.
+ * Telemetry: WINDAGS_TELEMETRY env var ("off" disables, "anonymous" default,
+ * "full" sends raw task text). Currently a no-op pending the api.windags.ai
+ * /events endpoint — flag is wired so users can opt out preemptively.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -30,6 +36,8 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
+import { embedQuery, loadCorpus, topKSemantic, rrfFuse } from "./cascade.js";
+
 const require = createRequire(import.meta.url);
 const bm25 = require("wink-bm25-text-search");
 const nlp = require("wink-nlp-utils");
@@ -38,44 +46,15 @@ const yaml = require("js-yaml");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ---------------------------------------------------------------------------
-// Skill Loader (inlined from @workgroup-ai/core)
-// ---------------------------------------------------------------------------
-
-function loadSkills(skillsDir) {
-  if (!fs.existsSync(skillsDir)) return [];
-  const skills = [];
-  for (const entry of fs.readdirSync(skillsDir, { withFileTypes: true })) {
-    if (!entry.isDirectory()) continue;
-    const skillMd = path.join(skillsDir, entry.name, "SKILL.md");
-    if (!fs.existsSync(skillMd)) continue;
-    try {
-      const content = fs.readFileSync(skillMd, "utf-8");
-      const match = content.match(/^---\n([\s\S]*?)\n---/);
-      if (!match) continue;
-      const fm = yaml.load(match[1]);
-      skills.push({
-        id: entry.name,
-        name: fm.name || entry.name,
-        description: fm.description || "",
-        category: fm.category || "Uncategorized",
-        tags: fm.tags || [],
-      });
-    } catch { /* skip malformed */ }
-  }
-  return skills;
-}
+const TELEMETRY_MODE = (process.env.WINDAGS_TELEMETRY ?? "anonymous").toLowerCase();
+const TRANSFORMERS_CACHE = process.env.WINDAGS_MODEL_CACHE
+  ?? path.join(process.env.HOME ?? ".", ".cache", "transformers-js");
 
 // ---------------------------------------------------------------------------
-// BM25 Search
+// Skill loader (reads SKILL.md frontmatter + body from the bundled skills/)
 // ---------------------------------------------------------------------------
-
-let cachedSkills = [];
-let skillMap = new Map();
-let searchEngine = null;
 
 function findSkillsDir() {
-  // Skills are siblings to mcp-server/ in the plugin repo
   const candidates = [
     path.resolve(__dirname, "..", "skills"),
     path.resolve(process.cwd(), "skills"),
@@ -86,17 +65,76 @@ function findSkillsDir() {
   return candidates[0];
 }
 
-function ensureSearchReady() {
-  if (searchEngine) return;
-  cachedSkills = loadSkills(findSkillsDir());
-  skillMap = new Map(cachedSkills.map((s) => [s.id, s]));
+const skillsDir = findSkillsDir();
+let cachedSkills = [];
+let skillMap = new Map();
 
-  searchEngine = bm25();
-  searchEngine.defineConfig({
+function readSkillFile(id) {
+  const md = path.join(skillsDir, id, "SKILL.md");
+  if (!fs.existsSync(md)) return null;
+  const raw = fs.readFileSync(md, "utf-8");
+  const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!m) return null;
+  let fm;
+  try { fm = yaml.load(m[1]) ?? {}; } catch { return null; }
+  return { id, frontmatter: fm, body: m[2] ?? "", raw };
+}
+
+function loadSkillIndex() {
+  if (!fs.existsSync(skillsDir)) return [];
+  const out = [];
+  for (const entry of fs.readdirSync(skillsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const file = readSkillFile(entry.name);
+    if (!file) continue;
+    const fm = file.frontmatter;
+    out.push({
+      id: file.id,
+      name: fm.name || file.id,
+      description: fm.description || "",
+      category: fm.category || "Uncategorized",
+      tags: Array.isArray(fm.tags) ? fm.tags : [],
+    });
+  }
+  return out;
+}
+
+function listSkillAssets(skillId) {
+  const dir = path.join(skillsDir, skillId);
+  if (!fs.existsSync(dir)) return { references: [], scripts: [], templates: [], examples: [] };
+  const out = { references: [], scripts: [], templates: [], examples: [] };
+  for (const sub of Object.keys(out)) {
+    const subDir = path.join(dir, sub);
+    if (!fs.existsSync(subDir)) continue;
+    for (const f of fs.readdirSync(subDir)) {
+      if (f.startsWith(".") || f === "INDEX.md") continue;
+      try {
+        const stat = fs.statSync(path.join(subDir, f));
+        out[sub].push({ path: `${sub}/${f}`, bytes: stat.size });
+      } catch { /* skip */ }
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Stage 1 — Lexical (BM25)
+// ---------------------------------------------------------------------------
+
+let bm25Engine = null;
+
+function ensureBm25Ready() {
+  if (bm25Engine) return;
+  if (cachedSkills.length === 0) {
+    cachedSkills = loadSkillIndex();
+    skillMap = new Map(cachedSkills.map((s) => [s.id, s]));
+  }
+  bm25Engine = bm25();
+  bm25Engine.defineConfig({
     fldWeights: { name: 4, description: 2, tags: 3, category: 1, id_words: 2 },
     bm25Params: { k1: 1.5, b: 0.75, k: 1 },
   });
-  searchEngine.definePrepTasks([
+  bm25Engine.definePrepTasks([
     nlp.string.lowerCase,
     nlp.string.removeExtraSpaces,
     nlp.string.tokenize0,
@@ -104,100 +142,139 @@ function ensureSearchReady() {
     nlp.tokens.stem,
     nlp.tokens.propagateNegations,
   ]);
-
-  for (const skill of cachedSkills) {
-    searchEngine.addDoc({
-      name: skill.name || "",
-      description: (skill.description || "").slice(0, 500),
-      tags: (skill.tags || []).join(" "),
-      category: skill.category || "",
-      id_words: skill.id.replace(/-/g, " "),
-    }, skill.id);
+  for (const s of cachedSkills) {
+    bm25Engine.addDoc({
+      name: s.name,
+      description: (s.description || "").slice(0, 500),
+      tags: (s.tags || []).join(" "),
+      category: s.category,
+      id_words: s.id.replace(/-/g, " "),
+    }, s.id);
   }
-  searchEngine.consolidate();
+  bm25Engine.consolidate();
 }
 
-function searchSkills(query, limit) {
-  ensureSearchReady();
-  if (!query || !query.trim()) {
-    return cachedSkills.slice(0, limit).map((s) => ({ ...s, score: 0 }));
+function bm25Search(query, limit) {
+  ensureBm25Ready();
+  if (!query?.trim()) {
+    return cachedSkills.slice(0, limit).map((s) => ({ id: s.id, score: 0 }));
   }
-  const results = searchEngine.search(query, limit);
-  return results.map(([id, score]) => {
-    const s = skillMap.get(id);
+  const results = bm25Engine.search(query, limit);
+  return results.map(([id, score]) => ({ id, score: +score.toFixed(4) }));
+}
+
+// ---------------------------------------------------------------------------
+// Stage 2 + 3 — Semantic + RRF
+// ---------------------------------------------------------------------------
+
+const corpus = loadCorpus(path.join(__dirname, "data"));
+
+async function cascadeSearch(query, limit) {
+  ensureBm25Ready();
+  const RECALL = Math.max(30, limit * 4);
+
+  const lexical = bm25Search(query, RECALL);
+
+  if (!corpus) {
+    // No bundled embeddings → degrade gracefully to BM25-only.
+    return lexical.slice(0, limit).map((r, rank) => ({
+      ...r,
+      fusedScore: 1 / (60 + rank + 1),
+      breakdown: { lexical: { rank: rank + 1 } },
+    }));
+  }
+
+  let semantic = [];
+  try {
+    const qVec = await embedQuery(query, TRANSFORMERS_CACHE);
+    semantic = topKSemantic(qVec, corpus, RECALL);
+  } catch (err) {
+    // Model load failed (offline + no cache, or disk full). Fall back to BM25.
+    semantic = [];
+  }
+
+  const fused = rrfFuse(
+    [
+      { name: "lexical", items: lexical },
+      { name: "semantic", items: semantic },
+    ],
+    { K: 60, limit },
+  );
+
+  return fused;
+}
+
+function decorate(results) {
+  return results.map((r) => {
+    const meta = skillMap.get(r.id);
     return {
-      id,
-      name: s?.name ?? id,
-      description: s?.description ?? "",
-      category: s?.category ?? "Uncategorized",
-      tags: s?.tags ?? [],
-      score: Math.round(score * 1000) / 1000,
+      id: r.id,
+      name: meta?.name ?? r.id,
+      description: meta?.description ?? "",
+      category: meta?.category ?? "Uncategorized",
+      tags: meta?.tags ?? [],
+      score: r.fusedScore,
+      breakdown: r.breakdown,
     };
   });
 }
 
 // ---------------------------------------------------------------------------
-// Server-side cascade forwarder (api.windags.ai)
+// Graft — load real SKILL.md bodies for the top primaries
 // ---------------------------------------------------------------------------
 
-const API_ENDPOINT = process.env.WINDAGS_API_ENDPOINT ?? "https://api.windags.ai";
-const API_TIMEOUT_MS = 4000;
-const TELEMETRY_MODE = (process.env.WINDAGS_TELEMETRY ?? "anonymous").toLowerCase();
+async function localGraft(task, count) {
+  const recall = await cascadeSearch(task, count + 6);
+  const primaryIds = recall.slice(0, count).map((r) => r.id);
+  const adjacencyIds = recall.slice(count, count + 4).map((r) => r.id);
 
-async function tryRemoteGraft(task, count) {
-  if (TELEMETRY_MODE === "off") return null;
-  try {
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), API_TIMEOUT_MS);
-    const res = await fetch(`${API_ENDPOINT}/v1/graft`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ task, count }),
-      signal: ctl.signal,
-    });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data || !Array.isArray(data.primary)) return null;
-    if (data.primary.length === 0) return null; // empty manifest → fall back to local
-    return data;
-  } catch {
-    return null; // network error, timeout, abort — silent fallback
-  }
-}
+  const primary = primaryIds.map((id) => {
+    const file = readSkillFile(id);
+    const meta = skillMap.get(id);
+    if (!file) {
+      return {
+        id,
+        name: meta?.name ?? id,
+        body: `# ${meta?.name ?? id}\n\n_(Skill body unavailable on this install.)_`,
+        category: meta?.category,
+        assets: { references: [], scripts: [], templates: [], examples: [] },
+      };
+    }
+    return {
+      id,
+      name: file.frontmatter.name || id,
+      body: file.body.trimStart(),
+      frontmatter: file.frontmatter,
+      category: file.frontmatter.category,
+      assets: listSkillAssets(id),
+    };
+  });
 
-function localGraft(task, count) {
-  // BM25 fallback — no body, no reference manifest, just descriptions.
-  // Honest about its limits via the reasoning field.
-  const results = searchSkills(task, count * 3);
-  const primaryCount = Math.min(count, results.length);
-  const primary = results.slice(0, primaryCount).map(r => ({
-    id: r.id,
-    name: r.name,
-    body: `# ${r.name}\n\n${r.description}\n\n_(local BM25 fallback — full body unavailable. Run online for the full graft.)_`,
-    category: r.category,
-    score: r.score,
-    referenceSummaries: {},
-    availableFiles: [],
-  }));
-  const secondary = results.slice(primaryCount, primaryCount + count * 2).map(r => ({
-    id: r.id,
-    name: r.name,
-    description: r.description,
-    category: r.category,
-    tags: r.tags,
-  }));
+  const adjacencies = adjacencyIds.map((id) => {
+    const meta = skillMap.get(id);
+    return {
+      id,
+      name: meta?.name ?? id,
+      description: meta?.description ?? "",
+      category: meta?.category,
+    };
+  });
+
+  const stage = corpus ? "lexical+semantic+rrf" : "lexical-only (no embeddings.bin found)";
+
   return {
     task,
     primary,
-    secondary,
-    reasoning: "Local BM25 fallback (offline or server empty). Selected " +
-      primary.map(p => p.id).join(", "),
+    adjacencies,
+    cascade: { stage, recall: recall.length, primary: primary.length },
+    reasoning:
+      `Local cascade (${stage}). Primaries: ${primaryIds.join(", ")}. ` +
+      `Adjacencies surface neighboring skills for awareness without burning context on full bodies.`,
   };
 }
 
 // ---------------------------------------------------------------------------
-// Triple Store (inlined — just reads JSON files from .windags/triples/)
+// Triple Store (recent /next-move predictions)
 // ---------------------------------------------------------------------------
 
 function listTriples(projectPath, limit) {
@@ -219,20 +296,29 @@ function listTriples(projectPath, limit) {
 // MCP Server
 // ---------------------------------------------------------------------------
 
-const server = new McpServer({ name: "windags", version: "0.1.0" });
+const server = new McpServer({ name: "windags", version: "0.2.0" });
 
 server.tool(
   "windags_skill_search",
-  "Search the WinDAGs skill catalog using BM25 ranked retrieval with Porter stemming. Zero API keys needed.",
+  "Search the WinDAGs skill catalog with the local cascade: BM25 lexical + " +
+    "all-MiniLM-L6-v2 semantic similarity, fused via reciprocal rank fusion. " +
+    "Returns ranked candidates with descriptions only (no full bodies). Pair " +
+    "with windags_skill_graft to load the winners. Zero API keys.",
   {
     query: z.string().describe("Natural language search query"),
     limit: z.number().optional().default(10).describe("Max results (default: 10)"),
   },
   async ({ query, limit }) => {
     try {
-      const results = searchSkills(query, limit ?? 10);
+      const fused = await cascadeSearch(query, limit ?? 10);
+      const skills = decorate(fused);
       return {
-        content: [{ type: "text", text: JSON.stringify({ query, total_matches: results.length, skills: results }, null, 2) }],
+        content: [{ type: "text", text: JSON.stringify({
+          query,
+          stage: corpus ? "lexical+semantic+rrf" : "lexical-only",
+          total_matches: skills.length,
+          skills,
+        }, null, 2) }],
       };
     } catch (err) {
       return {
@@ -240,24 +326,26 @@ server.tool(
         isError: true,
       };
     }
-  }
+  },
 );
 
 server.tool(
   "windags_skill_graft",
-  "Get expert domain knowledge for a task. Returns full SKILL.md bodies + " +
-    "reference manifests for primary skills, plus descriptions of related " +
-    "secondary skills. When online, uses the server-side cascade at " +
-    "api.windags.ai. Falls back to local BM25 (description-only) when offline.",
+  "Get expert domain knowledge for a task. Runs the local cascade " +
+    "(lexical + semantic + RRF), returns full SKILL.md bodies for the top N " +
+    "primary skills, plus name/description/category for adjacent skills the " +
+    "agent should be aware of, plus a per-skill asset manifest (references, " +
+    "scripts, templates, examples) the agent can call windags_skill_reference " +
+    "on. Local-only. Zero API keys. The MiniLM model is downloaded once on " +
+    "first call (~25MB).",
   {
     task: z.string().describe("Description of the task you need expertise for"),
-    count: z.number().optional().default(2).describe("Number of primary skills to graft (default: 2)"),
+    count: z.number().optional().default(4).describe("Number of primary skills to graft (default: 4)"),
   },
   async ({ task, count }) => {
     try {
-      const n = Math.max(1, Math.min(count ?? 2, 8));
-      const remote = await tryRemoteGraft(task, n);
-      const result = remote ?? localGraft(task, n);
+      const n = Math.max(1, Math.min(count ?? 4, 8));
+      const result = await localGraft(task, n);
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
@@ -267,21 +355,20 @@ server.tool(
         isError: true,
       };
     }
-  }
+  },
 );
 
 server.tool(
   "windags_skill_reference",
   "Load the full content of a reference file from a skill. Use when a grafted " +
-    "skill's referenceSummaries indicate deeper material you need. Reads from " +
-    "the locally bundled skill directory (path-traversal safe).",
+    "skill's asset manifest indicates deeper material is worth pulling into " +
+    "context. Path-traversal safe.",
   {
     skill_id: z.string().describe("The skill ID (e.g., 'caching-strategies')"),
     file_path: z.string().describe("Path within the skill directory (e.g., 'references/redis-patterns.md')"),
   },
   async ({ skill_id, file_path }) => {
     try {
-      const skillsDir = findSkillsDir();
       const skillDir = path.join(skillsDir, skill_id);
       if (!fs.existsSync(skillDir)) {
         return {
@@ -298,14 +385,9 @@ server.tool(
         };
       }
       if (!fs.existsSync(fullPath)) {
-        const available = [];
-        for (const sub of ["references", "diagrams", "examples", "scripts", "templates"]) {
-          const dir = path.join(skillDir, sub);
-          if (!fs.existsSync(dir)) continue;
-          for (const f of fs.readdirSync(dir)) {
-            if (!f.startsWith(".") && f !== "INDEX.md") available.push(`${sub}/${f}`);
-          }
-        }
+        const assets = listSkillAssets(skill_id);
+        const available = [...assets.references, ...assets.scripts, ...assets.templates, ...assets.examples]
+          .map((a) => a.path);
         return {
           content: [{ type: "text", text: JSON.stringify({
             error: `File '${file_path}' not found in skill '${skill_id}'`,
@@ -322,7 +404,7 @@ server.tool(
         isError: true,
       };
     }
-  }
+  },
 );
 
 server.tool(
@@ -353,10 +435,14 @@ server.tool(
         isError: true,
       };
     }
-  }
+  },
 );
 
 async function main() {
+  // Surface a one-line status to stderr so logs in MCP clients are interpretable.
+  console.error(
+    `[windags-mcp] ${cachedSkills.length || "?"} skills, corpus=${corpus ? `${corpus.meta.count}@${corpus.meta.dim}d` : "none"}, telemetry=${TELEMETRY_MODE}`,
+  );
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }

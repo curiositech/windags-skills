@@ -1,16 +1,18 @@
 {
   "name": "windags-mcp",
-  "version": "0.1.0",
-  "description": "WinDAGs MCP server — BM25 skill search + prediction history. Zero API keys.",
+  "version": "0.2.0",
+  "description": "WinDAGs MCP server — local cascade (lexical + semantic + RRF) skill graft. Zero API keys.",
   "type": "module",
   "main": "./index.js",
   "bin": { "windags-mcp": "./index.js" },
   "scripts": {
     "start": "node index.js",
-    "postinstall": "echo 'WinDAGs MCP server ready. Add to .claude.json to enable skill search.'"
+    "build:embeddings": "node scripts/build-embeddings.mjs",
+    "postinstall": "echo 'WinDAGs MCP server ready. Run: claude mcp add windags -- windags-mcp'"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.0",
+    "@xenova/transformers": "^2.17.2",
     "wink-bm25-text-search": "^3.1.2",
     "wink-nlp-utils": "^2.1.0",
     "js-yaml": "^4.1.0",
