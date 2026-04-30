@@ -2,8 +2,12 @@
 /**
  * Smoke test for the local cascade. Imports the cascade pieces directly so
  * we can exercise them without going through MCP stdio.
+ *
+ * Prints, for each query, the lexical/semantic top-3, then the RRF top-5
+ * side-by-side with the cross-encoder rerank top-5, so a human can eyeball
+ * whether Stage 4 is helping.
  */
-import { embedQuery, loadCorpus, topKSemantic, rrfFuse } from "../cascade.js";
+import { embedQuery, loadCorpus, topKSemantic, rrfFuse, crossEncoderRerank } from "../cascade.js";
 import { createRequire } from "module";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -60,6 +64,10 @@ if (!corpus) {
   process.exit(1);
 }
 
+// Build a quick id → metadata lookup so we can construct candidate texts
+// for the cross-encoder.
+const skillById = new Map(skills.map((s) => [s.id, s]));
+
 const QUERIES = [
   "stripe webhook idempotency",
   "agentic planning with multiple skills",
@@ -71,14 +79,39 @@ for (const q of QUERIES) {
   const lex = engine.search(q, 30).map(([id, score]) => ({ id, score }));
   const qVec = await embedQuery(q);
   const sem = topKSemantic(qVec, corpus, 30);
-  const fused = rrfFuse(
+  // RRF over a wider pool so the cross-encoder has room to rerank.
+  const fusedPool = rrfFuse(
     [{ name: "lexical", items: lex }, { name: "semantic", items: sem }],
-    { K: 60, limit: 5 },
+    { K: 60, limit: 30 },
   );
+  const fusedTop5 = fusedPool.slice(0, 5);
+
+  // Stage 4 — cross-encoder rerank over the fused pool.
+  let rerankedTop5 = [];
+  let rerankNote = "";
+  try {
+    const candidateTexts = fusedPool.map((r) => {
+      const meta = skillById.get(r.id);
+      const name = meta?.name ?? r.id;
+      const desc = (meta?.description ?? "").slice(0, 500);
+      return desc ? `${name}. ${desc}` : name;
+    });
+    rerankedTop5 = await crossEncoderRerank(q, fusedPool, candidateTexts, 5);
+  } catch (err) {
+    rerankNote = `(rerank skipped: ${err.message})`;
+  }
+
   console.log("  lexical top-3:", lex.slice(0, 3).map((r) => r.id));
   console.log("  semantic top-3:", sem.slice(0, 3).map((r) => r.id));
-  console.log("  fused top-5:");
-  for (const r of fused) {
-    console.log(`    ${r.fusedScore.toFixed(4)}  ${r.id}`);
+  console.log(`\n  ${"RRF top-5".padEnd(50)} | RERANK top-5 ${rerankNote}`);
+  console.log(`  ${"-".repeat(50)} | ${"-".repeat(50)}`);
+  for (let i = 0; i < 5; i++) {
+    const left = fusedTop5[i]
+      ? `${fusedTop5[i].fusedScore.toFixed(4)}  ${fusedTop5[i].id}`
+      : "";
+    const right = rerankedTop5[i]
+      ? `${rerankedTop5[i].crossScore.toFixed(4).padStart(8)}  ${rerankedTop5[i].id}`
+      : "";
+    console.log(`  ${left.padEnd(50)} | ${right}`);
   }
 }
