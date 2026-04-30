@@ -1,7 +1,7 @@
 ---
 license: BSL-1.1
 name: windags-skill-selector
-description: Stage 3a of the WinDAGs meta-DAG. Given a decomposed subtask graph and a pre-narrowed candidate list per subtask, picks a primary and runner-up skill, plus model tier and cost estimates. Activate on "skill selection", "skill matching", "pick skills for subtasks", "skill cascade", "primary and runner-up", "model tier selection". NOT for: pre-narrowing candidates (the SkillSearchService cascade does that), generating subtasks (use windags-decomposer), or building a runnable PredictedDAG (use windags-synthesizer).
+description: 'Stage 3a of the WinDAGs meta-DAG. Given a decomposed subtask graph and a pre-narrowed candidate list per subtask, picks a primary and runner-up skill, plus model tier and cost estimates. Activate on "skill selection", "skill matching", "pick skills for subtasks", "skill cascade", "primary and runner-up", "model tier selection". NOT for pre-narrowing candidates (the SkillSearchService cascade does that), generating subtasks (use windags-decomposer), or building a runnable PredictedDAG (use windags-synthesizer).'
 metadata:
   tags:
   - windags
