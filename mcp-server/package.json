@@ -1,7 +1,7 @@
 {
   "name": "windags-mcp",
   "version": "0.3.0",
-  "description": "WinDAGs MCP server — local cascade (lexical + semantic + RRF) skill graft. Zero API keys.",
+  "description": "WinDAGs MCP server — local cascade (lexical + semantic + RRF + cross-encoder + attribution k-NN) skill graft. Zero API keys.",
   "type": "module",
   "main": "./index.js",
   "bin": { "windags-mcp": "./index.js" },

@@ -7,18 +7,20 @@
  * no @workgroup-ai/core dependency.
  *
  * Retrieval (all local, no API keys):
- *   Stage 1 — Lexical:  wink-bm25 over SKILL.md frontmatter
- *   Stage 2 — Semantic: cosine vs bundled all-MiniLM-L6-v2 vectors (~800KB)
- *                       Query is embedded on-demand (Transformers.js, ~25MB
- *                       quantized model, downloaded once on first call,
- *                       cached forever in ~/.cache/transformers-js/)
- *   Stage 3 — Fusion:   reciprocal rank fusion (K=60)
+ *   Stage 1 — Lexical:        wink-bm25 over SKILL.md frontmatter
+ *   Stage 2 — Semantic:       cosine vs bundled all-MiniLM-L6-v2 vectors (~800KB)
+ *                             Query embedded on-demand (Transformers.js, ~25MB
+ *                             quantized, downloaded once, cached forever)
+ *   Stage 3 — Fusion:         reciprocal rank fusion (K=60)
+ *   Stage 4 — Cross-encoder:  Xenova/ms-marco-MiniLM-L-6-v2 reranks the
+ *                             RRF top-30 by joint (query, candidate) scoring
+ *                             (~25MB quantized, lazy-loaded, falls back to
+ *                             RRF order if the model can't load)
  *
- * Stage 4 (cross-encoder rerank) and Stage 5 (attribution k-NN) live on
- * the /tools page Preview section. Not implemented here yet.
+ * Stage 5 (attribution k-NN) lives on the /tools page Preview section.
  *
  * Tools:
- *   - windags_skill_search    — top-K candidates (RRF cascade, descriptions only)
+ *   - windags_skill_search    — top-K candidates (RRF + rerank cascade, descriptions only)
  *   - windags_skill_graft     — full SKILL.md bodies for primary + adjacency
  *   - windags_skill_reference — load one reference file on demand
  *   - windags_history         — recent /next-move predictions
@@ -36,7 +38,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
-import { embedQuery, loadCorpus, topKSemantic, rrfFuse } from "./cascade.js";
+import { embedQuery, loadCorpus, topKSemantic, rrfFuse, crossEncoderRerank, attributionBoost } from "./cascade.js";
 import { recordEvent } from "./telemetry.js";
 
 const require = createRequire(import.meta.url);
@@ -165,12 +167,20 @@ function bm25Search(query, limit) {
 }
 
 // ---------------------------------------------------------------------------
-// Stage 2 + 3 — Semantic + RRF
+// Stages 2 + 3 + 4 — Semantic + RRF + Cross-encoder rerank
 // ---------------------------------------------------------------------------
 
 const corpus = loadCorpus(path.join(__dirname, "data"));
 
-async function cascadeSearch(query, limit) {
+/**
+ * Run the cascade. Returns { results, stage } where `stage` describes which
+ * stages actually contributed (used in tool responses for transparency).
+ *
+ * Callers can opt out of rerank by passing `rerank: false` — useful when
+ * RRF order is good enough and the rerank's first-call latency would be
+ * a regression.
+ */
+async function cascadeSearch(query, limit, { rerank = true } = {}) {
   ensureBm25Ready();
   const RECALL = Math.max(30, limit * 4);
 
@@ -178,37 +188,62 @@ async function cascadeSearch(query, limit) {
 
   if (!corpus) {
     // No bundled embeddings → degrade gracefully to BM25-only.
-    return lexical.slice(0, limit).map((r, rank) => ({
+    const results = lexical.slice(0, limit).map((r, rank) => ({
       ...r,
       fusedScore: 1 / (60 + rank + 1),
       breakdown: { lexical: { rank: rank + 1 } },
     }));
+    return { results, stage: "lexical-only" };
   }
 
   let semantic = [];
+  let semanticOk = false;
   try {
     const qVec = await embedQuery(query, TRANSFORMERS_CACHE);
     semantic = topKSemantic(qVec, corpus, RECALL);
-  } catch (err) {
+    semanticOk = true;
+  } catch {
     // Model load failed (offline + no cache, or disk full). Fall back to BM25.
     semantic = [];
   }
 
+  // Fuse first, with the recall pool widened so the cross-encoder has at
+  // least 30 candidates to choose from regardless of the user's limit.
+  const RERANK_POOL = Math.max(30, limit * 4);
   const fused = rrfFuse(
     [
       { name: "lexical", items: lexical },
       { name: "semantic", items: semantic },
     ],
-    { K: 60, limit },
+    { K: 60, limit: RERANK_POOL },
   );
 
-  return fused;
+  const baseStage = semanticOk ? "lexical+semantic+rrf" : "lexical+rrf (semantic unavailable)";
+
+  if (!rerank || fused.length === 0) {
+    return { results: fused.slice(0, limit), stage: baseStage };
+  }
+
+  // Stage 4 — cross-encoder rerank over the RRF pool.
+  try {
+    const candidateTexts = fused.map((r) => {
+      const meta = skillMap.get(r.id);
+      const name = meta?.name ?? r.id;
+      const desc = (meta?.description ?? "").slice(0, 500);
+      return desc ? `${name}. ${desc}` : name;
+    });
+    const reranked = await crossEncoderRerank(query, fused, candidateTexts, limit, TRANSFORMERS_CACHE);
+    return { results: reranked, stage: `${baseStage}+cross-encoder` };
+  } catch {
+    // Rerank model unavailable → silently fall back to RRF order.
+    return { results: fused.slice(0, limit), stage: `${baseStage}+rerank-skipped` };
+  }
 }
 
 function decorate(results) {
   return results.map((r) => {
     const meta = skillMap.get(r.id);
-    return {
+    const out = {
       id: r.id,
       name: meta?.name ?? r.id,
       description: meta?.description ?? "",
@@ -217,6 +252,8 @@ function decorate(results) {
       score: r.fusedScore,
       breakdown: r.breakdown,
     };
+    if (typeof r.crossScore === "number") out.crossScore = r.crossScore;
+    return out;
   });
 }
 
@@ -225,7 +262,7 @@ function decorate(results) {
 // ---------------------------------------------------------------------------
 
 async function localGraft(task, count) {
-  const recall = await cascadeSearch(task, count + 6);
+  const { results: recall, stage: cascadeStage } = await cascadeSearch(task, count + 6);
   const primaryIds = recall.slice(0, count).map((r) => r.id);
   const adjacencyIds = recall.slice(count, count + 4).map((r) => r.id);
 
@@ -261,15 +298,13 @@ async function localGraft(task, count) {
     };
   });
 
-  const stage = corpus ? "lexical+semantic+rrf" : "lexical-only (no embeddings.bin found)";
-
   return {
     task,
     primary,
     adjacencies,
-    cascade: { stage, recall: recall.length, primary: primary.length },
+    cascade: { stage: cascadeStage, recall: recall.length, primary: primary.length },
     reasoning:
-      `Local cascade (${stage}). Primaries: ${primaryIds.join(", ")}. ` +
+      `Local cascade (${cascadeStage}). Primaries: ${primaryIds.join(", ")}. ` +
       `Adjacencies surface neighboring skills for awareness without burning context on full bodies.`,
   };
 }
@@ -302,9 +337,10 @@ const server = new McpServer({ name: "windags", version: "0.3.0" });
 server.tool(
   "windags_skill_search",
   "Search the WinDAGs skill catalog with the local cascade: BM25 lexical + " +
-    "all-MiniLM-L6-v2 semantic similarity, fused via reciprocal rank fusion. " +
-    "Returns ranked candidates with descriptions only (no full bodies). Pair " +
-    "with windags_skill_graft to load the winners. Zero API keys.",
+    "all-MiniLM-L6-v2 semantic similarity + reciprocal rank fusion + " +
+    "ms-marco-MiniLM-L-6-v2 cross-encoder rerank, locally. Returns ranked " +
+    "candidates with descriptions only (no full bodies). Pair with " +
+    "windags_skill_graft to load the winners. Zero API keys.",
   {
     query: z.string().describe("Natural language search query"),
     limit: z.number().optional().default(10).describe("Max results (default: 10)"),
@@ -312,12 +348,12 @@ server.tool(
   async ({ query, limit }) => {
     recordEvent({ toolName: "windags_skill_search", taskText: query });
     try {
-      const fused = await cascadeSearch(query, limit ?? 10);
-      const skills = decorate(fused);
+      const { results, stage } = await cascadeSearch(query, limit ?? 10);
+      const skills = decorate(results);
       return {
         content: [{ type: "text", text: JSON.stringify({
           query,
-          stage: corpus ? "lexical+semantic+rrf" : "lexical-only",
+          stage,
           total_matches: skills.length,
           skills,
         }, null, 2) }],
@@ -334,12 +370,13 @@ server.tool(
 server.tool(
   "windags_skill_graft",
   "Get expert domain knowledge for a task. Runs the local cascade " +
-    "(lexical + semantic + RRF), returns full SKILL.md bodies for the top N " +
-    "primary skills, plus name/description/category for adjacent skills the " +
-    "agent should be aware of, plus a per-skill asset manifest (references, " +
-    "scripts, templates, examples) the agent can call windags_skill_reference " +
-    "on. Local-only. Zero API keys. The MiniLM model is downloaded once on " +
-    "first call (~25MB).",
+    "(lexical + semantic + RRF + cross-encoder rerank), returns full SKILL.md " +
+    "bodies for the top N primary skills, plus name/description/category for " +
+    "adjacent skills the agent should be aware of, plus a per-skill asset " +
+    "manifest (references, scripts, templates, examples) the agent can call " +
+    "windags_skill_reference on. Local-only. Zero API keys. Two MiniLM " +
+    "models (~25MB each, bi-encoder + cross-encoder) are downloaded once on " +
+    "first call.",
   {
     task: z.string().describe("Description of the task you need expertise for"),
     count: z.number().optional().default(4).describe("Number of primary skills to graft (default: 4)"),
