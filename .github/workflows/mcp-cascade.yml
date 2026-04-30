@@ -1,0 +1,119 @@
+name: mcp-cascade
+
+# Proves the WinDAGs MCP cascade actually works on a clean machine — not just
+# Erich's laptop. Runs on push to main + every PR + a weekly schedule (so
+# upstream model/dep regressions surface even when nobody's pushing).
+#
+# What we exercise on each runner:
+#   1. Build the bundled embeddings (catches changes to skills/ or
+#      build-embeddings.mjs that would silently corrupt the corpus).
+#   2. Cascade smoke test (lexical + semantic + RRF + cross-encoder + Stage 5
+#      attribution). Downloads ~50MB of quantized ONNX models on first run.
+#   3. Telemetry smoke test with WINDAGS_TELEMETRY=off (no real POST to
+#      api.windags.ai) plus the in-script monkey-patched fetch tests.
+#   4. User-skills smoke test (8 passes, including cache-hit, content-edit,
+#      removal, and bundled-dir exclusion).
+#   5. End-to-end MCP handshake — spawn the server, send `tools/list`, assert
+#      all four tools come back.
+#
+# Models cache to ~/.cache/transformers-js. We restore that across runs so
+# matrix builds after the first finish in seconds instead of re-downloading.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Mondays 13:00 UTC — catches Xenova/Transformers.js or wink-bm25 breakage
+    # even during quiet weeks.
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [20, 22]
+    timeout-minutes: 15
+    env:
+      WINDAGS_TELEMETRY: off
+      # Use a workspace-local cache so actions/cache works on Windows too.
+      TRANSFORMERS_CACHE_DIR: ${{ github.workspace }}/.cache/transformers-js
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Cache MCP server node_modules
+        id: cache-modules
+        uses: actions/cache@v4
+        with:
+          path: mcp-server/node_modules
+          key: ${{ runner.os }}-node${{ matrix.node }}-mcp-${{ hashFiles('mcp-server/package.json') }}
+
+      - name: Install MCP server deps
+        if: steps.cache-modules.outputs.cache-hit != 'true'
+        working-directory: mcp-server
+        run: npm install --no-audit --no-fund
+
+      - name: Cache Transformers.js model downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TRANSFORMERS_CACHE_DIR }}
+          # Keyed by the embedder + reranker model IDs. If we ever bump models,
+          # change this prefix to invalidate. Otherwise these are immutable so
+          # a single key per OS is enough.
+          key: ${{ runner.os }}-tfjs-allmini-msmarco-v1
+
+      # The build-embeddings step downloads the bi-encoder if the cache missed.
+      - name: Build embeddings corpus
+        working-directory: mcp-server
+        env:
+          # Direct Transformers.js cache to a path actions/cache can persist.
+          WINDAGS_MODEL_CACHE: ${{ env.TRANSFORMERS_CACHE_DIR }}
+        run: node scripts/build-embeddings.mjs
+
+      - name: Cascade smoke test (BM25 + semantic + RRF + cross-encoder + attribution)
+        working-directory: mcp-server
+        env:
+          WINDAGS_MODEL_CACHE: ${{ env.TRANSFORMERS_CACHE_DIR }}
+        run: node scripts/smoke-test.mjs
+
+      - name: Telemetry smoke test (off mode)
+        working-directory: mcp-server
+        run: node scripts/telemetry-smoke-test.mjs
+
+      - name: User-skills smoke test
+        working-directory: mcp-server
+        env:
+          WINDAGS_MODEL_CACHE: ${{ env.TRANSFORMERS_CACHE_DIR }}
+        run: node scripts/user-skills-smoke-test.mjs
+
+      - name: MCP handshake (tools/list)
+        working-directory: mcp-server
+        env:
+          WINDAGS_MODEL_CACHE: ${{ env.TRANSFORMERS_CACHE_DIR }}
+          WINDAGS_USER_SKILLS: off
+        # Send an MCP initialize + tools/list over stdio. Asserts the four
+        # tools (search, graft, reference, history) are advertised. Times out
+        # at 60s so we never block the matrix on a stuck process.
+        run: node scripts/mcp-handshake-test.mjs
+
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-cascade-failure-${{ runner.os }}-node${{ matrix.node }}
+          path: |
+            mcp-server/data/embeddings.meta.json
+            mcp-server/npm-debug.log*
+          if-no-files-found: ignore
