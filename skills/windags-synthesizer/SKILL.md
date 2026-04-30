@@ -1,7 +1,7 @@
 ---
 license: BSL-1.1
 name: windags-synthesizer
-description: Stage 4 (final) of the WinDAGs meta-DAG. Assembles the final PredictedDAG from Sensemaker, Decomposer, Skill Selector, and PreMortem outputs. Picks planning topology, names runtime divergence honestly, validates against the schema, and emits a runnable plan. Activate on "synthesize predicted DAG", "assemble final plan", "topology selection", "runtime honesty", "predict assembly". NOT for: generating subtasks (windags-decomposer), classifying problems (windags-sensemaker), picking skills (windags-skill-selector), executing the resulting DAG (the runtime does that).
+description: 'Stage 4 (final) of the WinDAGs meta-DAG. Assembles the final PredictedDAG from Sensemaker, Decomposer, Skill Selector, and PreMortem outputs. Picks planning topology, names runtime divergence honestly, validates against the schema, and emits a runnable plan. Activate on "synthesize predicted DAG", "assemble final plan", "topology selection", "runtime honesty", "predict assembly". NOT for generating subtasks (windags-decomposer), classifying problems (windags-sensemaker), picking skills (windags-skill-selector), executing the resulting DAG (the runtime does that).'
 metadata:
   tags:
   - windags

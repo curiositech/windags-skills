@@ -1,7 +1,7 @@
 {
   "model": "Xenova/all-MiniLM-L6-v2",
   "dim": 384,
-  "count": 531,
+  "count": 533,
   "ids": [
     "2000s-visualization-expert",
     "2026-legal-research-agent",
@@ -524,6 +524,8 @@
     "windags-premortem",
     "windags-resilience",
     "windags-sensemaker",
+    "windags-skill-selector",
+    "windags-synthesizer",
     "windagszip",
     "windows-3-1-web-designer",
     "windows-95-web-designer",
@@ -535,5 +537,5 @@
     "yao-2023-tree-of-thoughts",
     "zhou-et-al-2026-formaljudge"
   ],
-  "builtAt": "2026-04-30T03:58:05.226Z"
+  "builtAt": "2026-04-30T09:16:30.627Z"
 }
