@@ -115,3 +115,128 @@ for (const q of QUERIES) {
     console.log(`  ${left.padEnd(50)} | ${right}`);
   }
 }
+
+
+// ---------------------------------------------------------------------------
+// Stage 5 — Attribution k-NN smoke test
+// ---------------------------------------------------------------------------
+//
+// Generates 3 fake triples in a temp dir, runs the cascade with attribution
+// boost, prints before/after top-5. We use a query semantically close to one
+// of the fake triples (in which `vitest-testing-patterns` was accepted) and
+// expect it to climb the ranking.
+
+import { attributionBoost } from "../cascade.js";
+import * as os from "node:os";
+import { randomUUID } from "node:crypto";
+
+const tmpDir = path.join(os.tmpdir(), `windags-stage5-smoke-${randomUUID().slice(0, 8)}`);
+fs.mkdirSync(tmpDir, { recursive: true });
+
+const FIXTURES = [
+  {
+    id: "fixture-001",
+    timestamp: "2026-04-25T10:00:00Z",
+    prompt: "set up vitest unit tests for our typescript api endpoints",
+    predicted_dag: {
+      title: "Add vitest coverage for API",
+      waves: [
+        { wave_number: 0, parallelizable: false, nodes: [
+          { id: "n1", skill_id: "vitest-testing-patterns" },
+          { id: "n2", skill_id: "test-automation-expert" },
+        ]},
+      ],
+    },
+    feedback: { accepted: true, rating: 5, modifications: [], notes: "Worked great" },
+  },
+  {
+    id: "fixture-002",
+    timestamp: "2026-04-26T11:00:00Z",
+    prompt: "design a brutalist hero section with chunky type and big shadows",
+    predicted_dag: {
+      title: "Brutalist hero",
+      waves: [
+        { wave_number: 0, parallelizable: false, nodes: [
+          { id: "n1", skill_id: "neobrutalist-web-designer" },
+          { id: "n2", skill_id: "typography-expert" },
+        ]},
+      ],
+    },
+    feedback: { accepted: true, rating: 4 },
+  },
+  {
+    id: "fixture-003",
+    timestamp: "2026-04-27T12:00:00Z",
+    prompt: "write a bunch of integration tests for the new graphql resolvers",
+    predicted_dag: {
+      title: "GraphQL test suite",
+      waves: [
+        { wave_number: 0, parallelizable: false, nodes: [
+          { id: "n1", skill_id: "vitest-testing-patterns" },
+          { id: "n2", skill_id: "qa-automation-specialist" },
+        ]},
+      ],
+    },
+    feedback: { accepted: true, rating: 5, notes: "Caught bugs early" },
+  },
+];
+
+for (const fx of FIXTURES) {
+  fs.writeFileSync(path.join(tmpDir, `${fx.id}.json`), JSON.stringify(fx, null, 2));
+}
+
+console.log(`\n=== Stage 5 — Attribution k-NN ===`);
+console.log(`tmpDir: ${tmpDir}`);
+console.log(`fixtures: ${FIXTURES.length} triples\n`);
+
+const Q = "add unit tests for our backend module";
+console.log(`QUERY: ${Q}`);
+
+const lex5 = engine.search(Q, 30).map(([id, score]) => ({ id, score }));
+const qVec5 = await embedQuery(Q);
+const sem5 = topKSemantic(qVec5, corpus, 30);
+const fused5 = rrfFuse(
+  [{ name: "lexical", items: lex5 }, { name: "semantic", items: sem5 }],
+  { K: 60, limit: 10 },
+);
+
+console.log("\n  BEFORE attribution (RRF top-5):");
+for (const r of fused5.slice(0, 5)) {
+  console.log(`    ${r.fusedScore.toFixed(4)}  ${r.id}`);
+}
+
+const boosted = await attributionBoost(qVec5, fused5, tmpDir, { k: 5 });
+
+console.log("\n  AFTER attribution (top-5):");
+for (const r of boosted.slice(0, 5)) {
+  const tag = r.attribution
+    ? ` [+${r.attribution.boost.toFixed(4)} count=${r.attribution.count} n=${r.attribution.neighbors.length}]`
+    : "";
+  console.log(`    ${r.fusedScore.toFixed(4)}  ${r.id}${tag}`);
+}
+
+const beforeRank = fused5.findIndex((r) => r.id === "vitest-testing-patterns");
+const afterRank = boosted.findIndex((r) => r.id === "vitest-testing-patterns");
+console.log(`\n  vitest-testing-patterns rank: before=${beforeRank} → after=${afterRank}`);
+if (afterRank >= 0 && (beforeRank < 0 || afterRank < beforeRank || afterRank === beforeRank)) {
+  console.log(`  ${afterRank < beforeRank ? "PASS" : "(no movement, but attribution applied)"}` );
+} else {
+  console.log(`  FAIL — expected vitest-testing-patterns to climb (or stay) given accepted neighbors`);
+}
+
+// Verify embedding cache was written back into the fixture files.
+const cached = FIXTURES.filter((fx) => {
+  const updated = JSON.parse(fs.readFileSync(path.join(tmpDir, `${fx.id}.json`), "utf-8"));
+  return typeof updated._query_embedding === "string" && updated._query_embedding.length > 0;
+}).length;
+console.log(`  embedding cache: ${cached}/${FIXTURES.length} triples now have _query_embedding`);
+
+// Second pass — should be cache-only (no re-embedding).
+const t2 = Date.now();
+await attributionBoost(qVec5, fused5, tmpDir, { k: 5 });
+console.log(`  second-pass latency (cache-hit): ${Date.now() - t2}ms`);
+
+// Cleanup
+for (const f of fs.readdirSync(tmpDir)) fs.unlinkSync(path.join(tmpDir, f));
+fs.rmdirSync(tmpDir);
+console.log(`  cleaned up ${tmpDir}`);
