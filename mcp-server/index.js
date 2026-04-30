@@ -24,8 +24,8 @@
  *   - windags_history         — recent /next-move predictions
  *
  * Telemetry: WINDAGS_TELEMETRY env var ("off" disables, "anonymous" default,
- * "full" sends raw task text). Currently a no-op pending the api.windags.ai
- * /events endpoint — flag is wired so users can opt out preemptively.
+ * "full" sends raw task text). Fire-and-forget POST to api.windags.ai/v1/events
+ * with a hashed machine ID, sampled to once per 24h. See telemetry.js.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -37,6 +37,7 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 
 import { embedQuery, loadCorpus, topKSemantic, rrfFuse } from "./cascade.js";
+import { recordEvent } from "./telemetry.js";
 
 const require = createRequire(import.meta.url);
 const bm25 = require("wink-bm25-text-search");
@@ -296,7 +297,7 @@ function listTriples(projectPath, limit) {
 // MCP Server
 // ---------------------------------------------------------------------------
 
-const server = new McpServer({ name: "windags", version: "0.2.0" });
+const server = new McpServer({ name: "windags", version: "0.3.0" });
 
 server.tool(
   "windags_skill_search",
@@ -309,6 +310,7 @@ server.tool(
     limit: z.number().optional().default(10).describe("Max results (default: 10)"),
   },
   async ({ query, limit }) => {
+    recordEvent({ toolName: "windags_skill_search", taskText: query });
     try {
       const fused = await cascadeSearch(query, limit ?? 10);
       const skills = decorate(fused);
@@ -343,6 +345,7 @@ server.tool(
     count: z.number().optional().default(4).describe("Number of primary skills to graft (default: 4)"),
   },
   async ({ task, count }) => {
+    recordEvent({ toolName: "windags_skill_graft", taskText: task });
     try {
       const n = Math.max(1, Math.min(count ?? 4, 8));
       const result = await localGraft(task, n);
@@ -368,6 +371,7 @@ server.tool(
     file_path: z.string().describe("Path within the skill directory (e.g., 'references/redis-patterns.md')"),
   },
   async ({ skill_id, file_path }) => {
+    recordEvent({ toolName: "windags_skill_reference", taskText: `${skill_id}:${file_path}` });
     try {
       const skillDir = path.join(skillsDir, skill_id);
       if (!fs.existsSync(skillDir)) {
@@ -415,6 +419,7 @@ server.tool(
     limit: z.number().optional().default(10).describe("Max entries (default: 10)"),
   },
   async ({ project_path, limit }) => {
+    recordEvent({ toolName: "windags_history" });
     try {
       const triples = listTriples(path.resolve(project_path), limit ?? 10);
       const history = triples.map((t) => ({
