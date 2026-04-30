@@ -7,17 +7,19 @@
  * no @workgroup-ai/core dependency.
  *
  * Retrieval (all local, no API keys):
- *   Stage 1 — Lexical:        wink-bm25 over SKILL.md frontmatter
- *   Stage 2 — Semantic:       cosine vs bundled all-MiniLM-L6-v2 vectors (~800KB)
- *                             Query embedded on-demand (Transformers.js, ~25MB
- *                             quantized, downloaded once, cached forever)
- *   Stage 3 — Fusion:         reciprocal rank fusion (K=60)
- *   Stage 4 — Cross-encoder:  Xenova/ms-marco-MiniLM-L-6-v2 reranks the
- *                             RRF top-30 by joint (query, candidate) scoring
- *                             (~25MB quantized, lazy-loaded, falls back to
- *                             RRF order if the model can't load)
- *
- * Stage 5 (attribution k-NN) lives on the /tools page Preview section.
+ *   Stage 1 — Lexical:     wink-bm25 over SKILL.md frontmatter
+ *   Stage 2 — Semantic:    cosine vs bundled all-MiniLM-L6-v2 vectors (~800KB).
+ *                          Query embedded on-demand (Transformers.js, ~25MB
+ *                          quantized, downloaded once, cached forever).
+ *   Stage 3 — Fusion:      reciprocal rank fusion (K=60).
+ *   Stage 4 — Cross-encoder: Xenova/ms-marco-MiniLM-L-6-v2 reranks the RRF
+ *                            top-30 by joint (query, candidate) scoring
+ *                            (~25MB quantized, lazy-loaded, falls back to
+ *                            RRF order if the model can't load).
+ *   Stage 5 — Attribution: per-user k-NN over ~/.windags/triples/. Boosts
+ *                          skills that appeared in past /next-move predictions
+ *                          for semantically similar prompts. Fails safe to
+ *                          identity when no triples exist.
  *
  * Tools:
  *   - windags_skill_search    — top-K candidates (RRF + rerank cascade, descriptions only)
@@ -38,6 +40,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
 
+import * as os from "os";
 import { embedQuery, loadCorpus, topKSemantic, rrfFuse, crossEncoderRerank, attributionBoost } from "./cascade.js";
 import { recordEvent } from "./telemetry.js";
 
@@ -52,6 +55,11 @@ const __dirname = path.dirname(__filename);
 const TELEMETRY_MODE = (process.env.WINDAGS_TELEMETRY ?? "anonymous").toLowerCase();
 const TRANSFORMERS_CACHE = process.env.WINDAGS_MODEL_CACHE
   ?? path.join(process.env.HOME ?? ".", ".cache", "transformers-js");
+
+// Stage 5 reads /next-move triples from this directory. Per-user, never
+// uploaded. Override with WINDAGS_TRIPLES_DIR for tests / non-default homes.
+const TRIPLES_DIR = process.env.WINDAGS_TRIPLES_DIR
+  ?? path.join(os.homedir(), ".windags", "triples");
 
 // ---------------------------------------------------------------------------
 // Skill loader (reads SKILL.md frontmatter + body from the bundled skills/)
@@ -198,8 +206,9 @@ async function cascadeSearch(query, limit, { rerank = true } = {}) {
 
   let semantic = [];
   let semanticOk = false;
+  let qVec = null;
   try {
-    const qVec = await embedQuery(query, TRANSFORMERS_CACHE);
+    qVec = await embedQuery(query, TRANSFORMERS_CACHE);
     semantic = topKSemantic(qVec, corpus, RECALL);
     semanticOk = true;
   } catch {
@@ -220,24 +229,45 @@ async function cascadeSearch(query, limit, { rerank = true } = {}) {
 
   const baseStage = semanticOk ? "lexical+semantic+rrf" : "lexical+rrf (semantic unavailable)";
 
-  if (!rerank || fused.length === 0) {
-    return { results: fused.slice(0, limit), stage: baseStage };
+  // Working set: post-RRF candidates. Stage 4 (cross-encoder) reorders them;
+  // Stage 5 (attribution) boosts skills that appeared in past /next-move
+  // triples for semantically similar prompts.
+  let working = fused;
+  let stage = baseStage;
+
+  if (rerank && working.length > 0) {
+    try {
+      const candidateTexts = working.map((r) => {
+        const meta = skillMap.get(r.id);
+        const name = meta?.name ?? r.id;
+        const desc = (meta?.description ?? "").slice(0, 500);
+        return desc ? `${name}. ${desc}` : name;
+      });
+      working = await crossEncoderRerank(query, working, candidateTexts, RERANK_POOL, TRANSFORMERS_CACHE);
+      stage = `${stage}+cross-encoder`;
+    } catch {
+      // Rerank model unavailable → silently keep RRF order.
+      stage = `${stage}+rerank-skipped`;
+    }
   }
 
-  // Stage 4 — cross-encoder rerank over the RRF pool.
-  try {
-    const candidateTexts = fused.map((r) => {
-      const meta = skillMap.get(r.id);
-      const name = meta?.name ?? r.id;
-      const desc = (meta?.description ?? "").slice(0, 500);
-      return desc ? `${name}. ${desc}` : name;
-    });
-    const reranked = await crossEncoderRerank(query, fused, candidateTexts, limit, TRANSFORMERS_CACHE);
-    return { results: reranked, stage: `${baseStage}+cross-encoder` };
-  } catch {
-    // Rerank model unavailable → silently fall back to RRF order.
-    return { results: fused.slice(0, limit), stage: `${baseStage}+rerank-skipped` };
+  // Stage 5 — Attribution k-NN over local /next-move triple history.
+  // No-op for first-time users; failure-safe if anything goes wrong.
+  if (qVec && working.length > 0) {
+    try {
+      const boosted = await attributionBoost(qVec, working, TRIPLES_DIR, {
+        cacheDir: TRANSFORMERS_CACHE,
+      });
+      if (boosted && boosted.length) {
+        working = boosted;
+        stage = `${stage}+attribution`;
+      }
+    } catch {
+      // Attribution is opportunistic; never block the cascade on it.
+    }
   }
+
+  return { results: working.slice(0, limit), stage };
 }
 
 function decorate(results) {
@@ -253,6 +283,7 @@ function decorate(results) {
       breakdown: r.breakdown,
     };
     if (typeof r.crossScore === "number") out.crossScore = r.crossScore;
+    if (r.attribution) out.attribution = r.attribution;
     return out;
   });
 }
@@ -337,10 +368,11 @@ const server = new McpServer({ name: "windags", version: "0.3.0" });
 server.tool(
   "windags_skill_search",
   "Search the WinDAGs skill catalog with the local cascade: BM25 lexical + " +
-    "all-MiniLM-L6-v2 semantic similarity + reciprocal rank fusion + " +
-    "ms-marco-MiniLM-L-6-v2 cross-encoder rerank, locally. Returns ranked " +
-    "candidates with descriptions only (no full bodies). Pair with " +
-    "windags_skill_graft to load the winners. Zero API keys.",
+    "all-MiniLM-L6-v2 semantic + reciprocal rank fusion + ms-marco-MiniLM-L-6-v2 " +
+    "cross-encoder rerank + per-user attribution k-NN over local /next-move " +
+    "history (when available). Returns ranked candidates with descriptions only " +
+    "(no full bodies). Pair with windags_skill_graft to load the winners. " +
+    "Zero API keys, all local.",
   {
     query: z.string().describe("Natural language search query"),
     limit: z.number().optional().default(10).describe("Max results (default: 10)"),
@@ -370,13 +402,14 @@ server.tool(
 server.tool(
   "windags_skill_graft",
   "Get expert domain knowledge for a task. Runs the local cascade " +
-    "(lexical + semantic + RRF + cross-encoder rerank), returns full SKILL.md " +
-    "bodies for the top N primary skills, plus name/description/category for " +
-    "adjacent skills the agent should be aware of, plus a per-skill asset " +
-    "manifest (references, scripts, templates, examples) the agent can call " +
-    "windags_skill_reference on. Local-only. Zero API keys. Two MiniLM " +
-    "models (~25MB each, bi-encoder + cross-encoder) are downloaded once on " +
-    "first call.",
+    "(lexical + semantic + RRF + cross-encoder rerank, plus per-user " +
+    "attribution k-NN over local /next-move history when available), " +
+    "returns full SKILL.md bodies for the top N primary skills, plus " +
+    "name/description/category for adjacent skills the agent should be " +
+    "aware of, plus a per-skill asset manifest (references, scripts, " +
+    "templates, examples) the agent can call windags_skill_reference on. " +
+    "Local-only. Zero API keys. Two MiniLM models (~25MB each, bi-encoder + " +
+    "cross-encoder) are downloaded once on first call.",
   {
     task: z.string().describe("Description of the task you need expertise for"),
     count: z.number().optional().default(4).describe("Number of primary skills to graft (default: 4)"),

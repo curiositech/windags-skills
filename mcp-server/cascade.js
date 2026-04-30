@@ -188,3 +188,175 @@ export async function crossEncoderRerank(query, candidates, candidateTexts, topK
   reranked.sort((a, b) => b.crossScore - a.crossScore);
   return reranked.slice(0, topK);
 }
+
+
+// ---------------------------------------------------------------------------
+// Stage 5 — Attribution k-NN over local /next-move triple history
+// ---------------------------------------------------------------------------
+
+/** Encode a Float32Array as base64 for compact JSON storage. */
+function floatArrayToBase64(arr) {
+  const f32 = arr instanceof Float32Array ? arr : new Float32Array(arr);
+  const bytes = Buffer.from(f32.buffer, f32.byteOffset, f32.byteLength);
+  return bytes.toString("base64");
+}
+
+function base64ToFloatArray(b64) {
+  const buf = Buffer.from(b64, "base64");
+  const ab = new ArrayBuffer(buf.byteLength);
+  new Uint8Array(ab).set(buf);
+  return new Float32Array(ab);
+}
+
+function _attribCosine(a, b) {
+  const n = Math.min(a.length, b.length);
+  let dot = 0;
+  for (let i = 0; i < n; i++) dot += a[i] * b[i];
+  return dot;
+}
+
+function writeTripleAtomic(filePath, json) {
+  try {
+    const tmp = `${filePath}.tmp-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+    fs.writeFileSync(tmp, JSON.stringify(json, null, 2));
+    try {
+      fs.renameSync(tmp, filePath);
+    } catch {
+      try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+      fs.writeFileSync(filePath, JSON.stringify(json, null, 2));
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function extractSkillIds(triple) {
+  const ids = [];
+  const waves = triple?.predicted_dag?.waves;
+  if (!Array.isArray(waves)) return ids;
+  for (const wave of waves) {
+    const nodes = wave?.nodes;
+    if (!Array.isArray(nodes)) continue;
+    for (const node of nodes) {
+      const id = node?.skill_id ?? node?.skillId;
+      if (typeof id === "string" && id.length > 0) ids.push(id);
+    }
+  }
+  return ids;
+}
+
+/**
+ * Stage 5 — Attribution k-NN.
+ *
+ * For each triple in `historyDir`:
+ *   - Embed its `prompt` (cached in-file under `_query_embedding`).
+ *   - Compute cosine similarity to the current `queryVec`.
+ *   - Take the top-k most similar triples.
+ *
+ * Weight feedback:
+ *   - feedback.accepted === true  → +1.0
+ *   - feedback.accepted === false → -0.5
+ *   - feedback missing/null       → +0.5  (mild prior)
+ *
+ * Apply log-scaled boost: boost = log(1 + count) / 10.
+ *
+ * Fail-safe: empty/missing historyDir → return candidates unchanged.
+ */
+export async function attributionBoost(queryVec, candidates, historyDir, opts = {}) {
+  const { k = 5, cacheDir = undefined, minSimilarity = 0.3 } = opts;
+
+  if (!candidates?.length) return candidates ?? [];
+  if (!queryVec || queryVec.length === 0) return candidates;
+  if (!historyDir || !fs.existsSync(historyDir)) return candidates;
+
+  let entries;
+  try {
+    entries = fs.readdirSync(historyDir).filter((f) => f.endsWith(".json"));
+  } catch {
+    return candidates;
+  }
+  if (entries.length === 0) return candidates;
+
+  const triples = [];
+  for (const file of entries) {
+    const filePath = path.join(historyDir, file);
+    let triple;
+    try {
+      triple = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    } catch {
+      continue;
+    }
+    const prompt = triple?.prompt;
+    if (typeof prompt !== "string" || prompt.length === 0) continue;
+
+    let vec = null;
+    if (typeof triple._query_embedding === "string") {
+      try { vec = base64ToFloatArray(triple._query_embedding); } catch { vec = null; }
+    }
+    if (!vec) {
+      try {
+        vec = await embedQuery(prompt, cacheDir);
+        triple._query_embedding = floatArrayToBase64(vec);
+        writeTripleAtomic(filePath, triple);
+      } catch {
+        continue;
+      }
+    }
+    if (!vec || vec.length !== queryVec.length) continue;
+
+    triples.push({
+      file,
+      tripleId: triple.id ?? file.replace(/\.json$/, ""),
+      vec,
+      skills: extractSkillIds(triple),
+      feedback: triple.feedback ?? null,
+    });
+  }
+  if (triples.length === 0) return candidates;
+
+  const scored = triples.map((t) => ({ ...t, similarity: _attribCosine(queryVec, t.vec) }));
+  scored.sort((a, b) => b.similarity - a.similarity);
+  const neighbors = scored
+    .slice(0, Math.min(k, scored.length))
+    .filter((n) => n.similarity >= minSimilarity);
+  if (neighbors.length === 0) return candidates;
+
+  const skillCounts = new Map();
+  for (const n of neighbors) {
+    let w;
+    if (n.feedback?.accepted === true) w = 1.0;
+    else if (n.feedback?.accepted === false) w = -0.5;
+    else w = 0.5;
+    for (const skillId of n.skills) {
+      let entry = skillCounts.get(skillId);
+      if (!entry) {
+        entry = { count: 0, neighbors: [] };
+        skillCounts.set(skillId, entry);
+      }
+      entry.count += w;
+      entry.neighbors.push({
+        tripleId: n.tripleId,
+        similarity: +n.similarity.toFixed(4),
+        weight: w,
+      });
+    }
+  }
+
+  const boosted = candidates.map((c) => {
+    const entry = skillCounts.get(c.id);
+    if (!entry || entry.count <= 0) return { ...c };
+    const boost = Math.log(1 + entry.count) / 10;
+    return {
+      ...c,
+      fusedScore: +(c.fusedScore + boost).toFixed(5),
+      attribution: {
+        count: +entry.count.toFixed(2),
+        boost: +boost.toFixed(5),
+        neighbors: entry.neighbors,
+      },
+    };
+  });
+  boosted.sort((a, b) => b.fusedScore - a.fusedScore);
+  return boosted;
+}
