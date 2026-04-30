@@ -42,6 +42,7 @@ import { fileURLToPath } from "url";
 
 import * as os from "os";
 import { embedQuery, loadCorpus, topKSemantic, rrfFuse, crossEncoderRerank, attributionBoost } from "./cascade.js";
+import { loadUserSkills, readUserSkillFile, listUserSkillAssets } from "./user-skills.js";
 import { recordEvent } from "./telemetry.js";
 
 const require = createRequire(import.meta.url);
@@ -60,6 +61,11 @@ const TRANSFORMERS_CACHE = process.env.WINDAGS_MODEL_CACHE
 // uploaded. Override with WINDAGS_TRIPLES_DIR for tests / non-default homes.
 const TRIPLES_DIR = process.env.WINDAGS_TRIPLES_DIR
   ?? path.join(os.homedir(), ".windags", "triples");
+
+// User skills: opt-out via WINDAGS_USER_SKILLS=off. Default on. Loaded lazily
+// on first cascade call so the model is only fetched when the user actually
+// uses the search tool.
+const USER_SKILLS_ENABLED = (process.env.WINDAGS_USER_SKILLS ?? "on").toLowerCase() !== "off";
 
 // ---------------------------------------------------------------------------
 // Skill loader (reads SKILL.md frontmatter + body from the bundled skills/)
@@ -129,23 +135,24 @@ function listSkillAssets(skillId) {
 }
 
 // ---------------------------------------------------------------------------
-// Stage 1 — Lexical (BM25)
+// Catalog (BM25 + corpus, bundled + user skills, lazy-loaded)
 // ---------------------------------------------------------------------------
+//
+// We build the BM25 index and the merged semantic corpus on first cascade
+// call, not at startup, because user-skill loading needs the embedder, which
+// downloads ~25MB on first use. Building lazily keeps `windags-mcp --help`
+// (and the MCP handshake) instant.
 
-let bm25Engine = null;
+let userSkillSourcePaths = new Map(); // id ("user:slug") -> absolute SKILL.md path
+let _catalogPromise = null;
 
-function ensureBm25Ready() {
-  if (bm25Engine) return;
-  if (cachedSkills.length === 0) {
-    cachedSkills = loadSkillIndex();
-    skillMap = new Map(cachedSkills.map((s) => [s.id, s]));
-  }
-  bm25Engine = bm25();
-  bm25Engine.defineConfig({
+function buildBm25(skills) {
+  const engine = bm25();
+  engine.defineConfig({
     fldWeights: { name: 4, description: 2, tags: 3, category: 1, id_words: 2 },
     bm25Params: { k1: 1.5, b: 0.75, k: 1 },
   });
-  bm25Engine.definePrepTasks([
+  engine.definePrepTasks([
     nlp.string.lowerCase,
     nlp.string.removeExtraSpaces,
     nlp.string.tokenize0,
@@ -153,32 +160,93 @@ function ensureBm25Ready() {
     nlp.tokens.stem,
     nlp.tokens.propagateNegations,
   ]);
-  for (const s of cachedSkills) {
-    bm25Engine.addDoc({
+  for (const s of skills) {
+    engine.addDoc({
       name: s.name,
       description: (s.description || "").slice(0, 500),
       tags: (s.tags || []).join(" "),
       category: s.category,
-      id_words: s.id.replace(/-/g, " "),
+      id_words: s.id.replace(/^user:/, "").replace(/-/g, " "),
     }, s.id);
   }
-  bm25Engine.consolidate();
+  engine.consolidate();
+  return engine;
 }
 
-function bm25Search(query, limit) {
-  ensureBm25Ready();
+function mergeCorpora(bundled, user) {
+  if (!bundled && !user?.vectors) return null;
+  if (bundled && !user?.vectors) return bundled;
+  if (!bundled && user?.vectors) {
+    return {
+      meta: { model: "Xenova/all-MiniLM-L6-v2", dim: user.dim, count: user.count, ids: [...user.ids] },
+      vectors: user.vectors,
+    };
+  }
+  // Both present — concat the vectors and id list.
+  if (bundled.meta.dim !== user.dim) {
+    throw new Error(`corpus dim mismatch: bundled=${bundled.meta.dim} user=${user.dim}`);
+  }
+  const vecs = new Float32Array(bundled.vectors.length + user.vectors.length);
+  vecs.set(bundled.vectors, 0);
+  vecs.set(user.vectors, bundled.vectors.length);
+  return {
+    meta: {
+      model: bundled.meta.model,
+      dim: bundled.meta.dim,
+      count: bundled.meta.count + user.count,
+      ids: [...bundled.meta.ids, ...user.ids],
+    },
+    vectors: vecs,
+  };
+}
+
+async function ensureCatalogReady() {
+  if (_catalogPromise) return _catalogPromise;
+  _catalogPromise = (async () => {
+    const bundledIndex = loadSkillIndex();
+    const bundledCorpus = loadCorpus(path.join(__dirname, "data"));
+
+    let userResult = null;
+    if (USER_SKILLS_ENABLED) {
+      try {
+        userResult = await loadUserSkills({
+          embedFn: (text) => embedQuery(text, TRANSFORMERS_CACHE),
+          bundledSkillsDir: skillsDir,
+        });
+      } catch (err) {
+        console.error(`[windags-mcp] user-skills load failed (continuing with bundled only): ${err.message}`);
+      }
+    }
+
+    const allSkills = [...bundledIndex, ...(userResult?.skills ?? [])];
+    cachedSkills = allSkills;
+    skillMap = new Map(allSkills.map((s) => [s.id, s]));
+    userSkillSourcePaths = userResult?.sourcePaths ?? new Map();
+
+    const bm25Engine = buildBm25(allSkills);
+    const mergedCorpus = mergeCorpora(bundledCorpus, userResult);
+
+    return {
+      bm25Engine,
+      corpus: mergedCorpus,
+      userCount: userResult?.count ?? 0,
+      bundledCount: bundledIndex.length,
+    };
+  })();
+  return _catalogPromise;
+}
+
+function bm25Search(engine, query, limit) {
   if (!query?.trim()) {
     return cachedSkills.slice(0, limit).map((s) => ({ id: s.id, score: 0 }));
   }
-  const results = bm25Engine.search(query, limit);
+  const results = engine.search(query, limit);
   return results.map(([id, score]) => ({ id, score: +score.toFixed(4) }));
 }
 
 // ---------------------------------------------------------------------------
 // Stages 2 + 3 + 4 — Semantic + RRF + Cross-encoder rerank
 // ---------------------------------------------------------------------------
-
-const corpus = loadCorpus(path.join(__dirname, "data"));
 
 /**
  * Run the cascade. Returns { results, stage } where `stage` describes which
@@ -189,10 +257,10 @@ const corpus = loadCorpus(path.join(__dirname, "data"));
  * a regression.
  */
 async function cascadeSearch(query, limit, { rerank = true } = {}) {
-  ensureBm25Ready();
+  const { bm25Engine, corpus } = await ensureCatalogReady();
   const RECALL = Math.max(30, limit * 4);
 
-  const lexical = bm25Search(query, RECALL);
+  const lexical = bm25Search(bm25Engine, query, RECALL);
 
   if (!corpus) {
     // No bundled embeddings → degrade gracefully to BM25-only.
@@ -298,14 +366,18 @@ async function localGraft(task, count) {
   const adjacencyIds = recall.slice(count, count + 4).map((r) => r.id);
 
   const primary = primaryIds.map((id) => {
-    const file = readSkillFile(id);
     const meta = skillMap.get(id);
+    const isUser = id.startsWith("user:");
+    const file = isUser
+      ? readUserSkillFile(userSkillSourcePaths.get(id))
+      : readSkillFile(id);
     if (!file) {
       return {
         id,
         name: meta?.name ?? id,
         body: `# ${meta?.name ?? id}\n\n_(Skill body unavailable on this install.)_`,
         category: meta?.category,
+        source: isUser ? "user" : "bundled",
         assets: { references: [], scripts: [], templates: [], examples: [] },
       };
     }
@@ -315,7 +387,10 @@ async function localGraft(task, count) {
       body: file.body.trimStart(),
       frontmatter: file.frontmatter,
       category: file.frontmatter.category,
-      assets: listSkillAssets(id),
+      source: isUser ? "user" : "bundled",
+      assets: isUser
+        ? listUserSkillAssets(userSkillSourcePaths.get(id))
+        : listSkillAssets(id),
     };
   });
 
@@ -443,7 +518,23 @@ server.tool(
   async ({ skill_id, file_path }) => {
     recordEvent({ toolName: "windags_skill_reference", taskText: `${skill_id}:${file_path}` });
     try {
-      const skillDir = path.join(skillsDir, skill_id);
+      // Resolve the skill directory: bundled lives under skillsDir/<id>,
+      // user-defined lives at the parent of the SKILL.md path we cached.
+      let skillDir;
+      if (skill_id.startsWith("user:")) {
+        // Force a catalog load so userSkillSourcePaths is populated.
+        await ensureCatalogReady();
+        const sourcePath = userSkillSourcePaths.get(skill_id);
+        if (!sourcePath) {
+          return {
+            content: [{ type: "text", text: JSON.stringify({ error: `User skill '${skill_id}' not found` }) }],
+            isError: true,
+          };
+        }
+        skillDir = path.dirname(sourcePath);
+      } else {
+        skillDir = path.join(skillsDir, skill_id);
+      }
       if (!fs.existsSync(skillDir)) {
         return {
           content: [{ type: "text", text: JSON.stringify({ error: `Skill '${skill_id}' not found` }) }],
@@ -459,7 +550,9 @@ server.tool(
         };
       }
       if (!fs.existsSync(fullPath)) {
-        const assets = listSkillAssets(skill_id);
+        const assets = skill_id.startsWith("user:")
+          ? listUserSkillAssets(userSkillSourcePaths.get(skill_id))
+          : listSkillAssets(skill_id);
         const available = [...assets.references, ...assets.scripts, ...assets.templates, ...assets.examples]
           .map((a) => a.path);
         return {
@@ -515,8 +608,13 @@ server.tool(
 
 async function main() {
   // Surface a one-line status to stderr so logs in MCP clients are interpretable.
+  // Catalog (BM25 + corpus + user skills) loads lazily on first tool call.
+  const bundledCount = (() => {
+    try { return fs.readdirSync(skillsDir, { withFileTypes: true }).filter((e) => e.isDirectory()).length; }
+    catch { return "?"; }
+  })();
   console.error(
-    `[windags-mcp] ${cachedSkills.length || "?"} skills, corpus=${corpus ? `${corpus.meta.count}@${corpus.meta.dim}d` : "none"}, telemetry=${TELEMETRY_MODE}`,
+    `[windags-mcp] ${bundledCount} bundled skills, user-skills=${USER_SKILLS_ENABLED ? "on" : "off"}, telemetry=${TELEMETRY_MODE}`,
   );
   const transport = new StdioServerTransport();
   await server.connect(transport);

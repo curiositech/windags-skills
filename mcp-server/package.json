@@ -1,13 +1,18 @@
 {
   "name": "windags-mcp",
-  "version": "0.3.0",
-  "description": "WinDAGs MCP server — local cascade (lexical + semantic + RRF + cross-encoder + per-user attribution k-NN) skill graft. Zero API keys.",
+  "version": "0.4.0",
+  "description": "WinDAGs MCP server — local cascade (lexical + semantic + RRF + cross-encoder + per-user attribution k-NN) over the bundled catalog plus your own SKILL.md files. Zero API keys.",
   "type": "module",
   "main": "./index.js",
   "bin": { "windags-mcp": "./index.js" },
   "scripts": {
     "start": "node index.js",
     "build:embeddings": "node scripts/build-embeddings.mjs",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "test:telemetry": "node scripts/telemetry-smoke-test.mjs",
+    "test:user-skills": "node scripts/user-skills-smoke-test.mjs",
+    "test:handshake": "node scripts/mcp-handshake-test.mjs",
+    "test": "node scripts/smoke-test.mjs && node scripts/telemetry-smoke-test.mjs && node scripts/user-skills-smoke-test.mjs && node scripts/mcp-handshake-test.mjs",
     "postinstall": "echo 'WinDAGs MCP server ready. Run: claude mcp add windags -- windags-mcp'"
   },
   "dependencies": {
