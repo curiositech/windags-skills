@@ -1,5 +1,5 @@
 ---
-name: Hono Patterns
+name: hono-patterns
 description: 'Use when building APIs on Hono (Cloudflare Workers, Bun, Deno, Node), debugging route ordering, wiring middleware, validating with @hono/zod-validator, returning streaming responses, configuring CORS with credentials, handling errors via app.onError, or composing typed RPC clients. Triggers: c.env binding types, c.header + c.redirect interaction, missing await next() bugs, Set-Cookie not attaching to redirect, route-precedence surprises, JWT middleware setup, hono/client typed RPC end-to-end. NOT for Express/Fastify/Koa idioms, tRPC/GraphQL paradigms, or Next.js Route Handlers.'
 category: Backend & Infrastructure
 tags:
@@ -285,4 +285,6 @@ The client mirrors the server type tree exactly. Refactor a route → the client
 - **Express/Fastify/Koa** — different middleware models, different ergonomics.
 - **tRPC/GraphQL** — different paradigms; Hono's RPC is REST-flavored.
 - **Next.js Route Handlers** — `app/api/*/route.ts` is a different framework.
-- **Pure node http** — Hono's value is the middleware + typing; if you need neither, drop down.
+- **Pure node http** — Hono's value is the middleware + typing; if you need neither, drop down. No dedicated skill.
+- **Cloudflare Workers platform issues** (binding errors, deploy failures, secret upload) — once it's the platform, → `cloudflare-workers-debugging`.
+- **Webhook signature verification on Hono routes** — Hono is the framework, not the protocol. → `webhook-receiver-design` for HMAC, raw-body, idempotency.

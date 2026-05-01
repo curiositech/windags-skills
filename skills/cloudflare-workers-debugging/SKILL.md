@@ -1,5 +1,5 @@
 ---
-name: Cloudflare Workers Debugging
+name: cloudflare-workers-debugging
 description: 'Use when wrangler deploys silently fail or produce wrong artifacts, secrets upload as empty strings, custom domain DNS is not resolving, route assignment broke after rename, observability/tail logs are needed, D1/KV/R2 bindings are missing, OAuth scope errors block a command, cookies on a redirect are not attaching, or the worker exceeds CPU time. Triggers: "Tenant or user not found", "Authentication error" on wrangler d1 push, secret length is 0 after upload, route returns origin not worker, "compatibility_date too old", 1101 errors, custom_domain assignment lost on script rename. NOT for AWS Lambda / Vercel Edge / Deno Deploy (different runtimes), Cloudflare Zero Trust, or R2-specific tuning.'
 category: DevOps & Infrastructure
 tags:
@@ -213,5 +213,7 @@ Error 1101 = uncaught error during execution; 1102 = exceeded CPU. JSON.parse on
 - **AWS Lambda / Vercel Edge / Deno Deploy** — different runtimes, different limits.
 - **R2 bucket-specific tuning** — multipart, lifecycle, presigned URLs are a separate domain.
 - **Cloudflare Zero Trust / Access** — auth product with its own configuration model.
-- **Hyperdrive-specific debugging** — pair with the Hyperdrive skill.
+- **Hyperdrive-specific debugging** — pair with the Hyperdrive skill (no dedicated skill yet).
+- **Hono routing/middleware specifics** — once it's a Hono issue, → `hono-patterns`.
+- **D1 / Supabase migration commands hanging** — different surface. → `d1-and-supabase-migrations`.
 - **Pages Functions** specifically — overlaps but has its own conventions.

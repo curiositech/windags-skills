@@ -1,5 +1,5 @@
 ---
-name: Vite Build Optimizer
+name: vite-build-optimizer
 description: 'Use when Vite dev startup is slow, HMR is not invalidating, the build emits chunks larger than expected, or you are authoring a Vite plugin. Triggers: "[plugin:..] failed", "Failed to resolve import", externalize warnings, dependency pre-bundling errors, lib mode + code splitting, ssr externals confusion, "Cannot find package" only in build, manualChunks tuning, optimizeDeps include/exclude tuning, rollup-plugin-visualizer review, --profile flag, configResolved/handleHotUpdate hook authoring. NOT for Webpack tuning, Turbopack-specific, Astro internals, or Bun bundler — those have their own conventions.'
 category: Frontend & UI
 tags:
@@ -184,6 +184,6 @@ plugins: [visualizer({ filename: 'stats.html', gzipSize: true, brotliSize: true 
 
 - **Webpack tuning** → use a Webpack-specific skill.
 - **Turbopack** (Next.js 15+) → different bundler, different config surface.
-- **Astro internals** — Astro uses Vite but has its own collection/integrations layer.
+- **Astro internals** — Astro uses Vite but has its own collection/integrations layer. → `astro-islands-architect`.
 - **Bun bundler** → `Bun.build()` API is separate.
 - **esbuild standalone** → much smaller surface; use directly when Vite's plugin lifecycle is overkill.

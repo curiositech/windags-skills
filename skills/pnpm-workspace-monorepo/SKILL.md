@@ -1,5 +1,5 @@
 ---
-name: pnpm Workspace Monorepo
+name: pnpm-workspace-monorepo
 description: 'Use when configuring a pnpm-workspaces monorepo, debugging hoisting/peer-dep resolution, adopting the catalog protocol, integrating with Turborepo or Nx, fixing "cannot find module" issues that only happen in CI, or migrating from npm/yarn workspaces. Triggers: pnpm-workspace.yaml setup, packageExtensions for broken peer deps, .npmrc tuning (public-hoist-pattern, shamefully-hoist), workspace protocol (workspace:*), filtering with --filter, version mismatches across packages, "Cannot find module \"foo\"" only after lockfile update, ESM/CJS interop in workspace packages. NOT for npm/yarn-specific workspace bugs, monorepos using Bazel/Lerna/Rush, or single-package projects.'
 category: DevOps & Infrastructure
 tags:
@@ -274,4 +274,5 @@ turbo build --filter "...[origin/main]"
 - **npm or yarn workspaces** — different resolution semantics.
 - **Bazel / Lerna / Rush** — different orchestration models.
 - **Single-package repos** — pnpm works fine, but workspace features don't apply.
-- **Bun workspaces** — Bun's workspace support is similar but has its own quirks.
+- **Bun workspaces** — Bun's workspace support is similar but has its own quirks. No dedicated skill.
+- **CI matrix design over the workspace packages** — once you have working `pnpm --filter ...`, the matrix shape is upstream. → `github-actions-matrix-patterns`.

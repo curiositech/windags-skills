@@ -1,5 +1,5 @@
 ---
-name: OpenTelemetry Instrumentation
+name: opentelemetry-instrumentation
 description: 'Use when adding distributed tracing, debugging missing spans, fixing W3C traceparent propagation, configuring OTLP exporters (gRPC vs HTTP), choosing sampling strategies, setting resource attributes, or wiring auto-instrumentation libraries. Triggers: spans missing in Datadog/Honeycomb/Jaeger, "service.name = unknown_service", trace assembly broken across services, async work losing context, OTLP collector unreachable, sampling rate decisions, ESM vs CJS auto-instrumentation loader bugs. NOT for vendor-specific SDKs (Datadog APM, New Relic), structured-logging-only setups, or pre-OTel tracers (Jaeger client, Zipkin Brave).'
 category: DevOps & Infrastructure
 tags:
@@ -265,6 +265,6 @@ Histograms beat averages — averages hide tail latency. Counters are monotonic;
 ## NOT for
 
 - **Datadog APM, New Relic, AppDynamics agents** — vendor-native; different setup.
-- **Structured-logging-only** observability — pair with a logging skill.
+- **Structured-logging-only** observability — different layer. → `structured-logging-design` for the schema/redaction side; `grafana-dashboard-builder` for the visualization side.
 - **Pre-OTel tracers** (Jaeger client, Zipkin Brave) — migration target should be OTel.
 - **eBPF-based service maps** — different layer entirely.

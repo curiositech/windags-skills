@@ -1,5 +1,5 @@
 ---
-name: Transformers.js ONNX Pipelines
+name: transformers-js-onnx-pipelines
 description: 'Use when integrating Hugging Face Transformers.js (Xenova/transformers) for in-browser or in-Node inference, debugging quantized model loading, building bi-encoder / cross-encoder / classification pipelines, configuring model cache directories, or bypassing high-level pipelines to read raw logits. Triggers: "model failed to load", cross-encoder scores all 1.0 (softmax-over-1 trap), env.allowLocalModels confusion, cacheDir overrides, ONNX runtime mismatch, ESM vs CJS pipeline imports, browser vs node feature gaps. NOT for full transformers Python (different SDK), TensorFlow.js, ONNX Runtime Web directly without Transformers.js, or model training.'
 category: AI & Machine Learning
 tags:
