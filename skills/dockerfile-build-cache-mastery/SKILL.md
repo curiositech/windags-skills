@@ -2,6 +2,7 @@
 name: dockerfile-build-cache-mastery
 description: 'Use when optimizing Docker builds with BuildKit, designing multi-stage Dockerfiles, leveraging cache mounts, building multi-arch images, choosing distroless vs alpine, or signing images with cosign. Triggers: docker build slow, layer cache not hitting, npm install / pip install reruns, multi-stage final image bloat, glibc vs musl issues, RUN --mount=type=cache, BUILDKIT_INLINE_CACHE, registry cache exporters, qemu emulation for arm64, COPY ordering for cache. NOT for Docker daemon admin, Kubernetes-specific image policies, container security scanning workflows, or Buildpacks (different paradigm).'
 category: DevOps & Infrastructure
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash
 tags:
   - docker
   - buildkit
@@ -14,6 +15,27 @@ tags:
 # Dockerfile Build Cache Mastery
 
 The Docker build is a series of hashable layers. Speed comes from invalidating as few as possible. Most "build is slow" stories are layer ordering mistakes that bust the cache on every commit.
+
+## Decision diagram
+
+```mermaid
+flowchart TD
+  A[Docker build slow] --> B{BuildKit enabled?}
+  B -->|No| F1[FIX: DOCKER_BUILDKIT=1 or buildx]
+  B -->|Yes| C{Are deps copied before source?}
+  C -->|No, COPY . . first| F2[FIX: COPY lockfile → install → COPY source]
+  C -->|Yes| D{Cache mount on package manager dir?}
+  D -->|No| F3[FIX: RUN --mount=type=cache,target=/root/.npm]
+  D -->|Yes| E{Multi-stage build?}
+  E -->|No| F4[FIX: build stage + slim runtime stage]
+  E -->|Yes| G{CI cold builds slow?}
+  G -->|Yes| F5[FIX: --cache-to/--cache-from registry]
+  G -->|No| H{Image > 300MB or shipping build tools?}
+  H -->|Yes| F6[FIX: distroless or scratch runtime]
+  H -->|No| I{Building arm64 too?}
+  I -->|Via QEMU only| F7[FIX: native arm64 builder for compiled langs]
+  I -->|Native| J[Done]
+```
 
 **Jump to your fire:**
 - Build slow on every commit → [Layer ordering for cache](#layer-ordering-for-cache)
@@ -254,17 +276,36 @@ ARG is build-time only; ENV is runtime. Don't ARG secrets — they're visible in
 **Diagnosis:** Alpine uses musl libc; some binaries assume glibc.
 **Fix:** Test on Alpine specifically. For Node native modules, install build deps. For Go, build with CGO_ENABLED=0 or pin a glibc-based base.
 
+## Worked example: the 14-minute CI build
+
+**Scenario.** Every PR runs CI for 14 minutes. The Dockerfile builds a Node monorepo (4 packages, ~600MB node_modules). Engineers are getting 4-5 builds queued, productivity tanking.
+
+**Novice would:** Increase the CI runner size; bump from `ubuntu-latest` (4 vCPU) to `ubuntu-latest-large` (8 vCPU). Build time drops to 9 minutes — barely. Cost goes up 4x. The cache problem is unaddressed.
+
+**Expert catches:**
+1. **Run `docker build --progress=plain` locally and read the cache-hit lines.** First clue: `[2/8] COPY . .` invalidates on every commit. Second clue: no `--mount=type=cache`, so pnpm re-downloads packages every build.
+2. **Reorder + cache mount.** Copy `pnpm-lock.yaml` first, install with `--mount=type=cache,target=/root/.local/share/pnpm/store`, then `COPY . .`. Local rebuild on small change drops from 8 min → 40 sec.
+3. **Registry cache for cold CI.** GitHub Actions runners start cold. Add `--cache-to type=registry,ref=ghcr.io/org/app:cache,mode=max` + matching `--cache-from`. Cold CI now pulls cache layers, build drops from 14 min → 2 min.
+4. **Multi-stage final image.** Image was 1.2GB shipping pnpm + dev deps. Three-stage `deps → build → distroless runtime` gets it to 220MB.
+5. **Verify with hyperfine.** Run `hyperfine --warmup 1 'docker buildx build ...'` ten times locally to confirm cache hits stable.
+
+**Timeline.** Novice spends $400/mo more on CI runners and the queue still backs up. Expert spends a 4-hour afternoon redoing the Dockerfile and CI cache wiring; build drops from 14 min → 2 min, image from 1.2GB → 220MB, monthly CI cost flat. The pattern then propagates across the org's other 12 services because the Dockerfile is small and copyable.
+
 ## Quality gates
 
-- [ ] BuildKit enabled (default in Docker 23+).
-- [ ] `.dockerignore` present and excludes node_modules, .git, .env.
-- [ ] Multi-stage build separates build deps from runtime.
-- [ ] Final image <300MB for typical apps; <100MB for compiled binaries.
-- [ ] `COPY` order: manifest → install → source → build.
-- [ ] Cache mounts (`--mount=type=cache`) for the package manager.
-- [ ] Registry cache exporter in CI (`--cache-to`/`--cache-from`).
-- [ ] No secrets in ARG/ENV; use `--mount=type=secret`.
-- [ ] `USER nonroot` (or specific UID) in runtime stage.
+- [ ] **Test:** `docker build` from a clean cache, then again from a no-op commit; second build completes in ≤ 30 sec (cache works).
+- [ ] **Test:** lockfile change → only the install layer rebuilds (verified via `--progress=plain` log).
+- [ ] BuildKit enabled (Docker 23+ default; otherwise `DOCKER_BUILDKIT=1` set in CI env).
+- [ ] `.dockerignore` present and excludes `node_modules`, `.git`, `.env`, `dist`. Verified: `du -sh $(docker build --progress=plain . 2>&1 | grep 'transferring context')` ≤ 5MB for typical apps.
+- [ ] Multi-stage build separates build deps from runtime. Final image inspected: no `pnpm`, `gcc`, `apt`, dev dependencies present.
+- [ ] Final image size ≤ 300MB for Node/Python apps; ≤ 100MB for Go/Rust. Measured by `docker images --format 'table {{.Repository}}\t{{.Size}}'` in CI.
+- [ ] `COPY` order: manifest → install → source → build (verified by reading the Dockerfile in code review).
+- [ ] Cache mounts (`--mount=type=cache`) for the package manager. Grep for `--mount=type=cache` in CI passes.
+- [ ] Registry cache exporter in CI (`--cache-to`/`--cache-from`). Verified by build time on a no-op PR ≤ 3 min.
+- [ ] No secrets in ARG/ENV. Verified: `docker history --no-trunc <image>` grepped for known-secret patterns; CI fails on hit.
+- [ ] `USER nonroot` (or numeric UID) in runtime stage. Verified by `docker inspect <image> | jq '.[0].Config.User'` ≠ `""` and ≠ `"root"`.
+- [ ] Image signed with cosign in production deploy (`cosign verify` succeeds in admission controller).
+- [ ] Multi-arch (amd64+arm64) for any image deployed to mixed-arch clusters. Verified: `docker buildx imagetools inspect <ref>` shows both platforms.
 - [ ] Image signed with cosign in production deploy.
 - [ ] Multi-arch (amd64+arm64) for any image deployed to mixed-arch clusters.
 

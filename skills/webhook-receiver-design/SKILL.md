@@ -2,6 +2,7 @@
 name: webhook-receiver-design
 description: 'Use when designing webhook endpoints (Stripe/GitHub/Slack/internal), implementing HMAC signature verification, ensuring idempotency on retries, handling out-of-order events, building dead-letter queues, or replaying historical webhooks. Triggers: signature header verification (Stripe-Signature, X-Hub-Signature-256), timestamp window for replay protection, idempotency keys, exactly-once processing semantics, retry storms, webhook handler latency budgets, async vs sync processing, dead-letter capture and replay UIs. NOT for outbound webhook publishing (different concerns), event-driven internal pubsub (Redis Streams skill), or polling-based integrations.'
 category: Backend & Infrastructure
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash
 tags:
   - webhooks
   - hmac
@@ -14,6 +15,26 @@ tags:
 # Webhook Receiver Design
 
 A webhook receiver is "an HTTP endpoint that takes durable async traffic from a third party that may retry forever." Get any of three things wrong — signatures, idempotency, latency budget — and you'll be debugging duplicate side effects at 2am.
+
+## Decision diagram
+
+```mermaid
+flowchart TD
+  A[Webhook arrives] --> B{Raw body available?}
+  B -->|No, JSON middleware ran| F1[FIX: raw-body middleware on /webhooks/*]
+  B -->|Yes| C{Signature verified with timingSafeEqual?}
+  C -->|No, used ===| F2[FIX: crypto.timingSafeEqual]
+  C -->|Yes| D{Timestamp within tolerance?}
+  D -->|No| R1[400: replay window]
+  D -->|Yes| E{Insert event_id with UNIQUE constraint}
+  E -->|Conflict — already seen| R2[200 ok: dedup hit]
+  E -->|First time| G{Handler returns in &lt; 500ms p99?}
+  G -->|No| F3[FIX: ack 200 then enqueue async]
+  G -->|Yes| H[Worker processes; on N failures → dead-letter]
+  H --> I{State derived from event payload or API?}
+  I -->|Payload| F4[FIX: reconcile from provider API for out-of-order]
+  I -->|API| J[Done]
+```
 
 **Jump to your fire:**
 - Signature verification randomly fails → [Get the raw body](#get-the-raw-body)
@@ -241,18 +262,31 @@ This is the difference between "we lost three days of webhooks" and "Sarah repla
 **Diagnosis:** Failed events keep retrying with no escape.
 **Fix:** After N retries, dead-letter with reason. Build a UI/CLI to replay.
 
+## Worked example: the 2am duplicate-charge incident
+
+**Scenario.** Stripe webhooks for `charge.succeeded` are being processed; on retry, customers got charged twice in your downstream ledger. Pager is firing.
+
+**Novice would:** Add a Redis SET-NX dedup key on `event.id`, mark the bug fixed, wait for the next page. Misses two things: Redis can be down (silently skipping dedup), and the actual duplication may not be from retries — it may be from two replicas of the worker processing the same row.
+
+**Expert catches:**
+1. **DB unique constraint, not Redis.** Move the dedup primitive to a `webhook_events.id` UNIQUE column. The DB is the same authority that records the ledger entry, so the dedup and the side-effect commit in the same transaction. Redis-down then becomes a non-issue for correctness.
+2. **Worker-level idempotency too.** Even with insert-then-process, if the worker crashes between insert and side-effect, the next retry sees the row and skips. Fix: a `processed_at` column the side-effect commit sets. Workers only process rows where `processed_at IS NULL`, with a row-level lock.
+3. **Verify with replay.** Capture the last 1000 production events, replay them through the receiver locally, assert the ledger has exactly N entries. This is the only test that catches transactional gaps.
+
+**Timeline.** Novice ships the Redis fix in 30 minutes; same incident reoccurs the next quarter when Redis has a memory blip. Expert ships the DB-constraint + replay-test version in a day; the same ledger never double-charges again.
+
 ## Quality gates
 
-- [ ] HMAC verification before any payload parsing.
-- [ ] Raw body access for verification (no JSON middleware).
-- [ ] `timingSafeEqual` used for signature comparison.
-- [ ] Replay-window check (timestamp tolerance).
-- [ ] Provider's event ID used as idempotency key with DB unique constraint.
-- [ ] Handler returns in <500ms p99; heavy work async.
-- [ ] Dead-letter table + replay tool.
-- [ ] Per-environment webhook secrets (test/staging/prod separate).
-- [ ] Receiver endpoint is idempotent — confirmed by replaying captured events.
-- [ ] State reconciled from provider API for out-of-order resilience.
+- [ ] **Test:** captured-event replay suite runs in CI, asserts handler is idempotent (replay 100 events twice → identical DB state).
+- [ ] HMAC verification runs against `req.rawBody` / `c.req.text()` (raw body), not parsed JSON. Confirmed by a test that posts a valid payload with whitespace mutations and asserts signature still verifies.
+- [ ] Signature comparison uses `crypto.timingSafeEqual`. Lint or grep CI fails on `===` of signature strings.
+- [ ] Replay-window rejection: a unit test with `event.created` 10 minutes in the past returns 400.
+- [ ] Idempotency primitive is a DB UNIQUE constraint on `(provider, event_id)`. Migration reviewed.
+- [ ] Handler p99 latency budget < 500ms documented; alert fires if breached for 5 minutes (see `grafana-dashboard-builder`).
+- [ ] Dead-letter table exists; replay UI or CLI tested against a synthetic dead-letter row.
+- [ ] Per-environment webhook secrets in env: `STRIPE_WEBHOOK_SECRET_TEST` vs `STRIPE_WEBHOOK_SECRET_LIVE`. CI fails if both share a value.
+- [ ] State reconciled from provider API on each event (not from event payload alone). Test: feed an out-of-order pair (cancel before create), assert final state matches API.
+- [ ] OTel span around the handler with `webhook.provider`, `webhook.event_type`, `webhook.event_id` attributes (see `opentelemetry-instrumentation`).
 
 ## NOT for
 
