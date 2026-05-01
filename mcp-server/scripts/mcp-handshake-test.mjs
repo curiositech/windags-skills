@@ -3,11 +3,16 @@
  * MCP handshake test.
  *
  * Spawns the MCP server, performs the JSON-RPC initialize + tools/list
- * dance over stdio, and asserts that all four tools are advertised:
- *   - windags_skill_search
- *   - windags_skill_graft
- *   - windags_skill_reference
- *   - windags_history
+ * dance over stdio, and asserts that all nine tools are advertised:
+ *   - windags_skill_search          (single-query cascade)
+ *   - windags_skill_graft            (single-task graft)
+ *   - windags_skill_reference        (load one reference file)
+ *   - windags_history                (recent /next-move predictions)
+ *   - windags_skill_search_batch     (N queries in one round-trip)
+ *   - windags_skill_graft_batch      (N grafts in one round-trip)
+ *   - windags_node_requirements      (allowed-tools + provider-mapped model IDs)
+ *   - windags_validate_dag           (PredictedDAG schema check)
+ *   - windags_estimate_cost          (per-node + total cost estimate)
  *
  * Hard-fails after 60s so a stuck process can never block CI. We deliberately
  * keep this lighter than the cascade smoke test — it just proves the server
@@ -28,6 +33,11 @@ const REQUIRED_TOOLS = [
   "windags_skill_graft",
   "windags_skill_reference",
   "windags_history",
+  "windags_skill_search_batch",
+  "windags_skill_graft_batch",
+  "windags_node_requirements",
+  "windags_validate_dag",
+  "windags_estimate_cost",
 ];
 
 const DEADLINE_MS = 60_000;

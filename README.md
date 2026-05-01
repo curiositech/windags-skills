@@ -169,7 +169,19 @@ What it does (idempotent — safe to re-run after `git pull`):
 
 Override the install location with `WINDAGS_HOME=/path ./install.sh`. Preview without changes with `--dry-run`.
 
-The MCP server (BM25 skill search + history) lives at `<plugin>/mcp-server/dist/index.js` — wire it into any MCP-aware client.
+The MCP server lives at `<plugin>/mcp-server/index.js` — wire it into any MCP-aware client. It exposes 9 tools:
+
+| Tool | Purpose |
+|---|---|
+| `windags_skill_search` | Cascade-ranked skill search (BM25 + MiniLM + RRF + cross-encoder + per-user attribution k-NN) |
+| `windags_skill_graft` | Full SKILL.md bodies for top primaries + adjacencies + asset manifest |
+| `windags_skill_reference` | Load one reference file from a skill's `references/` |
+| `windags_history` | Recent `/next-move` predictions for a project |
+| `windags_skill_search_batch` | N searches in one round-trip (capped at 20) |
+| `windags_skill_graft_batch` | N grafts in one round-trip (capped at 20) |
+| `windags_node_requirements` | Per-skill `allowed-tools`, `pairs-with`, suggested `model_tier`, and **provider-native** model IDs |
+| `windags_validate_dag` | Schema-check a candidate DAG before saving |
+| `windags_estimate_cost` | Per-node + total cost estimate during planning |
 
 ---
 
