@@ -1,5 +1,5 @@
 ---
-name: D1 and Supabase Migrations Done Right
+name: d1-and-supabase-migrations
 description: 'Use when applying Cloudflare D1 migrations, fighting Supabase migration history vs SQL execution, choosing direct psql over CLI, designing idempotent migrations, debugging schema drift between local and remote, or recovering after a half-applied migration. Triggers: supabase migration repair instructions appearing, table missing after "applied" status, "Tenant or user not found" when running psql, --remote vs --local D1 confusion, NOT NULL on a populated column, foreign key constraint failures, drift between staging and prod schemas. NOT for Mongo/document migrations, ORM-managed migrations specifically (Prisma/Drizzle have their own conventions), or pure data backfills.'
 category: Backend & Infrastructure
 tags:
@@ -231,4 +231,6 @@ Don't trust history rows. Trust the schema.
 - **Prisma / Drizzle migration tooling** — they each have specific conventions; use the matching skill.
 - **Pure data backfills** — schema is locked; you're moving data. Different operational concerns.
 - **MySQL/Aurora migrations** — different DDL behavior, different lock semantics.
-- **Multi-region replication / failover** — operational, not schema.
+- **Multi-region replication / failover** — operational, not schema. No dedicated skill.
+- **Wrangler / platform-level errors** (auth, binding, deploy) on Cloudflare side — → `cloudflare-workers-debugging`.
+- **Hono route handlers reading the migrated tables** — different concern. → `hono-patterns`.

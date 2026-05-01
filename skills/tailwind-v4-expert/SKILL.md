@@ -1,5 +1,5 @@
 ---
-name: Tailwind v4 Expert
+name: tailwind-v4-expert
 description: 'Use when migrating Tailwind v3 to v4, configuring CSS-first @theme tokens, debugging Oxide engine errors, dealing with the absence of tailwind.config.js, container queries (@container) usage, layer cascade problems, or "dynamic class names not generating". Triggers: switching from `@tailwind base` to `@import "tailwindcss"`, RSC/Next.js streaming + CSS ordering, dark-mode strategy choices, custom variants via @variant, content-scanning glob tuning. NOT for Tailwind v3 (different config model), CSS-in-JS frameworks, vanilla CSS architecture (BEM/SMACSS), or react-native styling.'
 category: Frontend & UI
 tags:

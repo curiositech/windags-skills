@@ -1,5 +1,5 @@
 ---
-name: Redis Patterns Expert
+name: redis-patterns-expert
 description: 'Use when designing caching strategies (cache-aside, write-through, write-behind), implementing distributed locks, building rate limiters, leaderboards, real-time streams (XADD/consumer groups), pub/sub, or tuning eviction policies. Triggers: thundering-herd on cache miss, dogpile on key expiry, Redlock vs SET-NX-PX choice, sliding-window rate limiter, hot-key on a single cluster slot, big-key blowup, MULTI/EXEC across slots, KEYS in production. NOT for Redis Cluster operations/admin (different domain), embedded KV (SQLite, leveldb), in-process LRU caches, or Memcached.'
 category: Backend & Infrastructure
 tags:
@@ -268,7 +268,8 @@ maxmemory-policy         allkeys-lru
 
 ## NOT for
 
-- **Redis Cluster admin/operations** — failover, slot migration, persistence tuning is a separate skill.
+- **Redis Cluster admin/operations** — failover, slot migration, persistence tuning is a separate skill (no dedicated skill yet).
+- **Webhook receiver dedup keyed in Redis** — Redis is fragile for idempotency. → `webhook-receiver-design` (use a DB unique constraint instead).
 - **Embedded KV stores** (SQLite, leveldb, RocksDB) — different consistency model.
 - **In-process LRU** (`lru-cache` npm) — single-node, no shared state.
 - **Memcached** — fewer data structures, simpler semantics.

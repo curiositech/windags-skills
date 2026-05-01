@@ -1,5 +1,5 @@
 ---
-name: MCP Server Design
+name: mcp-server-design
 description: 'Use when designing, building, or debugging a Model Context Protocol (MCP) server in Node/TypeScript. Triggers: stdio JSON-RPC handshake, tool descriptions as discovery surface, lazy startup vs eager catalog loading, telemetry placement, schema design for tool inputs (zod), tool naming conventions for discoverability, error handling that does not leak stack traces, MCP client compatibility (Claude Desktop, Claude Code, Cursor), local resource fetching, secrets and env var handling, distributing as npm + claude mcp add. NOT for MCP client implementation, MCP HTTP transport (different surface), Anthropic Agent SDK building, or non-MCP plugin systems.'
 category: AI & Machine Learning
 tags:
