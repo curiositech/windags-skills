@@ -44,6 +44,9 @@ import * as os from "os";
 import { embedQuery, loadCorpus, topKSemantic, rrfFuse, crossEncoderRerank, attributionBoost } from "./cascade.js";
 import { loadUserSkills, readUserSkillFile, listUserSkillAssets } from "./user-skills.js";
 import { recordEvent } from "./telemetry.js";
+import { buildModelTierMap, suggestTierForCategory } from "./provider-models.js";
+import { validatePredictedDAG } from "./validate-prediction.js";
+import { estimateDAGCostFromSpec } from "./cost-estimator.js";
 
 const require = createRequire(import.meta.url);
 const bm25 = require("wink-bm25-text-search");
@@ -438,7 +441,18 @@ function listTriples(projectPath, limit) {
 // MCP Server
 // ---------------------------------------------------------------------------
 
-const server = new McpServer({ name: "windags", version: "0.3.0" });
+const server = new McpServer({ name: "windags", version: "0.5.0" });
+
+// Hard limits on batch payloads. Mirrors the monorepo MCP.
+const MAX_BATCH_QUERIES = 20;
+const MAX_GRAFT_PRIMARY = 3;
+
+// Lazy tier map (built once on first node_requirements / estimate_cost call)
+let _cachedTierMap = null;
+function getTierMap() {
+  if (!_cachedTierMap) _cachedTierMap = buildModelTierMap();
+  return _cachedTierMap;
+}
 
 server.tool(
   "windags_skill_search",
@@ -596,6 +610,278 @@ server.tool(
       }));
       return {
         content: [{ type: "text", text: JSON.stringify({ project: project_path, total: triples.length, history }, null, 2) }],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: err.message }, null, 2) }],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Tool 5: windags_skill_search_batch
+// ---------------------------------------------------------------------------
+
+server.tool(
+  "windags_skill_search_batch",
+  "Run multiple skill searches in one call. Returns results for each query in the same order. " +
+    "Use when planning a multi-node DAG so you don't pay N round-trips for N nodes. Same local " +
+    "cascade as windags_skill_search. Hard cap of " + MAX_BATCH_QUERIES + " queries per call.",
+  {
+    queries: z
+      .array(
+        z.object({
+          query: z.string().describe("Natural language search query"),
+          limit: z.number().optional().default(10).describe("Max results for this query (default: 10)"),
+        }),
+      )
+      .min(1)
+      .describe("Array of {query, limit?} — one entry per node you're planning"),
+  },
+  async ({ queries }) => {
+    try {
+      if (queries.length > MAX_BATCH_QUERIES) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: false, error: `Too many queries: ${queries.length}. Max is ${MAX_BATCH_QUERIES}.` }) }],
+          isError: true,
+        };
+      }
+      recordEvent({ toolName: "windags_skill_search_batch", taskText: queries.map((q) => q.query).join(" || ") });
+      const results = await Promise.all(
+        queries.map(async ({ query, limit }) => {
+          const { results: raw, stage } = await cascadeSearch(query, limit ?? 10);
+          return { query, stage, total_matches: raw.length, skills: decorate(raw) };
+        }),
+      );
+      return {
+        content: [{ type: "text", text: JSON.stringify({ batch_size: queries.length, results }, null, 2) }],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: err.message }, null, 2) }],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Tool 6: windags_skill_graft_batch
+// ---------------------------------------------------------------------------
+
+server.tool(
+  "windags_skill_graft_batch",
+  "Run multiple skill grafts in one call. Returns full skill bodies + adjacencies for each task. " +
+    "Use when materializing a multi-node DAG so you have expertise for every node up-front. " +
+    "Per-task primary count is capped at " + MAX_GRAFT_PRIMARY + " — call windags_skill_reference for full reference " +
+    "contents when needed. Hard cap of " + MAX_BATCH_QUERIES + " tasks per call.",
+  {
+    tasks: z
+      .array(
+        z.object({
+          task: z.string().describe("Description of the task you need expertise for"),
+          count: z.number().optional().default(2).describe("Primary skills to graft (capped at " + MAX_GRAFT_PRIMARY + ")"),
+        }),
+      )
+      .min(1)
+      .describe("Array of {task, count?} — one entry per node you're materializing"),
+  },
+  async ({ tasks }) => {
+    try {
+      if (tasks.length > MAX_BATCH_QUERIES) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ success: false, error: `Too many tasks: ${tasks.length}. Max is ${MAX_BATCH_QUERIES}.` }) }],
+          isError: true,
+        };
+      }
+      recordEvent({ toolName: "windags_skill_graft_batch", taskText: tasks.map((t) => t.task).join(" || ") });
+      const results = await Promise.all(
+        tasks.map(async ({ task, count }) => {
+          const n = Math.min(count ?? 2, MAX_GRAFT_PRIMARY);
+          return localGraft(task, n);
+        }),
+      );
+      return {
+        content: [{ type: "text", text: JSON.stringify({ batch_size: tasks.length, results }, null, 2) }],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: err.message }, null, 2) }],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Tool 7: windags_node_requirements
+// ---------------------------------------------------------------------------
+
+server.tool(
+  "windags_node_requirements",
+  "Get the per-node requirements a DAG planner needs in order to emit a fully-spec'd node: " +
+    "allowed-tools (from frontmatter), pairs-with relationships, suggested model_tier, and " +
+    "provider-mapped model IDs. Returned model_options use REAL provider-native IDs " +
+    "(e.g. 'gpt-5.4-nano', 'llama-3.1-8b-instant'), not the abstract Anthropic-only labels " +
+    "'haiku'/'sonnet'/'opus'. Pass skill_ids[] for batch lookup.",
+  {
+    skill_ids: z
+      .array(z.string())
+      .min(1)
+      .max(50)
+      .describe("One or more skill IDs to look up"),
+  },
+  async ({ skill_ids }) => {
+    try {
+      // Make sure the catalog is loaded so skillMap is populated
+      await ensureCatalogReady();
+      const tierMap = getTierMap();
+
+      const requirements = skill_ids.map((id) => {
+        const meta = skillMap.get(id);
+        if (!meta) {
+          // Try reading the SKILL.md directly for bundled skills (skillMap may
+          // only have the indexed fields, not the full frontmatter)
+          const file = id.startsWith("user:")
+            ? readUserSkillFile(userSkillSourcePaths.get(id))
+            : readSkillFile(id);
+          if (!file) return { skill_id: id, error: `Skill '${id}' not found` };
+          const fm = file.frontmatter || {};
+          const allowedTools = Array.isArray(fm["allowed-tools"])
+            ? fm["allowed-tools"]
+            : (fm["allowed-tools"] || "").split(",").map((s) => s.trim()).filter(Boolean);
+          const pairsWith = Array.isArray(fm["pairs-with"]) ? fm["pairs-with"] : [];
+          const category = fm.category || (fm.metadata && fm.metadata.category) || "Uncategorized";
+          const tier = suggestTierForCategory(category);
+          return {
+            skill_id: id,
+            name: fm.name || id,
+            category,
+            allowed_tools: allowedTools,
+            pairs_with: pairsWith,
+            recommended_model_tier: tier,
+            model_options: tierMap[tier] || [],
+          };
+        }
+        const tier = suggestTierForCategory(meta.category || "");
+        return {
+          skill_id: meta.id,
+          name: meta.name || meta.id,
+          category: meta.category || "Uncategorized",
+          allowed_tools: Array.isArray(meta.tools) ? meta.tools : [],
+          pairs_with: Array.isArray(meta.pairsWith) ? meta.pairsWith : [],
+          recommended_model_tier: tier,
+          model_options: tierMap[tier] || [],
+        };
+      });
+
+      recordEvent({ toolName: "windags_node_requirements", taskText: skill_ids.join(",") });
+
+      return {
+        content: [{ type: "text", text: JSON.stringify({
+          requirements,
+          tier_legend: {
+            fast: "Cheapest + fastest. Use for classification, formatting, mechanical transforms.",
+            balanced: "Default. Use for most coding, planning, and reasoning tasks.",
+            powerful: "Reserve for deep architecture, hard reasoning, or final-output synthesis.",
+          },
+          all_tier_options: tierMap,
+        }, null, 2) }],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: err.message }, null, 2) }],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Tool 8: windags_validate_dag
+// ---------------------------------------------------------------------------
+
+server.tool(
+  "windags_validate_dag",
+  "Validate a DAG JSON object against the PredictedDAG schema (waves, nodes, dependencies, " +
+    "topology, premortem, confidence). Returns {valid: boolean, errors: string[]}. Use during " +
+    "multi-step planning to catch malformed DAGs before committing them.",
+  {
+    dag: z.unknown().describe("The DAG object to validate (any JSON-shaped value)"),
+  },
+  async ({ dag }) => {
+    try {
+      const result = validatePredictedDAG(dag);
+      recordEvent({ toolName: "windags_validate_dag" });
+      if (result.success) {
+        return {
+          content: [{ type: "text", text: JSON.stringify({
+            valid: true,
+            errors: [],
+            title: result.data.title,
+            topology: result.data.topology ?? "dag",
+            wave_count: result.data.waves.length,
+            node_count: result.data.waves.reduce((s, w) => s + w.nodes.length, 0),
+            confidence: result.data.confidence,
+          }, null, 2) }],
+        };
+      }
+      return {
+        content: [{ type: "text", text: JSON.stringify({ valid: false, errors: result.errors }, null, 2) }],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: err.message }, null, 2) }],
+        isError: true,
+      };
+    }
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Tool 9: windags_estimate_cost
+// ---------------------------------------------------------------------------
+
+server.tool(
+  "windags_estimate_cost",
+  "Estimate execution cost for a planned DAG. Input: nodes[] with skillIds + dependencies + " +
+    "description, plus a defaultModel tier. Returns total USD, total tokens, and per-node " +
+    "breakdown. Char-based estimator (no tokenizer) — treat as planning-time order of " +
+    "magnitude, not a billing prediction. Pricing calibrated to Anthropic Claude tiers " +
+    "(haiku/sonnet/opus); other providers will produce reasonable but imperfect estimates.",
+  {
+    nodes: z
+      .array(
+        z.object({
+          id: z.string().describe("Node ID (must be unique within the DAG)"),
+          skillIds: z.array(z.string()).describe("Skill IDs whose bodies will be injected"),
+          description: z.string().describe("Natural-language description of what this node does"),
+          dependencies: z.array(z.string()).describe("IDs of upstream nodes"),
+          model: z.enum(["haiku", "sonnet", "opus"]).optional().describe("Override the default tier"),
+          referenceFileCount: z.number().optional().describe("Reference files this node will load (default: 0)"),
+        }),
+      )
+      .min(1),
+    defaultModel: z.enum(["haiku", "sonnet", "opus"]).default("sonnet"),
+  },
+  async ({ nodes, defaultModel }) => {
+    try {
+      recordEvent({ toolName: "windags_estimate_cost", taskText: `${nodes.length} nodes` });
+      const result = estimateDAGCostFromSpec({
+        nodes,
+        defaultModel,
+        skillsDir,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify({
+          total_cost_usd: Math.round(result.totalCostUsd * 10000) / 10000,
+          total_tokens: result.totalTokens,
+          node_count: nodes.length,
+          default_model: defaultModel,
+          per_node: result.perNode,
+        }, null, 2) }],
       };
     } catch (err) {
       return {
