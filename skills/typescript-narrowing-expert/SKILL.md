@@ -2,6 +2,7 @@
 name: typescript-narrowing-expert
 description: 'Use when designing discriminated unions, debugging control-flow analysis, choosing satisfies vs as, building branded types, writing user-defined type guards, or composing conditional types and template literal types. Triggers: "Type X is not assignable to type Y" after a type guard, exhaustiveness checks via never, satisfies vs explicit annotation, infer in conditional types, mapped types with key remapping, distributive conditional types, type-narrowing inside callbacks losing the narrowed type. NOT for runtime validation only (zod/yup), tsc compiler internals, or design-time-only types not used at runtime.'
 category: Frontend & UI
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash
 tags:
   - typescript
   - type-system
@@ -14,6 +15,23 @@ tags:
 # TypeScript Narrowing Expert
 
 The interesting part of TypeScript isn't generics — it's narrowing. Control-flow analysis turns wide types into specific ones inside conditional branches. Most "TypeScript is fighting me" stories come from narrowing not propagating where the engineer expected.
+
+## Decision diagram
+
+```mermaid
+flowchart TD
+  A[Type error after a check] --> B{Is the check on a discriminant property?}
+  B -->|No, structural check| F1[FIX: add a literal discriminant `kind: 'a' | 'b'`]
+  B -->|Yes| C{Narrowing lost inside a callback?}
+  C -->|Yes| F2[FIX: hoist the narrowed value into a const before the callback]
+  C -->|No| D{Is `as` being used?}
+  D -->|Yes, to silence error| F3[FIX: replace with type guard or `satisfies`]
+  D -->|No, satisfies| E{Need exhaustiveness?}
+  E -->|Yes| F4[FIX: switch + `_exhaustive: never` default]
+  E -->|No| G{ID confused with other ID type?}
+  G -->|Yes| F5[FIX: branded type via intersection w/ unique symbol]
+  G -->|No| H[Done]
+```
 
 ## When to use
 
@@ -235,16 +253,32 @@ Template literal types (`Capitalize`, `Uppercase`, `${...}`) compose with mapped
 **Diagnosis:** Recursion depth >100 in a conditional type.
 **Fix:** Add a depth counter, or refactor to iterate via mapped types instead of recursive conditionals.
 
+## Worked example: the `OrderID` mixed up with `UserID`
+
+**Scenario.** Production bug: a refund function received an `OrderID` parameter but was being called with a `UserID`. The bug existed for 6 weeks before a customer complained. Both are strings; TypeScript said it was fine.
+
+**Novice would:** Add a JSDoc `@param orderId — must be an order ID, not a user ID` and write a runtime check that throws on the wrong shape. Misses two things: docs don't fail builds, and the runtime check fires after the wrong query already ran.
+
+**Expert catches:**
+1. **Brand the IDs at the type system.** `type OrderID = string & { readonly __brand: 'OrderID' }`. Now `processRefund(orderId: OrderID)` rejects raw strings AND `UserID`s at compile time.
+2. **Factory that validates.** `OrderID(s: string): OrderID` checks the format (`/^o_[a-z0-9]{12}$/`) and casts inside. Outside the factory, no `as OrderID` is allowed (lint rule).
+3. **Audit existing call sites.** `tsc --noEmit` after the brand is applied surfaces every place that's passing a raw string. Fix them by reading from typed sources (DB types, API response types) or by routing through the factory.
+4. **Test the brand can't be bypassed.** A `expectTypeOf<UserID>().not.toMatchTypeOf<OrderID>()` test (via `expect-type` or similar) locks the invariant.
+
+**Timeline.** Novice's runtime guard catches future cases at request-time, not commit-time; the same shape of bug recurs across other ID pairs (CustomerID vs MerchantID, etc). Expert's branded-type fix once applied is propagated to all 14 ID types in the domain via codemod; the entire class of bug disappears, and TypeScript catches violations in IDE before commit.
+
 ## Quality gates
 
-- [ ] Discriminated unions used for sum types; discriminants are literals.
-- [ ] Exhaustiveness checks on every union switch (`const _: never = x`).
-- [ ] `satisfies` preferred over annotation for inferring narrow types.
-- [ ] `as` audited; each instance has a comment justifying the cast.
-- [ ] Branded types have validating factories.
-- [ ] User-defined type guards return `x is Foo`, not `boolean`.
-- [ ] No `any` in domain code; only in narrow framework boundaries.
-- [ ] Conditional types stay <50 lines; complex ones broken into named helpers.
+- [ ] **Test:** every discriminated union has an exhaustiveness test that fails to compile if a new variant is added without handling (`const _: never = x` in the default branch).
+- [ ] **Test:** branded types have negative type-tests (`expectTypeOf` or `tsd`) asserting two different brands are not assignable.
+- [ ] Discriminated unions used for sum types; discriminants are literal types (`'a' | 'b'`), not booleans or enums.
+- [ ] `satisfies` preferred over annotation for inferring narrow types. ESLint rule or grep for `: SomeWideType =` flags candidates.
+- [ ] `as` audited: every instance has a `// reason:` comment in the same line. CI grep fails on bare `as` without comment.
+- [ ] Branded types have validating factories; `as Brand` outside the factory file is lint-banned.
+- [ ] User-defined type guards return `x is Foo`, not `boolean`. Verified by grep for `function is.*\(.*\): boolean`.
+- [ ] No `any` in domain code; only in `vendor/` or framework-boundary files. CI: `tsc --noImplicitAny` clean.
+- [ ] Conditional types stay ≤ 50 lines; complex ones broken into named type aliases. ESLint rule on type-alias body length.
+- [ ] `tsc --noEmit` runs in CI on every PR; build fails on type errors.
 
 ## NOT for
 

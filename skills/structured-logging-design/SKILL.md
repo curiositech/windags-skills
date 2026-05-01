@@ -2,6 +2,7 @@
 name: structured-logging-design
 description: 'Use when designing log schemas, choosing JSON vs text logs, setting up correlation IDs across services, redacting PII, controlling log volume costs, or wiring logs into OpenTelemetry. Triggers: "logs are unsearchable", trace_id missing from logs, PII leak in production logs, log volume bill spike, log levels misused, structured fields vs string interpolation, parent_span_id propagation, sampled vs always-log decisions, log routing (vendor + cold storage). NOT for log aggregation tooling specifically (vendor skills), full APM, or print-debugging local development.'
 category: DevOps & Infrastructure
+allowed-tools: Read,Grep,Glob,Edit,Write,Bash
 tags:
   - logging
   - observability
@@ -14,6 +15,26 @@ tags:
 # Structured Logging Design
 
 Logs are searched in production, not read top-to-bottom. Structured (JSON) logs with consistent field names are queryable; unstructured strings are grep bait. The whole craft is choosing the schema, the levels, and what to redact — so you can answer "what happened to user X at 03:14" without guessing.
+
+## Decision diagram
+
+```mermaid
+flowchart TD
+  A[Need to add a log line] --> B{Is data in the message string or structured fields?}
+  B -->|String interpolation| F1[FIX: move data to fields, message stays static]
+  B -->|Structured fields| C{Field name in PII redact list?}
+  C -->|Yes, raw| F2[FIX: add to redactor before logger writes]
+  C -->|No| D{Has trace_id from request context?}
+  D -->|No| F3[FIX: bind trace_id via middleware/contextvars]
+  D -->|Yes| E{Field high-cardinality e.g. user_id in path?}
+  E -->|Yes, indexed| F4[FIX: normalize to template, raw in non-indexed payload]
+  E -->|Normalized| G{Long body field truncated?}
+  G -->|No| F5[FIX: cap at 1KB unless level=debug]
+  G -->|Yes| H[Log it]
+  H --> I{Service+version+region in base context?}
+  I -->|No| F6[FIX: enricher in logger init, not per-call]
+  I -->|Yes| J[Done]
+```
 
 **Jump to your fire:**
 - Logs unsearchable, engineers grep stdout → [The minimum schema](#the-minimum-schema)
@@ -275,17 +296,32 @@ Set up the agent or sidecar (Vector, Fluent Bit) to fan out. Hot vendor for sear
 **Diagnosis:** Logger writes to stdout that's piped to a synchronous shipper.
 **Fix:** Async logger with a buffer. Drop on overflow rather than block. Pino, slog, structlog all default to this.
 
+## Worked example: the logging bill spike
+
+**Scenario.** Datadog Logs bill went from $2k/mo to $11k/mo over 4 weeks. Volume looks the same. Finance is asking questions.
+
+**Novice would:** Drop the retention period, sample debug logs at 10%, ship a one-line config change. Bill drops 30% but search becomes useless: queries that used to find "what happened to user X" now miss because the log was sampled out.
+
+**Expert catches:**
+1. **The bill is index cost, not volume cost.** Open Datadog usage page → break down by indexed-bytes vs ingested-bytes. If indexed is 10x ingested, the cost is from facet cardinality.
+2. **Find the high-cardinality field.** Run `top facets by unique values`. Usually it's `request_path` with raw IDs, or `error.message` with embedded timestamps/UUIDs.
+3. **Normalize, don't sample.** Add a `request_path_template` field (`/users/:id/posts`) that gets indexed, keep raw `request_path` in payload (un-indexed, still searchable via grep at 1/10 the cost). Same volume, ~70% cost cut.
+4. **Cold storage for compliance.** The 2-year retention for "who did what 14 months ago" goes to S3 + Athena, not the hot vendor. 5x cheaper, slower query, fine for the use case.
+
+**Timeline.** Novice's sampling fix passes finance review but breaks the next forensics request ("we can't tell when the breach started"). Expert's normalization + tiered storage fix passes finance review AND keeps every log searchable, just at different latencies. Bill stabilizes at $3k/mo.
+
 ## Quality gates
 
-- [ ] All production logs are JSON.
-- [ ] Every log has `ts`, `level`, `service`, `message`.
-- [ ] Every request-scope log carries `trace_id` matching the trace exporter.
-- [ ] Logger has a global redact list for PII; updated as fields are added.
-- [ ] Field names follow one convention (snake_case or camelCase, picked once).
-- [ ] Errors logged once, at the top-level error boundary.
-- [ ] Long fields (`request_body`, `response_body`) truncated to 1KB unless explicitly enabled.
-- [ ] Log volume budget per service tracked; alerts on 2x baseline.
-- [ ] Cold storage retention separate from hot search retention.
+- [ ] **Test:** schema-conformance test asserts every log line in a sample has `ts`, `level`, `service`, `message`, `trace_id` (when request-scoped).
+- [ ] **Test:** PII fuzz — generate logs with fake emails/SSNs in known fields, assert redactor replaces them. Run in CI.
+- [ ] All production log lines are JSON. CI lint fails on `console.log` / `print()` outside dev paths.
+- [ ] Field-name convention picked (snake_case or camelCase) and enforced via a lint rule (eslint-plugin-no-mixed-keys or similar).
+- [ ] Top-level error handler is the single error log site. Lower layers re-throw with context. Verified by grep for `log.error` count per service (should be ≤ 3 per layer).
+- [ ] Long fields capped at 1KB. Verified by checking p99 log line size ≤ 4KB in vendor metrics.
+- [ ] Log volume budget per service tracked in `grafana-dashboard-builder` panel; alert at 2x baseline for 30 minutes.
+- [ ] Cold storage retention is separate from hot search retention; documented in runbook.
+- [ ] `trace_id` matches the OTel exporter's trace ID (W3C traceparent) — verified by joining a log line and a span in the vendor UI on a recent request.
+- [ ] Async logger configured (Pino/slog/structlog defaults); verified handler latency ≤ same with logger disabled.
 
 ## NOT for
 
