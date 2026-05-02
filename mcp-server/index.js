@@ -441,7 +441,7 @@ function listTriples(projectPath, limit) {
 // MCP Server
 // ---------------------------------------------------------------------------
 
-const server = new McpServer({ name: "windags", version: "0.5.0" });
+const server = new McpServer({ name: "windags", version: "0.6.0" });
 
 // Hard limits on batch payloads. Mirrors the monorepo MCP.
 const MAX_BATCH_QUERIES = 20;
@@ -890,6 +890,164 @@ server.tool(
       };
     }
   },
+);
+
+// =============================================================================
+// PROMPTS
+// =============================================================================
+
+// `next_move` — exposes /next-move to non-Claude clients via MCP's prompt
+// capability. The Claude Code slash command relies on shell pre-expansion and
+// the Task tool, neither of which exist in Codex / Cursor / Gemini / Aider /
+// generic stdio MCP clients. This prompt gives those clients a templated
+// runner they can hand to their own model: gather signals → 5-stage pipeline
+// → present a PredictedDAG. The model must still call the windags_skill_*
+// tools registered above; this prompt just tells it how.
+//
+// This is the prompt-capability path. A headless `windags_run_pipeline` tool
+// (where the MCP server itself drives the pipeline with its own LLM) is a
+// follow-up.
+const NEXT_MOVE_PROMPT_BODY = ({ task, fresh }) => `You are running the WinDAGs /next-move pipeline for the user's current project.
+
+Goal: predict the highest-impact next action by running a 5-stage meta-DAG over project signals, then present a PredictedDAG the user can accept, modify, or reject. Halt is a first-class output — do not paper over ambiguity.
+
+${task ? `User-supplied focus hint: ${task}\n\n` : ''}${fresh ? 'The user passed --fresh: ignore conversation history and predict from project signals only.\n\n' : ''}## Step 1 — Gather signals
+
+Use your shell-execution tool. Treat each output as ground truth, not a guess.
+
+- \`git status --short\`
+- \`git branch --show-current\`
+- \`git log --oneline -8\`
+- \`git diff --stat\`
+- \`git diff --cached --stat\`
+- \`git diff --name-only HEAD~3\`
+- \`head -60 CLAUDE.md\` (or AGENTS.md, README.md if no CLAUDE.md)
+- \`cat package.json | head -40\` (or pyproject.toml / Cargo.toml / go.mod — whichever exists)
+- \`command -v pd && pd find && pd notes && pd salvage && pd whoami\` (Port Daddy state, if installed)
+- \`ls -1t .windags/triples/ | head -5\` (prior /next-move predictions)
+
+If a command fails (not a git repo, no package.json, no Port Daddy), record that as a signal — don't fabricate.
+
+## Step 2 — Sensemaker (problem classification + halt gate)
+
+Classify the project state into one of: \`well-structured\` | \`ill-structured\` | \`wicked\`. Score your confidence 0-1.
+
+Halt gate trips when:
+- Two stated goals contradict (e.g. "ship fast" + "no tech debt").
+- The signals don't support any single inferred problem with confidence ≥ 0.5.
+- The user's last message contradicts the project's recent direction.
+
+If halted, stop and emit a halt response: name the contradiction, list what evidence would resolve it, store no triple. Do NOT proceed to decomposition.
+
+Output schema: \`schemas/sensemaker-output.schema.json\` in the windags-skills install.
+
+## Step 3 — Decomposer
+
+If the gate passed, decompose the inferred problem into 3-7 subtasks. Each subtask must be:
+- Independently executable (not "everything else").
+- One unit of skilled agent work, not a project plan.
+- Named with an action verb + object.
+- Tagged with explicit upstream dependencies (subtask IDs it depends on) and a wave number.
+
+Output schema: \`schemas/decomposer-output.schema.json\`.
+
+## Step 4 — Skill narrowing (call windags_skill_search)
+
+For each subtask, call \`windags_skill_search\` (or \`windags_skill_search_batch\` for all subtasks at once) with the subtask description as \`query\`. Take the top 5-8 candidates per subtask.
+
+Then call \`windags_skill_graft_batch\` on the candidates to load the winning skill bodies. The graft includes \`allowed-tools\`, \`pairs-with\`, and reference manifests — feed these into the next stage.
+
+For provider-native model IDs and tool permissions per skill, call \`windags_node_requirements\` with the chosen skill IDs.
+
+## Step 5 — Skill Selector + PreMortem (in parallel)
+
+**Skill Selector**: for each subtask pick a primary skill and a runner-up from the narrowed candidates. Justify each pick in one line. Don't pick a skill if the candidates are weak — it's better to surface "no good fit" than force one.
+
+**PreMortem**: for each subtask, name 2-3 concrete failure modes and a mitigation each. Don't list generic risks ("the model might hallucinate"); name the specific failure for THIS subtask.
+
+These run in parallel because they don't depend on each other — both consume decomposer + narrowed-candidates output.
+
+## Step 6 — Synthesizer (build the PredictedDAG)
+
+Combine the previous outputs into a PredictedDAG:
+- Nodes from decomposer subtasks
+- skillId from skill selector picks (with runner-up annotated)
+- model_tier from windags_node_requirements (\`fast\` | \`balanced\` | \`powerful\`)
+- pre-mortem mitigations folded into node-level notes
+- Wave assignments respecting the dependency edges
+
+Validate the DAG against the schema before presenting:
+\`windags_validate_dag\` will return field-path errors if the shape is off (e.g. \`waves.0.nodes.0.id: Expected string, received number\`). Self-correct from those errors before showing the user.
+
+For a cost order-of-magnitude, call \`windags_estimate_cost\` with the DAG. Treat as planning-time, not a billing prediction.
+
+Output schema: \`schemas/predicted-dag.schema.json\`.
+
+## Step 7 — Present
+
+Show the user:
+1. The inferred problem (one sentence).
+2. The 3-7 subtasks with their wave assignments and chosen skills.
+3. Top 2-3 pre-mortem risks with mitigations.
+4. Total cost + token estimate from \`windags_estimate_cost\`.
+5. Three explicit options: **Accept** (run the DAG), **Modify** (which node?), **Reject** (record why).
+
+Do NOT autorun. /next-move predicts; the human decides.
+
+## Honesty rules
+
+- Only \`dag\` topology is proven end-to-end in the current server. Do not recommend Team Loop / Swarm / Blackboard / Team Builder / Recurring as production paths — that's overpromising.
+- If the cascade returns weak candidates for a subtask, say "no strong skill match" instead of forcing a pick.
+- Skills are not bandit arms. The cascade ranks by BM25 + MiniLM + RRF + cross-encoder + per-user attribution k-NN over similar past tasks. Never describe selection as Thompson sampling or Beta(α,β) — that's a category error.
+- Halt is success. Surfacing "we don't have enough signal" beats inventing a plan.
+
+## Optional: store the prediction
+
+If the user accepts, write the full PredictedDAG to \`.windags/triples/<timestamp>-<short-id>.json\` so the attribution k-NN cascade can learn from the choice on the next run.
+`;
+
+server.registerPrompt(
+  "next_move",
+  {
+    title: "next_move",
+    description:
+      "Run the WinDAGs /next-move pipeline: gather project signals, then drive " +
+      "the 5-stage meta-DAG (sensemaker → decomposer → skill-selector + premortem → " +
+      "synthesizer) using the windags_skill_* tools. Returns a templated runner " +
+      "the calling LLM follows. Designed for non-Claude MCP clients (Codex, " +
+      "Cursor, Gemini, Aider) that don't have Claude Code's slash commands or " +
+      "Task tool. Pass `task` to focus the prediction; pass `fresh=true` to " +
+      "ignore conversation history.",
+    argsSchema: {
+      task: z
+        .string()
+        .optional()
+        .describe(
+          "Optional focus hint — a one-line description of where the user wants the prediction to lean (e.g., 'frontend polish', 'test coverage gap', 'ship the v2 API').",
+        ),
+      fresh: z
+        .string()
+        .optional()
+        .describe(
+          "Pass 'true' to ignore conversation history and predict from project signals only.",
+        ),
+    },
+  },
+  ({ task, fresh }) => ({
+    description: "WinDAGs /next-move 5-stage prediction pipeline",
+    messages: [
+      {
+        role: "user",
+        content: {
+          type: "text",
+          text: NEXT_MOVE_PROMPT_BODY({
+            task: task ?? "",
+            fresh: fresh === "true",
+          }),
+        },
+      },
+    ],
+  }),
 );
 
 async function main() {
