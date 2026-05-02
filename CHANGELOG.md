@@ -2,6 +2,21 @@
 
 All notable changes to windags-skills are documented here.
 
+## [2.9.0] — 2026-05-01
+
+### Added
+
+**MCP server v0.6.0 — `next_move` prompt capability**
+
+- New MCP **prompt** (not a tool) named `next_move`. Non-Claude clients (Codex, Cursor, Gemini, Aider, generic stdio MCP hosts) that don't have Claude Code's slash-command + shell pre-expansion machinery can now drive the full `/next-move` 5-stage pipeline by listing prompts, getting `next_move`, and handing the templated body to their own model. The model still calls the existing `windags_skill_search` / `windags_skill_graft` / `windags_node_requirements` / `windags_validate_dag` / `windags_estimate_cost` tools — the prompt just tells it how, in the right order, with halt-gate discipline preserved.
+- The prompt accepts two optional args: `task` (one-line focus hint) and `fresh` (`"true"` to ignore conversation history).
+- Body is ~5.4kb of inline instructions covering signal gathering (git, CLAUDE.md, Port Daddy, prior triples), Sensemaker → Decomposer → Skill-Selector + PreMortem → Synthesizer, schema validation, cost estimate, and accept/modify/reject presentation. References the bundled `schemas/*.schema.json` files for output contracts.
+- The handshake test (`scripts/mcp-handshake-test.mjs`) now also asserts `prompts/list` advertises `next_move`, and that `prompts/get` returns a populated body with the user's `task` interpolated.
+
+### Decided NOT to ship (yet)
+
+- **`windags_run_pipeline`** — the headless tool that would run the 5-stage pipeline server-side using its own LLM. Held back because it requires the MCP server to hold a provider API key, do its own inference, and have project filesystem access — all of which are non-trivial design decisions worth their own release. Tracked as a follow-up.
+
 ## [2.8.1] — 2026-04-30
 
 ### Fixed

@@ -1,6 +1,6 @@
 {
   "name": "windags-skills",
-  "version": "2.8.1",
+  "version": "2.9.0",
   "description": "544 agent skills + /next-move prediction pipeline + 5 Claude Code subagents + 9-tool MCP server (5-stage local cascade + planner-grade tools). Built by WinDAGs.",
   "author": {
     "name": "Curiositech",

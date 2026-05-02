@@ -1,6 +1,6 @@
 {
   "name": "windags-mcp",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "WinDAGs MCP server — local cascade (lexical + semantic + RRF + cross-encoder + per-user attribution k-NN) over the bundled catalog plus your own SKILL.md files. Zero API keys.",
   "type": "module",
   "main": "./index.js",
