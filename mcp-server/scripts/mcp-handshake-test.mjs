@@ -44,6 +44,7 @@ const REQUIRED_TOOLS = [
   "windags_node_requirements",
   "windags_validate_dag",
   "windags_estimate_cost",
+  "windags_run_pipeline",
 ];
 
 const REQUIRED_PROMPTS = ["next_move"];

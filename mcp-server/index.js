@@ -47,6 +47,7 @@ import { recordEvent } from "./telemetry.js";
 import { buildModelTierMap, suggestTierForCategory } from "./provider-models.js";
 import { validatePredictedDAG } from "./validate-prediction.js";
 import { estimateDAGCostFromSpec } from "./cost-estimator.js";
+import { runPipeline } from "./run-pipeline.js";
 
 const require = createRequire(import.meta.url);
 const bm25 = require("wink-bm25-text-search");
@@ -441,7 +442,7 @@ function listTriples(projectPath, limit) {
 // MCP Server
 // ---------------------------------------------------------------------------
 
-const server = new McpServer({ name: "windags", version: "0.6.0" });
+const server = new McpServer({ name: "windags", version: "0.7.0" });
 
 // Hard limits on batch payloads. Mirrors the monorepo MCP.
 const MAX_BATCH_QUERIES = 20;
@@ -892,6 +893,62 @@ server.tool(
   },
 );
 
+server.tool(
+  "windags_run_pipeline",
+  "Headless /next-move runner. Executes the full 5-stage meta-DAG " +
+    "(sensemaker → decomposer → skill-selector + premortem → synthesizer) " +
+    "server-side via whichever LLM provider is configured. Returns either a " +
+    "halt response (when the sensemaker confidence is below 0.6, the problem " +
+    "is wicked, or a contradiction is detected) or a validated PredictedDAG. " +
+    "REQUIRES the server process to have at least one of: ANTHROPIC_API_KEY, " +
+    "OPENAI_API_KEY, GOOGLE_API_KEY (or GEMINI_API_KEY), GROQ_API_KEY, " +
+    "OPENROUTER_API_KEY, TOGETHER_API_KEY, DEEPSEEK_API_KEY, FIREWORKS_API_KEY, " +
+    "CEREBRAS_API_KEY, or XAI_API_KEY. Auto-detects in that priority order; " +
+    "pin a specific provider with WINDAGS_PROVIDER=<id>. If your client's model " +
+    "can drive the pipeline itself, prefer the `next_move` MCP prompt instead. " +
+    "Costs roughly $0.02–$0.15 per run depending on provider + prompt sizes " +
+    "(5 LLM calls). v0 limitations: no streaming, no triple write.",
+  {
+    task: z
+      .string()
+      .optional()
+      .describe(
+        "Optional one-line focus hint that biases the sensemaker. Leave empty to predict purely from project signals.",
+      ),
+    project_root: z
+      .string()
+      .describe(
+        "Absolute path to the project the prediction is for. The MCP server runs in libexec, so it can't infer this — pass the user's working directory.",
+      ),
+    fresh: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        "When true, ignore conversation history and predict purely from project signals.",
+      ),
+  },
+  async ({ task, project_root, fresh }) => {
+    recordEvent({ toolName: "windags_run_pipeline", taskText: task ?? "" });
+    try {
+      const result = await runPipeline({
+        task,
+        projectRoot: project_root,
+        fresh: !!fresh,
+        cascadeSearch,
+      });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ success: false, error: err.message }, null, 2) }],
+        isError: true,
+      };
+    }
+  },
+);
+
 // =============================================================================
 // PROMPTS
 // =============================================================================
@@ -904,9 +961,10 @@ server.tool(
 // → present a PredictedDAG. The model must still call the windags_skill_*
 // tools registered above; this prompt just tells it how.
 //
-// This is the prompt-capability path. A headless `windags_run_pipeline` tool
-// (where the MCP server itself drives the pipeline with its own LLM) is a
-// follow-up.
+// This is the prompt-capability path. The headless `windags_run_pipeline`
+// tool (where the MCP server itself drives the pipeline with its own LLM)
+// lives above; use it when the client model isn't strong enough or when you
+// want a single tool call instead of a multi-turn prompt response.
 const NEXT_MOVE_PROMPT_BODY = ({ task, fresh }) => `You are running the WinDAGs /next-move pipeline for the user's current project.
 
 Goal: predict the highest-impact next action by running a 5-stage meta-DAG over project signals, then present a PredictedDAG the user can accept, modify, or reject. Halt is a first-class output — do not paper over ambiguity.
