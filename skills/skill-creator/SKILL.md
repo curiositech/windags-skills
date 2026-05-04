@@ -167,6 +167,7 @@ Improvement Trigger
 - [ ] Skill instructions explain the "why" behind requirements, not just rigid rules
 - [ ] Any repeated helper scripts across test cases are bundled in scripts/ directory
 - [ ] Final iteration achieves user satisfaction or 95%+ pass rate on discriminating assertions
+- [ ] If the skill creation flow ever invokes git: it works in a git worktree (`git worktree add ../$repo-skill-creator-$task`), stages by explicit path (no `git add -A`/`add .`/`add -u`), runs `git status --porcelain` as a dirty-tree check before commit, and does not push without explicit authorization. See ADR 0001 in this repo (`docs/adr/0001-background-agent-git-discipline.md`) for the rationale and the triggering incident.
 
 ## NOT-FOR Boundaries
 
