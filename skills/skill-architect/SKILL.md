@@ -211,6 +211,20 @@ Actual: Still activates (needs stronger NOT clause)
 - [ ] Test with 5 negative queries that should NOT activate skill
 - [ ] Scripts execute successfully with clear error handling
 
+## Subagents
+
+This skill ships with five focused subagents in `agents/` — one per decision branch above. Dispatch directly via `Task(subagent_type=<name>, ...)` or compose them into workflows. See `agents/INDEX.md` for full routing guide.
+
+| Agent | Path | Output |
+|---|---|---|
+| `skill-creator` | CREATE | Drafts new SKILL.md from expert inputs (refuses without examples) |
+| `skill-auditor` | AUDIT | 7-dimension scoring report (JSON) with prioritized fixes |
+| `activation-debugger` | DEBUG | Corrected description + activation regression tests |
+| `shibboleth-extractor` | EXTRACT | Novice/Expert/Timeline anti-patterns from raw content |
+| `cross-evaluator` | (template) | Generic source-embodies-target evaluation |
+
+Each agent has explicit input/output contracts in its frontmatter and refuses to operate on insufficient input — a `skill-creator` invoked without worked examples returns `status: blocked` rather than producing a generic template.
+
 ## NOT-FOR Boundaries
 
 **This skill should NOT be used for**:
