@@ -119,6 +119,23 @@ Subagent consumption context:
 **Fix**: Replace with specific loading conditions: "Read X when dealing with Y"
 **Architecture violation**: Breaks progressive disclosure model
 
+### Background-Agent Git Sweep
+**Detection**: Skill instructions tell the agent to `git add -A`, `git add .`, or otherwise stage by pattern; or omit any guidance and assume the agent will figure it out
+**Symptoms**: A background skill agent's commit contains files it did not author. `git log --oneline` no longer matches the diff. Foreground work ships under a misleading message; or worse, a foreground agent's half-finished work ships unintentionally
+**Fix**: Encode the discipline from `docs/adr/0001-background-agent-git-discipline.md` directly in the generated skill: long-running work runs in a git worktree (Rule 1), staging is by explicit path (Rule 2), a `git status --porcelain` check fires before every commit (Rule 3)
+**Triggering incident**: windags-skills `bb34efa` (2026-05-03) — skill-creator's `git add -A` swept up a v2.10.0 release commit's 8 staged files into a single-skill commit
+
+## Coordination Discipline
+
+Skills that author or modify files in a shared repository MUST inherit the rules in `docs/adr/0001-background-agent-git-discipline.md`. The short version, for skills generated under this skill-architect:
+
+1. **Worktree for long-running work.** Any skill whose typical run takes >10s between "start" and "commit" MUST instruct the agent to create a git worktree (`git worktree add ../$repo-$skill-$task`) and do its work there. Never edit the user's main checkout in the background.
+2. **No `git add -A`, ever.** Generated skills MUST stage by explicit path. Pattern-based staging (`git add -A`, `git add .`, `git add -u`) belongs in interactive scripts the user runs themselves, never in agent prompts.
+3. **Pre-commit dirty-tree check.** Before any `git commit`, the skill instructs the agent to run `git status --porcelain` and abort with a clear "unrecognized files: …" message if anything dirty was authored elsewhere.
+4. **Lock when sharing a tree.** If by exception two agents must share one tree, serialize through `port-daddy acquire_lock <repo>:git:write`.
+
+This is non-negotiable for the CREATE branch. `skill-creator` enforces it in its own operating instructions and propagates it into every skill it drafts.
+
 ## Worked Examples
 
 ### Example 1: Creating Database Migration Skill
@@ -210,6 +227,7 @@ Actual: Still activates (needs stronger NOT clause)
 - [ ] Test with 5 positive queries that should activate skill
 - [ ] Test with 5 negative queries that should NOT activate skill
 - [ ] Scripts execute successfully with clear error handling
+- [ ] If the skill stages or commits files: no `git add -A`, no `git add .`, no `git add -u`; long-running runs use a git worktree; a `git status --porcelain` dirty-tree check precedes every commit (see ADR 0001)
 
 ## Subagents
 

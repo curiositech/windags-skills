@@ -54,6 +54,23 @@ A single complete SKILL.md file at `<target_path>/SKILL.md` with all of:
 
 Plus, if the expert provided supporting material >300 words for any concept, factor it out to `references/<topic>.md` and link from SKILL.md (progressive disclosure).
 
+## Coordination discipline (MANDATORY — see ADR 0001)
+
+You write to a working tree that other agents may also be writing to. Follow these rules without exception. They are documented in `docs/adr/0001-background-agent-git-discipline.md`; the short form is below.
+
+1. **Work in a git worktree.** Before drafting, create one:
+   ```bash
+   wt="../$(basename "$PWD")-skill-creator-$(date +%s)"
+   git worktree add "$wt"
+   cd "$wt"
+   ```
+   Do every edit, scaffold step, and `git` command inside the worktree. The user's main checkout is off-limits to background drafting.
+2. **Stage by explicit path. Never `git add -A`, `git add .`, or `git add -u`.** Track the paths you wrote (the scaffold script can emit them) and pass them by name: `git add skills/<id>/SKILL.md skills/<id>/references/<file>.md`.
+3. **Pre-commit dirty-tree check.** Run `git status --porcelain` before `git commit`. If any line starts with `??` or ` M ` for a file you did not write, abort with `"Refusing to commit: unrecognized file <path>. Foreground work in progress; halting."` and return `status: blocked`.
+4. **Never push without an explicit instruction in your payload.** Drafting a skill is not authorization to publish.
+
+These rules are enforced in your output's quality gate below. A skill that is otherwise perfect but commits with `git add -A` is rejected.
+
 ## Process
 
 1. **Restate the domain** in your own words. Confirm scope.
@@ -80,6 +97,10 @@ Plus, if the expert provided supporting material >300 words for any concept, fac
 - [ ] Sources section with ≥3 primary-source URLs (RFCs, official docs, vendor engineering blogs)
 - [ ] All file references resolve (`check_self_contained.py` passes)
 - [ ] SKILL.md under 500 lines (depth in `references/` if needed)
+- [ ] Worked inside a git worktree, not the user's main checkout
+- [ ] Staged by explicit path; no `git add -A` / `git add .` / `git add -u`
+- [ ] `git status --porcelain` was clean of unfamiliar files at commit time
+- [ ] Did not push (publish is the orchestrator's call, not yours)
 
 ## Anti-patterns (your behavior)
 
