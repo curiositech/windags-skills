@@ -2,6 +2,34 @@
 
 All notable changes to windags-skills are documented here.
 
+## [2.10.0] — 2026-05-01
+
+### Added
+
+**MCP server v0.7.0 — `windags_run_pipeline` headless tool (provider-agnostic)**
+
+- Closes the loop on `/next-move` for non-Claude clients. The `next_move` prompt (shipped in 2.9.0) hands the pipeline to the *client's* model. The new `windags_run_pipeline` **tool** runs the pipeline **server-side**: gather signals → sensemaker → halt-or-decompose → skill narrowing via the local cascade → skill-selector + premortem in parallel → synthesizer → return a validated PredictedDAG (or a structured halt response).
+- Inputs: \`task\` (optional focus hint), \`project_root\` (required absolute path — server can't infer cwd from libexec), \`fresh\` (optional boolean, ignore conversation history).
+- Outputs: \`{ halted, halt_reason, evidence_needed, sensemaker, provider, provider_label, usage_log }\` on halt, or \`{ predicted_dag, sensemaker, decomposer, skill_selection, premortem, narrowed_candidates, provider, provider_label, usage_log }\` on success. The PredictedDAG is validated against the same schema \`windags_validate_dag\` uses, so callers can round-trip it.
+- Halt gate is honest: confidence < 0.6, \`problem_classification === "wicked"\`, or a non-null \`halt_reason\` from the sensemaker — any of these short-circuits the pipeline and returns the halt response. Halt is success.
+- Skill narrowing calls the local cascade directly (no MCP round-trip), so the 5 LLM calls are the only network hops.
+- Cost: roughly **$0.02–$0.15 per run** depending on provider, prompt sizes, and tier mix. Sensemaker / decomposer / synthesizer run at the \`balanced\` tier; skill-selector / premortem run at \`fast\`.
+- The handshake test (\`scripts/mcp-handshake-test.mjs\`) now asserts all **10** tools advertise.
+
+**Provider-agnostic LLM dispatch (\`mcp-server/llm-client.js\`)**
+
+- Auto-detects from env in priority order: \`ANTHROPIC_API_KEY\` → \`GOOGLE_API_KEY\` (or \`GEMINI_API_KEY\`) → \`OPENAI_API_KEY\` → Groq / OpenRouter / Together / DeepSeek / Fireworks / Cerebras / xAI. Pin a specific provider with \`WINDAGS_PROVIDER=<id>\`.
+- Native HTTP shapes for Anthropic (\`/v1/messages\`), OpenAI (\`/v1/chat/completions\`), Google (\`generateContent\`); OpenAI-compatible fallback for the rest. Pure \`fetch\` — zero new SDK deps.
+- Tier → provider-native model resolved through the existing \`provider-models.js\` catalog (the same source of truth that \`windags_node_requirements\` reports), so the prediction's chosen models always match the IDs the receiving provider accepts.
+- Each stage in the \`usage_log\` carries \`provider\` + \`model\` so callers can audit exactly what ran where.
+
+### v0 limitations (intentional, tracked as follow-ups)
+
+- **No streaming.** The tool returns the final result. Per-stage progress notifications are deferred.
+- **No triple write.** Writing to \`.windags/triples/\` is the client's call after a human accepts — the headless tool doesn't conflate "got a prediction" with "user accepted it."
+- **No retries.** A single 5xx from the API fails the run cleanly — agents can re-call the tool.
+- **MCP sampling fallback deferred.** Long-term, asking the client's model to do the inference (no server-side key) is the right answer architecturally — but it requires the client to advertise sampling capability, and most current MCP hosts don't yet.
+
 ## [2.9.0] — 2026-05-01
 
 ### Added

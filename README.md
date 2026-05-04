@@ -169,7 +169,7 @@ What it does (idempotent — safe to re-run after `git pull`):
 
 Override the install location with `WINDAGS_HOME=/path ./install.sh`. Preview without changes with `--dry-run`.
 
-The MCP server lives at `<plugin>/mcp-server/index.js` — wire it into any MCP-aware client. It exposes 9 tools and 1 prompt:
+The MCP server lives at `<plugin>/mcp-server/index.js` — wire it into any MCP-aware client. It exposes 10 tools and 1 prompt:
 
 | Tool | Purpose |
 |---|---|
@@ -182,6 +182,7 @@ The MCP server lives at `<plugin>/mcp-server/index.js` — wire it into any MCP-
 | `windags_node_requirements` | Per-skill `allowed-tools`, `pairs-with`, suggested `model_tier`, and **provider-native** model IDs |
 | `windags_validate_dag` | Schema-check a candidate DAG before saving |
 | `windags_estimate_cost` | Per-node + total cost estimate during planning |
+| `windags_run_pipeline` | Run the full 5-stage `/next-move` pipeline server-side. Provider-agnostic — auto-detects from env (Anthropic / OpenAI / Google / Groq / OpenRouter / Together / DeepSeek / Fireworks / Cerebras / xAI). Pin one with `WINDAGS_PROVIDER=<id>`. ~$0.02–$0.15 per run. Returns a halt response or a validated `PredictedDAG`. |
 
 | Prompt | Purpose |
 |---|---|
