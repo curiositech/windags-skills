@@ -125,6 +125,26 @@ Subagent consumption context:
 **Fix**: Encode the discipline from `docs/adr/0001-background-agent-git-discipline.md` directly in the generated skill: long-running work runs in a git worktree (Rule 1), staging is by explicit path (Rule 2), a `git status --porcelain` check fires before every commit (Rule 3)
 **Triggering incident**: windags-skills `bb34efa` (2026-05-03) — skill-creator's `git add -A` swept up a v2.10.0 release commit's 8 staged files into a single-skill commit
 
+## Living-Skill Discipline
+
+Generated skills are not finished products — they are **living instructions**. Every skill MUST tell the agents who use it to update the skill itself when they discover wisdom that should have been there. The CREATE branch's quality gate now requires:
+
+- A "Maintain This Skill" section explaining when to update (anti-pattern discovery, tooling change, decision-table gap, useful pattern proven on a real project).
+- Update mechanics that follow ADR 0001 (worktree, explicit-path staging, dirty-tree pre-check, no `git add -A`).
+- A split-decision rule when the skill has a private companion (e.g. `port-daddy-agent-skill` ↔ `port-daddy-internal-dev`): *would an agent on a non-owning project benefit from this wisdom?* Yes → public. No → private.
+
+A skill without a Maintain-This-Skill section is a frozen skill, and frozen skills decay faster than they help.
+
+## Catalog-First Discipline
+
+Generated skills MUST tell the agents who use them to **search the WinDAGs catalog before reasoning from scratch**. The catalog has 600+ specialist skills; most coding tasks have a skill written for them already. Generated skills should default to:
+
+- Calling `windags_skill_search "<one-line description>"` before starting any meaningful task in the skill's domain.
+- Grafting top-scoring results (`windags_skill_graft <id>`) into the agent's prompt when relevance is high.
+- Flagging catalog gaps to Cartographer when the search returns nothing useful for a recurring need.
+
+A generated skill that does not point its agents at the catalog is a missed leverage opportunity.
+
 ## Coordination Discipline
 
 Skills that author or modify files in a shared repository MUST inherit the rules in `docs/adr/0001-background-agent-git-discipline.md`. The short version, for skills generated under this skill-architect:
@@ -228,6 +248,8 @@ Actual: Still activates (needs stronger NOT clause)
 - [ ] Test with 5 negative queries that should NOT activate skill
 - [ ] Scripts execute successfully with clear error handling
 - [ ] If the skill stages or commits files: no `git add -A`, no `git add .`, no `git add -u`; long-running runs use a git worktree; a `git status --porcelain` dirty-tree check precedes every commit (see ADR 0001)
+- [ ] Skill carries a "Maintain This Skill" section that tells its agents when to update it back (anti-pattern discovery, tooling change, decision-table gap, recurring friction)
+- [ ] Skill instructs its agents to call `windags_skill_search` before reasoning from scratch about anything in the skill's domain
 
 ## Subagents
 
