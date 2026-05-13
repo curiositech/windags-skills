@@ -1,5 +1,6 @@
 ---
 license: Apache-2.0
+visibility: private
 name: modern-drug-rehab-computer
 description: Comprehensive knowledge system for addiction recovery environments, supporting both residential and outpatient (IOP/PHP) patients. Expert in evidence-based treatment modalities (CBT, DBT, MI, EMDR, MAT), recovery resources, coping strategies, crisis intervention, family systems, and holistic wellness. Activate on "rehab", "addiction recovery", "substance abuse", "treatment center", "IOP", "PHP", "detox", "sobriety support", "MAT", "Suboxone", "methadone", "12 step", "SMART Recovery". NOT for prescribing medications (consult medical professionals), emergency overdose situations (call 911), or replacing licensed counselors/therapists.
 allowed-tools: Read,Write,Edit,WebFetch,WebSearch
