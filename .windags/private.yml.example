@@ -1,0 +1,56 @@
+# .windags/private.yml — repo-local privacy declarations for the
+# auto-graft pipeline. Copy to .windags/private.yml (NOT committed; see
+# .gitignore) and customize per repo.
+#
+# How visibility is determined for each skill (cascade, first hit wins):
+#   1. `visibility:` field in SKILL.md frontmatter (highest precedence)
+#   2. an entry in this file
+#   3. a category match (any tag here)
+#   4. a Haiku borderline-classifier call against the SKILL.md (if enabled)
+#   5. default: `public`
+#
+# The auto-graft classifier honors `visibility: private` and never propagates
+# such skills out of their repo of origin. Public skills become candidates
+# for grafting into windags-skills.
+
+# Explicit per-skill overrides. Use these when frontmatter is missing or
+# you want a repo-level policy that overrides what the SKILL.md says.
+skills:
+  private: []   # e.g.: [my-app-onboarding, my-product-marketing]
+  public:  []   # e.g.: [my-open-source-cli-helper]
+
+# Bulk patterns. Anything matching one of these is forced private regardless
+# of frontmatter. Useful for sensitive verticals.
+private_patterns:
+  - "*-customer-persona"
+  - "*-marketing-copy"
+  - "*-internal-*"
+  - "personal-*"
+
+# Bulk topic categories that should never auto-graft. Matches against
+# SKILL.md frontmatter `category:` and `tags:`.
+private_categories:
+  - "Personal & Private"
+  - "Business-Critical"
+private_tags:
+  - "internal"
+  - "customer-persona"
+
+# Classifier behavior. Only consulted if a skill has no frontmatter
+# `visibility:`, no override here, and no pattern/category match.
+classifier:
+  enabled: true            # set false to default unmatched skills to public
+  model: claude-haiku-4-5  # cheap + fast
+  fail_closed: true        # if classifier errors → treat as private
+  cost_ceiling_usd: 1.00   # daily budget for borderline classifications
+
+# Where graft PRs go. Auto-graft never auto-merges; review is required.
+graft_target:
+  repo: curiositech/windags-skills
+  branch_prefix: graft/
+  open_pr: true
+  reviewers: []            # GitHub handles to request review from
+
+# Notification channel for graft activity.
+notify:
+  channel: pd-inbox        # one of: pd-inbox, slack, email, github-pr-only
