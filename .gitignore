@@ -3,3 +3,10 @@
 *.swo
 *~
 mcp-server/node_modules/
+
+# Repo-local privacy declarations for the auto-graft pipeline.
+# Tracked example lives at .windags/private.yml.example; user copies
+# to .windags/private.yml and customizes. See skills/windags-graft/.
+.windags/private.yml
+.windags/triples/
+.windags/cache/
