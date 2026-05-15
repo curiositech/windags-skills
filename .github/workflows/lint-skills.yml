@@ -1,0 +1,52 @@
+# Lightweight CI for windags-skills. Runs on every push + PR.
+#
+# We deliberately keep this dependency-free (just grep + jq + node) so it
+# stays fast and doesn't drift. The workgroup-ai monorepo carries a richer
+# TypeScript linter (scripts/lint-skills.ts); the rules here mirror the
+# load-bearing checks so they fire at this repo's own boundary too.
+
+name: lint-skills
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  compound-bash:
+    name: Reject compound `command -v X &&` shell injections
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan SKILL.md files
+        # The Claude Code permission system splits compound bash and asks
+        # for approval on each underlying binary. A `!`...` ` injection
+        # starting with `command -v X` triggers a mid-skill permission
+        # prompt that breaks slash commands. (Incident: /next-move
+        # failure 2026-05-14.)
+        run: |
+          set -eo pipefail
+          if grep -rEn '^!\`command -v [^ ]+ ' skills/ 2>/dev/null; then
+            echo ""
+            echo "::error::SKILL.md injection uses compound bash starting with 'command -v'."
+            echo "::error::Replace with a direct call (e.g. 'pd find 2>/dev/null || echo \"...\"')."
+            exit 1
+          fi
+          echo "✓ No compound 'command -v X && ...' injections found."
+
+  required-frontmatter:
+    name: Every SKILL.md has name + description
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check frontmatter
+        run: |
+          set -eo pipefail
+          bad=0
+          while IFS= read -r f; do
+            head -20 "$f" | grep -q '^name:' || { echo "::error file=$f::missing 'name:' in frontmatter"; bad=1; }
+            head -20 "$f" | grep -q '^description:' || { echo "::error file=$f::missing 'description:' in frontmatter"; bad=1; }
+          done < <(find skills -name SKILL.md)
+          if [ "$bad" -ne 0 ]; then exit 1; fi
+          echo "✓ All SKILL.md files have name + description."
