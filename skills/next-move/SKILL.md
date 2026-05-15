@@ -127,16 +127,16 @@ These are preprocessed at skill-load time via `!`...` ` shell calls. Treat them 
 
 ### Port Daddy
 ```
-!`command -v pd >/dev/null 2>&1 && pd find 2>/dev/null || echo "Port Daddy not installed. portdaddy.dev"`
+!`pd find 2>/dev/null || echo "Port Daddy not installed. portdaddy.dev"`
 ```
 ```
-!`command -v pd >/dev/null 2>&1 && pd notes 2>/dev/null || echo ""`
+!`pd notes 2>/dev/null || echo ""`
 ```
 ```
-!`command -v pd >/dev/null 2>&1 && pd salvage 2>/dev/null || echo ""`
+!`pd salvage 2>/dev/null || echo ""`
 ```
 ```
-!`command -v pd >/dev/null 2>&1 && pd whoami 2>/dev/null || echo ""`
+!`pd whoami 2>/dev/null || echo ""`
 ```
 
 ### Prior WinDAGs Predictions
