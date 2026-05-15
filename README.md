@@ -7,7 +7,7 @@
 <h1 align="center">windags-skills</h1>
 
 <p align="center">
-  <strong>463+ agent skills</strong> for Claude Code, Codex, Gemini CLI, Cursor, and 40+ other coding agents.<br/>
+  <strong>580+ agent skills</strong> for Claude Code, Codex, Gemini CLI, Cursor, and 40+ other coding agents.<br/>
   Built by <a href="https://windags.ai">WinDAGs</a> — DAG orchestration for multi-agent workflows.
 </p>
 
@@ -31,7 +31,7 @@ The flagship skill. Tell it what you're working on (or don't — it reads your g
 **What you get:**
 - Problem classification — well-structured, ill-structured, or wicked
 - 3-8 subtasks decomposed into parallel waves
-- Each subtask matched to the best skill from 463+ via BM25 retrieval
+- Each subtask matched to the best skill from 580+ via BM25 retrieval
 - Risk analysis with mitigations (PreMortem agent)
 - Time and cost estimates per node
 - Accept / Modify / Reject feedback loop
@@ -93,29 +93,29 @@ cp -r windags-skills/skills/api-architect ~/.claude/commands/
 
 ---
 
-<h2 id="all-categories">All Skills (463)</h2>
+<h2 id="all-categories">All Skills (580)</h2>
 
 | Category | Count | Highlights |
 |----------|------:|-----------|
-| **Agent & Orchestration** | 78 | dag-orchestrator, next-move, skill-architect, task-decomposer |
+| **Agent & Orchestration** | 77 | dag-orchestrator, next-move, skill-architect, task-decomposer |
 | **Research & Academic** | 61 | raft-consensus, bdi-agents, chain-of-thought, tree-of-thoughts |
-| **Design & Creative** | 46 | design-system-creator, pixel-art, typography, vibe-matcher |
-| **Backend & Infrastructure** | 35 | api-architect, microservices, caching, websocket |
-| **Cognitive Science** | 29 | naturalistic-decision-making, sensemaking, expertise-elicitation |
-| **AI & Machine Learning** | 27 | ai-engineer, RAG, computer-vision, embeddings |
-| **DevOps & Infrastructure** | 26 | github-actions, kubernetes, terraform, docker |
-| **Frontend & UI** | 24 | nextjs, react-performance, animation, framer-motion |
-| **Data & Analytics** | 17 | data-pipeline, dbt, data-viz, dimensional-modeling |
-| **Mobile Development** | 17 | ios, react-native, flutter, swiftui |
-| **Code Quality & Testing** | 16 | vitest, playwright, code-review, refactoring |
-| **Productivity & Meta** | 16 | prompt-engineer, documentation, skill-creator |
-| **Recovery & Wellness** | 16 | sobriety, crisis-intervention, speech-pathology |
-| **Lifestyle & Personal** | 14 | ADHD, grief, finance, interior-design |
-| **Content & Marketing** | 14 | SEO, copywriting, product-launches |
-| **Career & Interview** | 9 | interview-prep, resume, hiring-manager |
-| **Legal & Compliance** | 7 | expungement, HIPAA, legal-tech |
-| **Video & Audio** | 6 | video-production, TTS, sound-design |
-| **Security** | 5 | auth, vulnerability-scanning, zero-trust |
+| **Backend & Infrastructure** | 50 | api-architect, microservices-patterns, caching-strategies, real-time-collaboration-engine |
+| **Design & Creative** | 46 | design-system-creator, pixel-art-scaler, typography-expert, vibe-matcher |
+| **DevOps & Infrastructure** | 36 | github-actions-pipeline-builder, kubernetes-deployment-automation, terraform-iac-expert, docker-containerization |
+| **AI & Machine Learning** | 32 | ai-engineer, rag-retrieval-pattern-design, computer-vision-pipeline, prompt-engineer |
+| **Frontend & UI** | 29 | nextjs-app-router-expert, react-performance-optimizer, animation-system-architect, htmx-progressive-enhancement |
+| **Cognitive Science & Decision Making** | 29 | naturalistic-decision-making, sensemaking-focus-model, expert-knowledge-elicitation, systems-thinking |
+| **Code Quality & Testing** | 23 | vitest-testing-patterns, playwright-e2e-tester, code-review-checklist, refactor-architect |
+| **Data & Analytics** | 18 | data-pipeline-engineer, dbt-analytics-engineer, data-viz-2025, lakehouse-architect |
+| **Mobile Development** | 17 | ios-app-beauty, react-native-architect, flutter-bloc-state-manager, swiftui-data-flow-expert |
+| **Productivity & Meta** | 16 | skill-creator, technical-writer, skill-coach, launch-readiness-auditor |
+| **Lifestyle & Personal** | 14 | adhd-daily-planner, personal-finance-coach, interior-design-expert, wisdom-accountability-coach |
+| **Content & Marketing** | 10 | seo-content-blogging, indie-monetization-strategist, product-appeal-analyzer, career-biographer |
+| **Career & Interview** | 9 | interview-simulator, cv-creator, hiring-manager-deep-dive, job-application-optimizer |
+| **Recovery & Wellness** | 8 | crisis-response-protocol, speech-pathology-ai, wellness-app-engagement, grief-companion |
+| **Video & Audio** | 6 | ai-video-production-master, sound-engineer, audio-transcription-pipeline, win31-audio-design |
+| **Security** | 5 | oauth-oidc-implementer, modern-auth-2026, security-auditor, secret-management-expert |
+| **Legal & Compliance** | 4 | hipaa-compliance, remote-legal-hiring, legal-tech-web-design, 2026-legal-research-agent |
 
 ---
 
@@ -134,7 +134,7 @@ tags: [api, rest, graphql, grpc]
 
 The body contains activation triggers, core capabilities, anti-patterns, and reference files. When an agent loads a skill, it gains bespoke expertise — not just instructions, but deep domain knowledge with working examples.
 
-Skills follow the [Agent Skills](https://agentskills.io) open standard and work with Claude Code, OpenAI Codex CLI, Gemini CLI, Cursor, VS Code Copilot, and 30+ other agents.
+Skills follow the [Agent Skills](https://agentskills.io) open standard and work with Claude Code, OpenAI Codex CLI, Gemini CLI, Cursor, VS Code Copilot, and 40+ other agents.
 
 ---
 
@@ -147,7 +147,7 @@ claude plugin marketplace add curiositech/windags-skills
 claude plugin install windags-skills
 ```
 
-This installs all 463+ skills + the 5 `/next-move` subagents (sensemaker, decomposer, skill-selector, premortem, synthesizer).
+This installs all 580+ skills + the 5 `/next-move` subagents (sensemaker, decomposer, skill-selector, premortem, synthesizer).
 
 ### Cross-tool install (Codex, Gemini CLI, Cursor, Aider, …)
 
