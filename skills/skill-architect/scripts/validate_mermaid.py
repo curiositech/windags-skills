@@ -287,7 +287,22 @@ def _check_direction(block: DiagramBlock) -> List[DiagramIssue]:
     if block.diagram_type not in DIRECTIONAL_TYPES:
         return []
 
-    first_line = block.content.strip().split("\n")[0].strip()
+    lines = [line.strip() for line in block.content.split("\n") if line.strip()]
+    in_frontmatter = False
+    first_line = ""
+    for line in lines:
+        if line == "---":
+            in_frontmatter = not in_frontmatter
+            continue
+        if in_frontmatter:
+            continue
+        first_line = line
+        break
+
+    if not first_line:
+        return [_make_issue(block, 0, "warning",
+            f"'{block.diagram_type}' without direction — defaults to TD. Consider adding: TD, LR, BT, or RL")]
+
     parts = first_line.split()
     if len(parts) < 2:
         return [_make_issue(block, 0, "warning",

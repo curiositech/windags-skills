@@ -1,0 +1,50 @@
+// Tests for {{PaneStruct}}. Paste at the bottom of {{pane_module}}.rs.
+//
+// The console's testing contract (see rust-with-claude-code): every pane proves its
+// three render states — error, empty, populated — without a live daemon. `view()` is
+// sync, so these need no tokio runtime. This is the Linux CI gate (gpui never compiles).
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn populated() -> {{PaneStruct}} {
+        {{PaneStruct}} {
+            rows: vec!["row-a".into(), "row-b".into()],
+            last_error: None,
+        }
+    }
+
+    #[test]
+    fn empty_state_renders_a_header_and_status() {
+        let p = {{PaneStruct}}::new();
+        let blocks = p.view();
+        assert!(!blocks.is_empty(), "empty pane must still render something");
+        assert!(matches!(blocks[0], Block::Header(_)));
+    }
+
+    #[test]
+    fn error_state_surfaces_the_message() {
+        let mut p = {{PaneStruct}}::new();
+        p.last_error = Some("connection refused".into());
+        let blocks = p.view();
+        assert!(blocks.iter().any(|b| matches!(b, Block::KeyVal(k, v)
+            if k == "error" && v.contains("refused"))));
+    }
+
+    #[test]
+    fn populated_state_emits_one_chip_per_row() {
+        let p = populated();
+        let chips = p.view().into_iter()
+            .filter(|b| matches!(b, Block::Chip { .. }))
+            .count();
+        assert_eq!(chips, 2);
+    }
+
+    #[test]
+    fn id_and_title_are_stable() {
+        let p = {{PaneStruct}}::new();
+        assert_eq!(p.id(), "{{pane_id}}");
+        assert!(!p.title().is_empty());
+    }
+}

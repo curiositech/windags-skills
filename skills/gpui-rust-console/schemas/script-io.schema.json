@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://port-daddy.dev/schemas/gpui-rust-console/script-io.json",
+  "title": "Script I/O Envelope",
+  "description": "Every script in this skill reads a Request envelope on stdin and writes a Response envelope on stdout, so a calling agent or CI can chain them deterministically. Identical shape to the pd-relay-zero-trust envelope.",
+  "type": "object",
+  "oneOf": [
+    {"$ref": "#/$defs/Request"},
+    {"$ref": "#/$defs/Response"}
+  ],
+  "$defs": {
+    "Request": {
+      "type": "object",
+      "required": ["kind", "version", "command", "payload"],
+      "properties": {
+        "kind": {"const": "request"},
+        "version": {"const": "1"},
+        "command": {
+          "type": "string",
+          "enum": [
+            "oklch.to_srgb",
+            "flag.resolve",
+            "skill.validate"
+          ]
+        },
+        "payload": {"type": "object"},
+        "trace_id": {"type": "string", "description": "Optional correlation id"}
+      },
+      "additionalProperties": false
+    },
+    "Response": {
+      "type": "object",
+      "required": ["kind", "version", "ok"],
+      "properties": {
+        "kind": {"const": "response"},
+        "version": {"const": "1"},
+        "ok": {"type": "boolean"},
+        "result": {"type": "object"},
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": {"type": "string"},
+            "message": {"type": "string"},
+            "hint": {"type": "string"}
+          },
+          "additionalProperties": false
+        },
+        "trace_id": {"type": "string"}
+      },
+      "additionalProperties": false,
+      "if": {"properties": {"ok": {"const": true}}},
+      "then": {"required": ["result"]},
+      "else": {"required": ["error"]}
+    }
+  }
+}

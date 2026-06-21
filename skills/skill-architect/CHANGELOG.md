@@ -6,7 +6,7 @@
 
 **HTML entities in reference files**: The iter-2 self-evaluation claimed to fix HTML entities "throughout SKILL.md and references," but the `validate_skill.py` script only checked SKILL.md — not other markdown files. Three reference files still contained rendering-broken entities:
 
-- `references/skill-lifecycle.md` lines 178-182: `>90%`, `<70%`, `<300`, `>500`, `<3 months`, `>6 months`, `>2` in the Skill Health Indicators table (all were `&gt;`/`&lt;` encoded)
+- `references/skill-lifecycle.md` lines 178-182: `>90%`, `<70%`, `<300`, `>500`, `<3 months`, `>6 months`, `>2` in the Skill Health Indicators table (all were `>`/`<` encoded)
 - `references/subagent-design.md` lines 30-31: `>80%` and `<5k tokens` in Layer 1 preload criteria prose
 - `references/self-contained-tools.md` line 107: `<500` inside a bash `echo` command in a code block
 - `references/subagent-template.md` line 238: `>95%` in the Success Criteria section
@@ -27,7 +27,7 @@
 
 **SKILL.md line count**: Reduced from 504 lines to 467 by compressing the Visual Artifacts Mermaid table from 23 types to the 8 most relevant (full catalog remains in `references/visual-artifacts.md`) and removing script entries from the Reference Files table (scripts are not references).
 
-**HTML entities**: Replaced all `&lt;` with `<` and `&gt;` with `>` throughout SKILL.md and references — entities were rendering incorrectly in some viewers.
+**HTML entities**: Replaced all HTML entities with literal comparison operators throughout SKILL.md and references — entities were rendering incorrectly in some viewers.
 
 **Phantom references resolved**: `check_self_contained.py` was generating false positives on illustrative example paths in prose. Fixed via two approaches:
 1. Removed backtick-quoted paths from illustrative anti-pattern prose in `references/self-contained-tools.md`, `references/knowledge-engineering.md`, `references/subagent-design.md`, and `references/claude-extension-taxonomy.md`

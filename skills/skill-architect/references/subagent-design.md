@@ -48,6 +48,22 @@ The subagent treats each selected skill like a mini-protocol:
 
 **Make this explicit in the prompt**: "When using a skill, reference its steps by number and confirm you've completed each one before returning your result."
 
+### When to Put a Skill in `context: fork`
+
+Reserve `context: fork` for skills that should run in an isolated subagent by default.
+
+Use it when:
+- The skill needs a tighter tool boundary than the parent agent
+- The work is naturally parallelizable across specialist roles
+- The skill has its own strong prompt contract and handoff shape
+
+Avoid it when:
+- The task is a simple single-pass method that the parent agent can just follow directly
+- Forking would add coordination overhead without improving quality
+- The skill is only occasionally delegated
+
+If you set `context: fork`, also set `agent:` in frontmatter and include a matching prompt asset under `agents/`.
+
 ---
 
 ## Subagent Prompt Structure
@@ -147,6 +163,8 @@ then:
   - Orchestrator merges outputs, resolves conflicts
 ```
 
+Use this only when the branches are genuinely independent and their outputs can be merged without hidden coupling.
+
 ---
 
 ## Designing Skills That Subagents Consume Well
@@ -213,6 +231,24 @@ Before returning results, verify:
 ### 5. Minimal Context Assumptions
 
 Don't assume the subagent knows your project structure. Include paths, conventions, and setup steps in the skill itself or its references.
+
+### 6. Agent Asset Convention
+
+When a skill defaults to forked execution, keep the agent prompt in a matching file under `agents/` (for example `agents/refactorer.md`) and make the mapping obvious:
+
+```yaml
+context: fork
+agent: refactorer
+```
+
+Then ship:
+
+```text
+agents/
+└── refactorer.md
+```
+
+The asset should define the role, workflow, output contract, and quality bar. Avoid opaque agent names that do not match any file in the skill.
 
 ---
 

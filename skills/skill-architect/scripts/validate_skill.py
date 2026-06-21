@@ -184,10 +184,10 @@ class ValidationReport:
 # ──────────────────────────────────────────────────────────────────────
 
 VALID_FRONTMATTER_KEYS = {
-    "name", "description", "allowed-tools", "argument-hint", "license",
-    "disable-model-invocation", "user-invocable", "context", "agent",
-    "model", "hooks", "metadata", "dependencies", "bundled-resources",
-    "distribution",
+    "name", "description", "license", "compatibility", "metadata",
+    "allowed-tools", "when_to_use", "argument-hint", "arguments",
+    "disable-model-invocation", "user-invocable", "disallowed-tools",
+    "model", "effort", "context", "agent", "hooks", "paths", "shell",
 }
 
 RESERVED_NAME_WORDS = {"anthropic", "claude"}
@@ -250,6 +250,18 @@ def validate_frontmatter(skill_dir: Path, text: str, report: ValidationReport):
                 report.add(rel, 1, "warning", "frontmatter",
                            f"Unknown frontmatter key '{key}' — will be ignored by runtime. "
                            f"Move to metadata: block or SKILL.md body")
+
+    context = fm.get("context")
+    agent = fm.get("agent")
+    if context is not None and context != "fork":
+        report.add(rel, 1, "warning", "frontmatter",
+                   f"Unknown context '{context}' — expected 'fork' or omit the field")
+    if context == "fork" and not agent:
+        report.add(rel, 1, "error", "frontmatter",
+                   "context: fork requires agent: <subagent-name>")
+    if agent and context != "fork":
+        report.add(rel, 1, "warning", "frontmatter",
+                   "agent is set without context: fork — the agent setting may be ignored")
 
 
 def validate_skill_md(skill_dir: Path, report: ValidationReport):
@@ -326,13 +338,56 @@ def validate_structure(skill_dir: Path, report: ValidationReport):
                                "Python script missing shebang (#!/usr/bin/env python3)")
 
     # Check for empty directories
-    for subdir in ["references", "scripts", "assets"]:
+    for subdir in ["references", "scripts", "examples", "templates", "assets", "agents", "hooks"]:
         d = skill_dir / subdir
         if d.exists() and d.is_dir():
             children = [f for f in d.iterdir() if not f.name.startswith(".")]
             if not children:
                 report.add(subdir, 0, "warning", "structure",
                            f"Empty directory: {subdir}/ — remove or add content")
+
+
+def validate_forked_agent_assets(skill_dir: Path, text: str, report: ValidationReport):
+    """Validate local forked-subagent conventions."""
+    fm, _ = parse_frontmatter(text)
+    if fm is None:
+        return
+
+    if fm.get("context") != "fork":
+        return
+
+    agents_dir = skill_dir / "agents"
+    if not agents_dir.exists():
+        report.add("agents", 0, "warning", "structure",
+                   "context: fork is set but agents/ directory is missing")
+        return
+
+    agent_files = [f for f in agents_dir.rglob("*.md") if f.is_file() and not f.name.startswith(".")]
+    if not agent_files:
+        report.add("agents", 0, "warning", "structure",
+                   "context: fork is set but agents/ has no markdown prompt files")
+
+
+def validate_hook_assets(skill_dir: Path, text: str, report: ValidationReport):
+    """Validate local hook conventions."""
+    fm, _ = parse_frontmatter(text)
+    if fm is None:
+        return
+
+    hooks = fm.get("hooks")
+    if not hooks:
+        return
+
+    hooks_dir = skill_dir / "hooks"
+    if not hooks_dir.exists():
+        report.add("hooks", 0, "warning", "structure",
+                   "hooks frontmatter is set but hooks/ directory is missing")
+        return
+
+    hook_files = [f for f in hooks_dir.rglob("*") if f.is_file() and not f.name.startswith(".")]
+    if not hook_files:
+        report.add("hooks", 0, "warning", "structure",
+                   "hooks frontmatter is set but hooks/ has no files")
 
 
 def validate_tags(skill_dir: Path, text: str, report: ValidationReport):
@@ -373,6 +428,8 @@ def validate_skill(skill_dir: Path, strict: bool = False) -> ValidationReport:
     if skill_md.exists():
         text = skill_md.read_text(encoding="utf-8")
         validate_tags(skill_dir, text, report)
+        validate_forked_agent_assets(skill_dir, text, report)
+        validate_hook_assets(skill_dir, text, report)
 
     if strict:
         # In strict mode, warnings become errors

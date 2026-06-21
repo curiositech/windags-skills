@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://port-daddy.local/schemas/skill-sync-plan.schema.json",
+  "title": "Skill Sync Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "skill",
+    "authoritativeSource",
+    "mirrors",
+    "mergeDecisions",
+    "validation"
+  ],
+  "properties": {
+    "skill": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,64}$"
+    },
+    "authoritativeSource": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mirrors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "kind", "status"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "kind": {
+            "type": "string",
+            "enum": ["repo", "user-level", "workgroup", "other"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["in-sync", "drifted", "missing", "symlink", "unknown"]
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["mirror-from-source", "merge-into-source", "leave", "replace-with-symlink", "review"]
+          }
+        }
+      }
+    },
+    "mergeDecisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "decision", "reason"],
+        "properties": {
+          "path": { "type": "string" },
+          "decision": { "type": "string" },
+          "reason": { "type": "string" }
+        }
+      }
+    },
+    "portDaddy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "session": { "type": "string" },
+        "claims": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tuples": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "validation": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "status"],
+        "properties": {
+          "command": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "passed", "failed", "skipped"]
+          },
+          "evidence": { "type": "string" }
+        }
+      }
+    }
+  }
+}

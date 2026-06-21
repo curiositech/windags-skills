@@ -22,6 +22,7 @@ Skills should encode expertise AND provide working tools to apply that expertise
 - Skill describes repeatable operations (analysis, validation, transformation)
 - Domain has specific algorithms that should be implemented correctly
 - Pre-flight checks would prevent common errors
+- The agent needs a safe read-only way to inspect current repo/user state before deciding what to do
 
 ### Script Requirements
 
@@ -30,6 +31,26 @@ Skills should encode expertise AND provide working tools to apply that expertise
 3. **Clear interface** - CLI args or stdin/stdout
 4. **Error handling** - Graceful failures with helpful messages
 5. **README** - How to install and run
+
+### Preflight / Preprocess Shell Scripts
+
+Use a shell preflight script when the skill needs to inspect the user's current state before the main workflow starts.
+
+Good fit:
+- Checking git status before a refactor or release workflow
+- Listing top-level files before choosing an ingestion strategy
+- Detecting missing prerequisites before the agent commits to a path
+
+Rules:
+1. Keep the script read-only by default
+2. Prefer inspection over mutation
+3. Print concise, structured output that the agent can quote back
+4. Name it predictably, for example `scripts/preflight.sh`
+
+Bad fit:
+- Performing destructive cleanup
+- Embedding the entire business logic of the skill into Bash
+- Hiding network calls or long-running installs in a "preflight" step
 
 ### Example: Domain Analysis Script
 
@@ -119,6 +140,17 @@ fi
 
 exit $errors
 ```
+
+### Examples and Templates
+
+Use `examples/` and `templates/` for different jobs:
+
+| Directory | Purpose | Good Example |
+|-----------|---------|--------------|
+| `examples/` | Show a concrete finished deliverable | for example `examples/expected-output.md` |
+| `templates/` | Provide a reusable output shape | for example `templates/output-template.md` |
+
+Include them only when they materially improve consistency or speed. Do not add empty folders or skeletal placeholders just to match a pattern.
 
 ---
 
@@ -257,6 +289,22 @@ Add to your Claude Code MCP settings:
 - Skill involves multi-step workflows
 - Different phases need different tool access
 - Orchestration logic is complex enough to warrant isolation
+- Independent specialists can work in parallel and produce mergeable artifacts
+- The skill needs a narrower safety or tool boundary than the parent agent should have
+
+### When to Use `context: fork`
+
+Use `context: fork` in a skill's frontmatter only when the skill should execute in an isolated subagent by default.
+
+Good fit:
+- Risky review/audit workflows that should stay sandboxed
+- Parallel specialist roles such as `security-reviewer` and `ux-reviewer`
+- Long multi-phase tasks where the subagent needs its own prompt contract
+
+Bad fit:
+- Simple single-pass reasoning
+- Skills that are only occasionally delegated
+- Cases where a numbered process in SKILL.md is enough
 
 ### Subagent Definition Format
 

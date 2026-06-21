@@ -40,25 +40,18 @@ flowchart TD
 
 **Key property**: Skills are **passive knowledge** — they shape the agent's reasoning but don't execute code. They're the cheapest, most portable extension type.
 
-**Frontmatter fields** (as of March 2026):
+**Frontmatter fields** (validator-safe top level as of April 2026):
 
 | Field | Required | Purpose |
 |-------|----------|---------|
-| `name` | No (defaults to dir name) | Display name |
-| `description` | Recommended | Activation trigger + keywords |
+| `name` | Recommended | Display name / identifier |
+| `description` | Recommended | Activation trigger + boundaries |
 | `allowed-tools` | No | Tool whitelist (least privilege) |
-| `argument-hint` | No | Autocomplete hint |
-| `disable-model-invocation` | No | `true` = user-only via `/` |
-| `user-invocable` | No | `false` = hidden from `/` menu |
-| `context` | No | `fork` = run in isolated subagent |
-| `agent` | No | Which subagent type when `context: fork` |
-| `model` | No | Override model when skill is active |
-| `hooks` | No | Hooks scoped to skill lifecycle |
 | `license` | No | License identifier |
-| `metadata` | No | Arbitrary key-value map |
-| `dependencies` | No | Required packages |
-| `bundled-resources` | No | Declared resource files |
-| `distribution` | No | Distribution method |
+| `compatibility` | No | Short compatibility note |
+| `metadata` | No | Arbitrary repo/tooling keys such as `category`, `tags`, `pairs-with`, `argument-hint`, or `user-invocable` |
+
+Anthropic's current `quick_validate.py` rejects extra top-level keys. Keep repo-specific and UI-specific fields under `metadata` instead of adding new root keys.
 
 ### Skills Distribution Surfaces
 
@@ -199,7 +192,7 @@ my-plugin/
 
 **How they work**: When a user types `/skill-name`, Claude loads that skill's SKILL.md and executes it. In plugins, the format is `/plugin-name:command-name`.
 
-**Relation to skills**: A slash command IS a skill. `user-invocable: true` makes it appear in the `/` menu. `disable-model-invocation: true` makes it ONLY available via `/`.
+**Relation to skills**: A slash command is still modeled as a skill in this repo, but Anthropic's strict validator now expects repo-specific command hints under `metadata`. Store slash-menu intent as `metadata.user-invocable: true` and keep the actual command behavior documented separately instead of relying on a custom top-level key.
 
 **Plugin commands**: Plugins can also define commands in a `commands/` directory as standalone markdown files (separate from skills in `skills/`).
 
