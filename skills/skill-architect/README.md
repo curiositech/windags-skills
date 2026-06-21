@@ -14,9 +14,9 @@ Skill Architect is a meta-skill that teaches Claude how to build other skills we
 
 **Creating a new skill**:
 1. Gather 3-5 concrete example queries (what should/shouldn't trigger)
-2. Plan reusable contents (scripts, references, assets)
-3. Initialize: `scripts/init_skill.py <skill-name>`
-4. Write scripts first, references next, SKILL.md last
+2. Plan reusable contents (`scripts/`, `references/`, and, when justified, `examples/`, `templates/`, `agents/`)
+3. Initialize: `scripts/init_skill.py <skill-name> --path <dir> [--with-mermaid --with-examples --with-templates --with-preflight --fork-context]`
+4. Write preflight scripts first, examples and templates next, references next, SKILL.md last
 5. Validate: `scripts/validate_skill.py <path>`
 6. Iterate based on real-world use
 
@@ -66,8 +66,19 @@ Skills consumed by subagents should have:
 - Numbered steps (not prose)
 - Output contracts (JSON schema or markdown template)
 - QA/validation checklists
+- `context: fork` + `agent:` only when isolation or parallel specialists genuinely help
 
 See `references/subagent-design.md` for full patterns.
+
+### Support Assets
+
+Use support assets selectively:
+- `scripts/` for working validators, transformers, or safe read-only preflight scripts
+- `examples/` for concrete finished outputs
+- `templates/` for reusable deliverable shapes
+- `agents/` for forked subagent prompts
+
+Do not add empty folders or placeholder files just to satisfy a pattern.
 
 ### Shibboleths
 
@@ -86,11 +97,14 @@ skill-architect/
 ├── README.md                         # This file
 ├── agents/
 │   └── cross-evaluator.md            # Cross-evaluation agent (inject expertise → evaluate target)
+├── examples/                         # Concrete finished outputs (optional per skill)
 ├── scripts/
+│   ├── preflight.sh                  # Safe read-only environment inspection (optional per skill)
 │   ├── validate_mermaid.py           # Mermaid syntax validator (structural, no renderer needed)
 │   ├── validate_skill.py             # Comprehensive skill directory validator
 │   ├── check_self_contained.py       # Phantom reference and orphan file detector
 │   └── init_skill.py                 # Skill scaffolder (creates directory + templates)
+├── templates/                        # Reusable output shapes (optional per skill)
 └── references/
     ├── antipatterns.md               # Shibboleths and case studies
     ├── claude-extension-taxonomy.md  # Skills vs Plugins vs MCPs vs Hooks (7-type taxonomy)
@@ -121,6 +135,7 @@ skill-architect/
 | 8 | Vague Description | Use the description formula |
 | 9 | Eager Loading | Lazy-load references, never "read all first" |
 | 10 | Prose-Only Processes | Use Mermaid for decision trees, workflows, architectures |
+| 11 | Mechanical Folder Sprawl | Add `examples/`, `templates/`, or `agents/` only when they improve the skill |
 
 ## Success Metrics
 

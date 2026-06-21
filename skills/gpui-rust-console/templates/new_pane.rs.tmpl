@@ -1,0 +1,80 @@
+//! {{PANE_TITLE}} pane — a read-only Surface over GET {{DAEMON_ROUTE}}.
+//!
+//! Render-agnostic: emits `Block`s only; the GPUI shell and the ratatui REPL both
+//! paint them. Object-safe (`Box<dyn Pane>`): `refresh` returns a boxed future, no
+//! async-trait. Copy this file to `core/pd-console/src/{{pane_module}}.rs`, add
+//! `mod {{pane_module}};` to main.rs, slot it into the NAV table + the producer's
+//! pane list, and write tests from templates/pane_tests.rs.tmpl.
+
+use crate::agent::DaemonClient;
+use crate::pane::{Block, Pane, Tone};
+use anyhow::Result;
+
+#[derive(Default)]
+pub struct {{PaneStruct}} {
+    rows: Vec<{{RowType}}>,
+    last_error: Option<String>,
+}
+
+impl {{PaneStruct}} {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Pane for {{PaneStruct}} {
+    fn id(&self) -> &str {
+        "{{pane_id}}"
+    }
+
+    fn title(&self) -> String {
+        "{{PANE_TITLE}}".into()
+    }
+
+    fn view(&self) -> Vec<Block> {
+        // Always render three states: error, empty, populated.
+        if let Some(err) = &self.last_error {
+            return vec![
+                Block::Header("{{PANE_TITLE}}".into()),
+                Block::KeyVal("error".into(), err.clone()),
+            ];
+        }
+        if self.rows.is_empty() {
+            return vec![
+                Block::Header("{{PANE_TITLE}}".into()),
+                Block::KeyVal("status".into(), "no rows".into()),
+            ];
+        }
+        let mut blocks = vec![Block::Header("{{PANE_TITLE}}".into())];
+        for r in &self.rows {
+            // Emit a Tone for MEANING, never a hardcoded color. The renderer
+            // resolves Tone -> theme OKLCH -> rgb(u32).
+            blocks.push(Block::Chip {
+                label: format!("{r:?}"),
+                tone: Tone::Default,
+            });
+        }
+        blocks
+    }
+
+    fn refresh<'a>(
+        &'a mut self,
+        daemon: &'a DaemonClient,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
+        Box::pin(async move {
+            // Pull fresh data; on failure record it (the view renders the error state)
+            // rather than propagating — one bad pane must not blank the console.
+            match daemon.fetch("{{DAEMON_ROUTE}}").await {
+                Ok(_v) => {
+                    self.last_error = None;
+                    // self.rows = parse(_v);
+                }
+                Err(e) => self.last_error = Some(e.to_string()),
+            }
+            Ok(())
+        })
+    }
+}
+
+// {{RowType}} is a placeholder — replace with the real row struct.
+type {{RowType}} = String;

@@ -3,7 +3,7 @@
 Self-Containment Checker — Detect Phantom References and Orphaned Files
 
 Scans all markdown files in a skill directory for path references to
-scripts/, references/, and assets/ — then verifies each referenced file
+scripts/, references/, examples/, templates/, agents/, hooks/, and assets/ — then verifies each referenced file
 exists. Optionally detects orphaned files (exist but are never referenced).
 
 Usage:
@@ -70,7 +70,16 @@ class SelfContainmentReport:
 # ──────────────────────────────────────────────────────────────────────
 
 # Directories that constitute skill-internal references
-TRACKED_DIRS = {"scripts", "references", "assets", "agents", "eval-viewer"}
+TRACKED_DIRS = {
+    "scripts",
+    "references",
+    "examples",
+    "templates",
+    "assets",
+    "agents",
+    "hooks",
+    "eval-viewer",
+}
 
 # Pattern matches: references/foo.md, scripts/bar.py, assets/baz.png
 # In various contexts: backticks, quotes, bare paths, markdown links
@@ -85,7 +94,7 @@ REF_PATTERN = re.compile(
 ILLUSTRATIVE_MARKERS = re.compile(
     r"(?:"
     r"e\.g\.,|"                   # (e.g., scripts/foo.py)
-    r"for example[,:]|"           # for example, references/guide.md
+    r"\bfor example\b[,:]?|"      # for example references/guide.md
     r"\bexample\b.*path|"         # example path
     r"replace with|"              # (replace with your actual ...)
     r"your actual|"               # your actual reference file names

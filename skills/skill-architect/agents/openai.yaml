@@ -1,0 +1,7 @@
+interface:
+  display_name: "Skill Architect"
+  short_description: "Design, audit, and upgrade skills"
+  default_prompt: "Use $skill-architect to audit this skill for activation, structure, support files, subagent readiness, and runtime correctness."
+
+policy:
+  allow_implicit_invocation: true

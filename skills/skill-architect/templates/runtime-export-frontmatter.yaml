@@ -1,0 +1,15 @@
+name: example-skill
+description: Specific runtime-export description with trigger language. NOT for unrelated requests.
+when_to_use: Optional extra trigger context if the runtime-export copy truly needs it.
+allowed-tools: Read,Write,Edit
+context: fork
+agent: Explore
+paths:
+  - "src/**/*.ts"
+shell: bash
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "${CLAUDE_SKILL_DIR}/scripts/preflight.sh $TOOL_INPUT"

@@ -646,14 +646,14 @@ kanban
 requirementDiagram
   requirement auth_req {
     id: REQ-001
-    text: The system shall authenticate users via OAuth 2.0
+    text: "The system shall authenticate users via OAuth 2.0"
     risk: high
     verifymethod: test
   }
 
   requirement mfa_req {
     id: REQ-002
-    text: The system shall support MFA for admin accounts
+    text: "The system shall support MFA for admin accounts"
     risk: medium
     verifymethod: inspection
   }

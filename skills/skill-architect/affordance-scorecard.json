@@ -1,0 +1,44 @@
+{
+  "skill": "skill-architect",
+  "status": "upgraded",
+  "provenance": {
+    "kind": "first-party",
+    "source": "manual"
+  },
+  "authorship": {
+    "maintainers": [
+      "some-claude-skills"
+    ]
+  },
+  "structure": {
+    "decision_points": true,
+    "failure_modes": true,
+    "worked_examples": true,
+    "quality_gates": true,
+    "not_for": true,
+    "mermaid": true
+  },
+  "affordances": {
+    "scripts": true,
+    "templates": true,
+    "examples": true,
+    "references": true,
+    "assets": false,
+    "browser_open_review": false,
+    "fork_runtime": true,
+    "hooks_runtime": true,
+    "channel_notes": true,
+    "scheduled_task_notes": true
+  },
+  "knowledge_depth": {
+    "l1": true,
+    "l2": true,
+    "l3": true
+  },
+  "validation": {
+    "repo_validator_passed": true,
+    "notes": [
+      "Manual doctrine cleanup on 2026-04-18 aligned authorship, reference indexing, and Mermaid companion artifacts."
+    ]
+  }
+}

@@ -62,7 +62,7 @@ graph TD
 **Wrong**: Skill A depends on B, B depends on A
 ```mermaid
 flowchart LR
-  SA["skill-coach"] --> SB["skill-documentarian"] --> SA
+  SA["skill-architect"] --> SB["skill-documentarian"] --> SA
   style SA fill:#f99,stroke:#c00
   style SB fill:#f99,stroke:#c00
 ```

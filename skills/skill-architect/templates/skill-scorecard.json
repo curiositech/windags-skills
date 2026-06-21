@@ -1,0 +1,41 @@
+{
+  "skill": "example-skill",
+  "status": "planned|upgraded|validated|skipped",
+  "provenance": {
+    "kind": "first-party|imported",
+    "source": "worktree|structural-upgrade|manual"
+  },
+  "authorship": {
+    "maintainers": [],
+    "authors": []
+  },
+  "structure": {
+    "decision_points": true,
+    "failure_modes": true,
+    "worked_examples": true,
+    "quality_gates": true,
+    "not_for": true,
+    "mermaid": true
+  },
+  "affordances": {
+    "scripts": false,
+    "templates": false,
+    "examples": false,
+    "references": true,
+    "assets": false,
+    "browser_open_review": false,
+    "fork_runtime": false,
+    "hooks_runtime": false,
+    "channel_notes": false,
+    "scheduled_task_notes": false
+  },
+  "knowledge_depth": {
+    "l1": true,
+    "l2": true,
+    "l3": true
+  },
+  "validation": {
+    "repo_validator_passed": true,
+    "notes": []
+  }
+}
