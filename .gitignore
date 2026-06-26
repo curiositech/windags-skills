@@ -10,3 +10,6 @@ mcp-server/node_modules/
 .windags/private.yml
 .windags/triples/
 .windags/cache/
+
+# Local-only (never publish)
+/skills-private/

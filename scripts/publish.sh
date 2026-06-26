@@ -46,7 +46,6 @@ EXCLUDE_SKILLS=(
   "next-move-customer-persona"
   "next-move-marketing"
   "someclaudeskills-strategy"
-  "REDACTED-SKILL"
   "windags-customer-persona"
 )
 
