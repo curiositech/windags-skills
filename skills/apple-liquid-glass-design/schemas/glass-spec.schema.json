@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://windags.ai/schemas/apple-liquid-glass-design/glass-spec.schema.json",
+  "title": "Liquid Glass screen spec",
+  "description": "Inventory of the surfaces on one screen and how they use Liquid Glass. Audited by scripts/audit_glass_spec.py.",
+  "type": "object",
+  "required": ["screen", "platform", "route", "elements"],
+  "additionalProperties": false,
+  "properties": {
+    "screen": {"type": "string"},
+    "platform": {"enum": ["ios", "ipados", "macos", "tvos", "watchos", "web"]},
+    "route": {
+      "description": "native = system/SwiftUI/UIKit/AppKit glass; gpu = in-pipeline post-process; library = ybouane/liquidglass; css = backdrop-filter",
+      "enum": ["native", "gpu", "library", "css"]
+    },
+    "backdrop_animated": {"type": "boolean", "description": "Content behind the chrome animates continuously (canvas, video, live map)."},
+    "backdrop_hz": {"type": "number", "minimum": 0},
+    "app_webgl_contexts": {"type": "integer", "minimum": 0, "description": "WebGL/WebGPU contexts the app itself creates (library route budget)."},
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "handles_reduce_transparency": {"type": "boolean"},
+        "handles_increase_contrast": {"type": "boolean"},
+        "handles_reduce_motion": {"type": "boolean"},
+        "in_app_transparency_toggle": {"type": "boolean"}
+      }
+    },
+    "elements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "layer", "material"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {"type": "string"},
+          "role": {"enum": ["navigation", "control", "primary-action", "status", "content", "overlay-label", "sheet", "sidebar"]},
+          "layer": {"enum": ["control", "content"]},
+          "material": {"enum": ["regular", "clear", "standard", "solid", "none"], "description": "regular/clear = Liquid Glass; standard = thin/regular/thick material; solid = opaque fill"},
+          "system_component": {"type": "boolean"},
+          "transient": {"type": "boolean", "description": "Becomes glass only while manipulated (slider knob, toggle)."},
+          "repeated": {"type": "boolean", "description": "One instance per data item (rows, tiles, pins)."},
+          "parent": {"type": ["string", "null"]},
+          "group": {"type": ["string", "null"]},
+          "container": {"type": ["string", "null"]},
+          "bar": {"type": ["string", "null"], "description": "Toolbar/tab bar this item belongs to."},
+          "label_kind": {"enum": ["text", "symbol", "mixed", "none"]},
+          "tint": {"type": "boolean"},
+          "over": {"enum": ["media", "text", "mixed", "solid", "canvas"]},
+          "backdrop_bright": {"type": "boolean"},
+          "dimming": {"type": "number", "minimum": 0, "maximum": 1},
+          "content_on_top": {"enum": ["bold-bright", "normal", "none"]},
+          "shape": {"enum": ["capsule", "concentric", "rounded", "fixed", "circle"]},
+          "corner_radius": {"type": "number", "minimum": 0},
+          "parent_corner_radius": {"type": "number", "minimum": 0},
+          "inset": {"type": "number", "minimum": 0},
+          "custom_background": {"type": "boolean", "description": "A custom fill/border drawn on a system bar or sheet."},
+          "scroll_edge_effects": {"type": "integer", "minimum": 0},
+          "floating_ui_over_scroll": {"type": "boolean"},
+          "blur_px": {"type": "number", "minimum": 0},
+          "text": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "size_px": {"type": "number"},
+              "weight": {"type": "number"},
+              "uppercase_tracked": {"type": "boolean"},
+              "large": {"type": "boolean"},
+              "contrast_p5": {"type": "number", "description": "From scripts/glass_contrast_check.py"}
+            }
+          }
+        }
+      }
+    }
+  }
+}
