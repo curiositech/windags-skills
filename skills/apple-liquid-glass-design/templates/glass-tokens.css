@@ -1,0 +1,95 @@
+/*
+ * Liquid Glass web tokens (CSS route and GPU-route DOM overlays).
+ * House approximations, not Apple specifications; see references/material-anatomy.md.
+ * Text sizes respect the 14px floor (0.875rem); eyebrow labels only at 12px bold uppercase tracked.
+ */
+:root {
+  /* geometry */
+  --glass-radius-container: 28px;          /* sheets, panels */
+  --glass-inset: 10px;
+  --glass-radius-inner: calc(var(--glass-radius-container) - var(--glass-inset)); /* concentric */
+  --glass-radius-capsule: 9999px;
+  --glass-bevel: 12px;                     /* GPU route: edge band that refracts */
+
+  /* material, light */
+  --glass-blur: 8px;                       /* regular; clear uses --glass-blur-clear */
+  --glass-blur-clear: 2px;
+  --glass-saturate: 1.5;
+  --glass-fill: rgb(255 255 255 / 0.10);
+  --glass-rim: rgb(255 255 255 / 0.35);
+  --glass-bounce: rgb(255 255 255 / 0.08);
+  --glass-shadow: 0 4px 18px rgb(0 0 0 / 0.16);
+  --glass-dim-clear: rgb(0 0 0 / 0.35);    /* dimming under clear glass over bright media */
+  --glass-label: #1d1d1f;
+  --glass-label-secondary: #3a3a3c;        /* not mid-grey: secondary labels fail first on glass */
+  --glass-tint-primary: #0a84ff;
+  --glass-border: transparent;
+
+  /* solid fallbacks */
+  --surface-solid: #f5f5f7;
+  --surface-solid-dark: #1c1c1e;
+
+  /* type */
+  --glass-text: 1rem;                      /* 16px */
+  --glass-text-min: 0.875rem;              /* 14px floor */
+  --glass-eyebrow: 0.75rem;                /* exception: 12px only with weight >= 600, uppercase, letter-spacing >= 0.1em */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --glass-fill: rgb(28 28 30 / 0.28);
+    --glass-rim: rgb(255 255 255 / 0.22);
+    --glass-bounce: rgb(255 255 255 / 0.05);
+    --glass-shadow: 0 4px 22px rgb(0 0 0 / 0.35);
+    --glass-label: #f5f5f7;
+    --glass-label-secondary: #d1d1d6;
+  }
+}
+
+.glass {
+  border-radius: var(--glass-radius-capsule);
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: inset 0 1px 0 var(--glass-rim), inset 0 -1px 0 var(--glass-bounce), var(--glass-shadow);
+  outline: 1px solid var(--glass-border);
+  outline-offset: -1px;
+  color: var(--glass-label);
+  font-size: var(--glass-text);
+}
+.glass--panel { border-radius: var(--glass-radius-container); }
+.glass--inner { border-radius: var(--glass-radius-inner); }
+.glass--clear {
+  -webkit-backdrop-filter: blur(var(--glass-blur-clear));
+  backdrop-filter: blur(var(--glass-blur-clear));
+  background: var(--glass-dim-clear);      /* dimming lives with clear glass */
+  color: #fff;
+  font-weight: 600;                        /* clear needs bold, bright content */
+}
+.glass--prominent { background: color-mix(in srgb, var(--glass-tint-primary) 78%, transparent); color: #fff; }
+
+/* Elements ON glass: fills and vibrancy, never another .glass */
+.on-glass-fill { background: rgb(0 0 0 / 0.06); border-radius: inherit; }
+@media (prefers-color-scheme: dark) { .on-glass-fill { background: rgb(255 255 255 / 0.10); } }
+
+/* GPU route overlay: the canvas draws the glass, DOM provides text and hit targets only */
+.glass-overlay { background: transparent; backdrop-filter: none; color: var(--glass-label); }
+
+/* accessibility */
+@media (prefers-reduced-transparency: reduce) {
+  .glass, .glass--clear { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface-solid); }
+}
+@media (prefers-contrast: more) {
+  :root { --glass-border: #000; --glass-label: #000; --glass-label-secondary: #000; }
+  .glass, .glass--clear { -webkit-backdrop-filter: none; backdrop-filter: none; background: #fff; }
+}
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root { --glass-border: #fff; --glass-label: #fff; --glass-label-secondary: #fff; }
+  .glass, .glass--clear { background: #000; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .glass, .glass * { transition: none !important; animation: none !important; }
+}
+/* in-app toggle (Safari cannot report Reduce Transparency) */
+:root[data-glass="solid"] .glass,
+:root[data-glass="solid"] .glass--clear { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--surface-solid); }

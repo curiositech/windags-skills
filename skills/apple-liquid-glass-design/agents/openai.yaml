@@ -1,0 +1,4 @@
+interface:
+  display_name: "Apple Liquid Glass Design"
+  short_description: "When and how to build Liquid Glass UI on SwiftUI, UIKit, AppKit and the web"
+  default_prompt: "Use $apple-liquid-glass-design to decide which surfaces on this screen should be Liquid Glass, implement them with verified native APIs or the right web route (GPU post-process, ybouane/liquidglass, or CSS backdrop-filter), audit the glass spec, and measure text-on-glass contrast."
