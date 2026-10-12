@@ -13,8 +13,12 @@ metadata:
       reason: Supplies coding-round prompts and evidence-based rubrics.
     - skill: ml-system-design-interview
       reason: Supplies system-design prompts and evaluation criteria.
+    - skill: tech-presentation-interview
+      reason: Supplies candidate-owned presentation prompts and Q&A practice.
     - skill: values-behavioral-interview
       reason: Supplies behavioral practice prompts and story evidence.
+    - skill: hiring-manager-deep-dive
+      reason: Supplies candidate-owned hiring-manager conversation practice.
   tags:
     - interview
     - simulator

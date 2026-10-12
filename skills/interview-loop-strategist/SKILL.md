@@ -151,7 +151,8 @@ The candidate can override any prioritization. Record the override as a valid pr
 | Practice need | Route to | Strategist responsibility |
 | --- | --- | --- |
 | Coding or online assessment | `senior-coding-interview` | Set cadence and connect debrief evidence to the next cycle. |
-| System design | `ml-system-design-interview` or a general design specialist | Choose target-relevant constraints; do not assume an ML role. |
+| General SWE system design | `interview-simulator` with a candidate-selected design prompt and observable rubric | Choose target-relevant constraints and state that no general-design specialist is installed; do not substitute ML material. |
+| ML system design | `ml-system-design-interview` | Use only when the target or candidate explicitly selects ML-system practice. |
 | Technical deep dive | Relevant domain specialist | Preserve factual project evidence and open questions. |
 | Presentation | `tech-presentation-interview` | Reserve rehearsal and recovery time. |
 | Behavioral or values | `values-behavioral-interview` | Maintain candidate-authored story coherence. |

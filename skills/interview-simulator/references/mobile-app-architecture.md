@@ -13,20 +13,20 @@ Architecture guide for the React Native + Expo companion app that handles mornin
 | State | Zustand | Lightweight, no boilerplate, works well with async storage |
 | Local Storage | expo-sqlite | Full SQLite for SM-2 scheduling, flash cards, session history |
 | Remote Sync | Supabase JS client | Real-time sync when online, queue when offline |
-| Voice | ElevenLabs React Native SDK | Simpler than Hume for mobile; emotion detection not needed for morning drills |
+| Voice | Provider-neutral speech adapter | Candidate-controlled playback and optional recording; no affect analysis |
 | Audio Recording | expo-av | Record story rehearsals for playback and duration tracking |
 | Push Notifications | expo-notifications | Schedule local reminders for practice cadence |
 | Analytics | Plausible (privacy-focused) | No PII, GDPR-compliant, lightweight |
 
-### Why ElevenLabs for Mobile (Not Hume)
+### Voice practice boundary
 
-Mobile morning drills are 3-minute story rehearsals. The value is in speaking aloud under time pressure, not in emotion-adaptive interviewer behavior. ElevenLabs provides:
-- Simpler SDK integration for React Native
-- Lower per-minute cost (~$0.05/min vs ~$0.07/min)
-- Faster connection setup (REST API vs WebSocket)
-- No camera/face detection needed (saves battery)
+Mobile morning drills are short story rehearsals. The value is in speaking aloud under time pressure, not in affect-adaptive interviewer behavior. The voice adapter should provide:
+- Candidate-selected recording and playback controls
+- Text-only and local-recording fallbacks
+- Clear retention and export controls for each artifact
+- No camera, biometric, affect, attention, or integrity analysis
 
-Desktop evening sessions use Hume for the full experience. Mobile is the lightweight companion.
+The same boundary applies to every modality: feedback uses the candidate's consented text, code, whiteboard, and self-authored notes—not inferences about the candidate.
 
 ---
 
