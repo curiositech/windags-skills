@@ -1,32 +1,32 @@
 ---
 name: interview-simulator
 license: Apache-2.0
-description: Designs and orchestrates a realistic interview simulation platform with voice AI, whiteboard evaluation, gaze-tracking proctoring, and mobile spaced repetition. Use for building mock interview infrastructure, configuring sessions, and adaptive difficulty. Activate on "interview simulator", "mock interview", "practice session", "voice mock". NOT for individual round-type coaching, resume writing, or prep timeline coordination.
+description: Designs candidate-controlled mock interview practice across voice, text, code, and whiteboards. Use for session configuration, observable-evidence feedback, and adaptive practice plans. NOT for hiring decisions, emotion inference, gaze or integrity monitoring, or ranking candidates.
 allowed-tools: Read,Write,Edit,Bash,WebSearch,WebFetch
 metadata:
   gated: true
   category: Career & Interview
   pairs-with:
     - skill: interview-loop-strategist
-      reason: Upstream orchestrator -- strategist decides WHAT to practice, simulator executes HOW
+      reason: The strategist selects preparation priorities; the simulator runs one candidate-controlled practice session.
     - skill: senior-coding-interview
-      reason: Provides coding round content, problem archetypes, and scoring rubrics
+      reason: Supplies coding-round prompts and evidence-based rubrics.
     - skill: ml-system-design-interview
-      reason: Provides ML design problems, whiteboard evaluation criteria, 7-stage framework
-    - skill: anthropic-technical-deep-dive
-      reason: Provides Anthropic-specific technical topics and opinion evaluation
-    - skill: tech-presentation-interview
-      reason: Provides presentation structure, Q&A stress testing, and audience calibration
+      reason: Supplies system-design prompts and evaluation criteria.
     - skill: values-behavioral-interview
-      reason: Provides behavioral story bank, follow-up ladder depth, STAR-L format
-    - skill: hiring-manager-deep-dive
-      reason: Provides HM round structure, scope-of-impact evaluation, leadership signals
+      reason: Supplies behavioral practice prompts and story evidence.
   tags:
     - interview
     - simulator
     - voice
     - whiteboard
     - practice
+  recognition-cues: []
+  expectancies: []
+  decision-cues: []
+  adaptive-workarounds: []
+  execution-pattern: sequential
+  needs-cdm: true
 category: Career & Interview
 tags:
   - interview-prep
@@ -34,201 +34,176 @@ tags:
   - practice
   - mock-interviews
   - feedback
+io-contract:
+  kind: tool
+  inputs:
+    - name: round_type
+      type: enum
+      required: true
+      description: "Practice focus: coding, system-design, behavioral, presentation, technical-deep-dive, or hiring-manager."
+    - name: session_goal
+      type: string
+      required: true
+      description: "The skill the candidate wants to rehearse or test."
+    - name: duration_minutes
+      type: number
+      required: false
+      description: "Candidate-selected session length; 45 minutes is the default and 60 minutes suits design practice."
+    - name: modality
+      type: enum
+      required: false
+      description: "voice, text, code-editor, whiteboard, or a candidate-selected combination."
+    - name: starting_difficulty
+      type: number
+      required: false
+      description: "Candidate-selected starting challenge level from 1 to 5."
+    - name: accessibility_or_privacy_preferences
+      type: object
+      required: false
+      description: "Accommodations, recording consent, and any input or modality preferences."
+  outputs:
+    - name: session_record
+      type: object
+      description: "Candidate-visible prompt, responses, timestamps, and explicitly consented artifacts."
+    - name: evidence_linked_feedback
+      type: object
+      description: "Rubric findings that cite observable moments in the session record and label uncertainty."
+    - name: practice_adjustments
+      type: array
+      description: "Candidate-approved next-session adjustments with the evidence and rationale for each."
+    - name: debrief
+      type: object
+      description: "Strengths, improvement experiments, and a concrete next practice step; never a hiring prediction."
+    - name: session_quality
+      type: object
+      description: "Artifact coverage and technical limitations that bound which feedback is reliable."
 ---
 
 # Interview Simulator
 
-Platform architecture and coaching system for realistic mock interview practice with adaptive difficulty, emotion-sensitive voice AI, and comprehensive performance tracking.
+Run a realistic, candidate-controlled mock interview. The simulator creates useful rehearsal conditions and evidence-linked coaching; it does not observe, infer, or judge a person's emotions, attention, integrity, or employability.
 
-## Decision Points
+## When to Use
 
-### Difficulty Adjustment During Session
+Use for a timed coding, design, behavioral, presentation, deep-dive, or hiring-manager rehearsal; for voice or whiteboard practice; and for a debrief that connects feedback to the candidate's own recorded work.
 
-```
-IF emotion_data.hesitation_rate > 70% FOR 2+ consecutive responses
-├── AND current_difficulty >= 3
-│   └── REDUCE difficulty by 1 level
-│       └── Voice persona: "Let's back up to fundamentals"
-│
-├── ELSE current_difficulty < 5
-│   └── MAINTAIN difficulty
-│       └── Voice persona: "Take your time, think through this"
-│
-└── ELSE (hesitation at difficulty 1-2)
-    └── PAUSE session for confidence building
-        └── Offer: "Would you like a 2-minute break?"
-```
+Do not use for selecting, ranking, screening, or monitoring people; detecting gaze, emotion, confidence, fatigue, distraction, or deception; proctoring; or producing a prediction about interview or hiring outcomes.
 
-```
-IF technical_accuracy > 85% AND response_time < 60% of target
-├── AND current_difficulty < 5
-│   └── INCREASE difficulty by 1 level
-│       └── Add follow-up: "Now optimize for X constraint"
-│
-└── AND current_difficulty = 5
-    └── MAINTAIN but add adversarial prompts
-        └── "What if the requirements changed to..."
+## Core Process
+
+```mermaid
+flowchart TD
+  A[Candidate selects goal, modality, and consent] --> B[Configure prompt and rubric]
+  B --> C[Run practice with candidate controls]
+  C --> D[Capture only consented, observable artifacts]
+  D --> E{Enough evidence for each rubric finding?}
+  E -->|Yes| F[Link finding to session evidence]
+  E -->|No| G[Mark feedback unavailable or uncertain]
+  F --> H[Candidate-led debrief]
+  G --> H
+  H --> I[Candidate accepts, edits, or declines next practice step]
 ```
 
-### Round Type Selection
+### 1. Establish the practice contract
 
-```
-IF any dimension_score < 60 FOR last 3 sessions
-├── SELECT lowest_scoring_round_type
-│   └── Override user preference if different
-│
-ELIF no round_type practiced in last 7 days
-├── SELECT oldest_unpracticed_round
-│   └── Variety bonus for skills retention
-│
-ELSE
-├── SELECT weakness_weighted_random()
-│   └── 70% bias toward bottom 2 scores, 30% random
-```
+Before presenting a prompt, confirm:
 
-### Proctor Flag Response
+- the round type, session goal, duration, modality, and starting difficulty;
+- whether the candidate wants recording, a transcript, or retained whiteboard/code artifacts;
+- any accessibility needs, breaks, pacing, and preferred feedback style; and
+- that all feedback is for practice, not a hiring assessment.
 
-```
-IF gaze_off_screen > 5 seconds
-├── IMMEDIATE: Voice AI pauses, asks "Everything okay?"
-│   └── IF happens again within 10 minutes
-│       └── FLAG session as "distracted practice"
-│       └── Debrief includes focus recommendations
-│
-IF second_monitor_detection = true
-├── IMMEDIATE: Session pause, warning overlay
-│   └── "Real interview won't have external resources"
-│   └── Options: [Continue with flag] [Reset clean]
-│
-IF note_taking_detected (hand tracking)
-├── ALLOW in Training mode with flag
-├── BLOCK in Simulation mode
-    └── "Please close notes for realistic practice"
-```
+Do not turn on a camera, capture background activity, infer attention, or inspect a second monitor. If a requested feature would require that information, explain that the simulator does not provide it and offer a candidate-controlled alternative such as a timed text prompt or self-recorded answer.
 
-## Failure Modes
+### 2. Run one bounded round
 
-### 1. Overtraining Comfort Zone (Behavioral Looping)
-**Symptoms:** >50% of sessions are same round type, plateau in target skill, false confidence in demo sessions
-**Detection Rule:** IF session_history.last_10_sessions contains >7 of same round_type THEN flag "comfort_zone_looping"
-**Fix:** Lock out preferred round type for 72 hours, force weakness-weighted selection, show heatmap of practice distribution
+Use a prompt and rubric from the round-specific skill. State the timebox and any materials allowed. The candidate may pause, request clarification, switch modality, reduce or raise difficulty, or end the session at any time.
 
-### 2. Emotion Detection False Positives (Technical Hesitation)
-**Symptoms:** Difficulty drops during complex technical problems where thinking time is normal, candidate reports sessions feel too easy
-**Detection Rule:** IF difficulty_reduction triggered AND problem_complexity = high AND response_quality > 75% THEN flag "false_positive_hesitation"
-**Fix:** Calibrate hesitation baseline per round type, extend thinking time allowance for design problems from 30s to 90s, separate "thinking" from "struggling" in emotion model
+For a difficulty change, ask first. A valid rationale is observable practice evidence such as "you completed the stated constraint and asked for a harder follow-up" or the candidate's explicit request. Silence, speech rate, camera behavior, and facial expression are not difficulty signals.
 
-### 3. Network Latency Ghost Sessions
-**Symptoms:** Voice AI cuts out mid-question, session scoring incomplete, debrief missing transcript sections, user reports poor experience
-**Detection Rule:** IF voice_stream_interruptions > 3 OR transcript_coverage < 80% THEN flag "network_degraded_session"
-**Fix:** Implement local recording fallback, retry logic for API calls, session quality gate before scoring (reject if <80% data integrity), offline mode with sync-later
+### 3. Capture evidence, not impressions
 
-### 4. Proctor Calibration Drift
-**Symptoms:** False flags for normal behavior, user disables proctoring due to oversensitivity, gaze tracking works poorly for specific users (glasses, lighting)
-**Detection Rule:** IF proctor_flag_rate > 0.3 per session AND user_session_count > 5 THEN flag "proctor_oversensitive"
-**Fix:** Per-user calibration phase (30-second normal gaze pattern recording), lighting condition adaptation, glasses detection with adjusted thresholds
+Record only artifacts the candidate elected to retain: prompt versions, response text, code, whiteboard snapshots, transcript segments, elapsed time, and candidate self-notes. For each rubric dimension, cite the relevant artifact or mark it unavailable.
 
-### 5. Debrief Analysis Inflation
-**Symptoms:** All session scores >80%, improvement suggestions too generic, user reports disconnect between debrief and actual performance
-**Detection Rule:** IF average_session_score > 80 AND session_count > 10 AND difficulty_level unchanged THEN flag "score_inflation"
-**Fix:** Recalibrate scoring rubric with harder baseline, cross-validate with round-specific skill scoring, add "compared to senior candidates" percentile context
+Use language such as "the response named a cache invalidation strategy at 12:40" rather than "you seemed confident." Where artifact coverage is incomplete, say what cannot be assessed.
 
-## Worked Examples
+### 4. Debrief into an experiment
 
-### Example 1: ML Design Session with Difficulty Adjustment
+Produce at most three strengths, three improvement experiments, and one next-session proposal. Each item must include:
 
-**Setup:** User has 3 previous ML design sessions, scores: [65, 72, 68]. Starting difficulty: 3/5.
+| Field | Requirement |
+| --- | --- |
+| Observation | A direct pointer to a consented session artifact. |
+| Rubric | The round-specific criterion being applied. |
+| Confidence | High only when the artifact directly supports the finding; otherwise limited or unavailable. |
+| Experiment | A candidate-actionable change for the next rehearsal. |
 
-**Session Flow:**
-```
-00:00 Voice AI: "Let's design a recommendation system for a video platform. Start with the problem setup."
-00:45 User: "Um... so we need to recommend videos... I guess we'd use collaborative filtering?"
-      Emotion data: hesitation_rate=85%, confidence=30%
-01:15 Orchestrator detects: high hesitation + low confidence = reduce difficulty
-      Difficulty: 3 → 2, Voice persona shift to "supportive"
-01:20 Voice AI: "Great start! Let's break this down step by step. What data do we have about users?"
-02:30 User: [More confident response about user features]
-      Emotion data: hesitation_rate=40%, confidence=70%
-      Orchestrator: maintain difficulty=2, user finding footing
-15:00 User demonstrates solid understanding at level 2
-      Technical accuracy=80%, response time=good
-15:30 Orchestrator: increase difficulty 2 → 3
-15:45 Voice AI: "Now, how would you handle the cold start problem for new users?"
-30:00 Session ends, user handled level 3 questions well
-```
+The candidate can correct the record, remove retained artifacts where the host product supports removal, and accept, change, or decline the proposed next step.
 
-**Debrief Output:**
-- Started at difficulty 3, adjusted to 2 due to initial hesitation, finished at 3
-- Strength: Good recovery and adaptation to feedback
-- Weakness: Initial problem setup needs practice (recommend system design fundamentals)
-- Next session: Start at difficulty 3, focus on problem scoping
+## Difficulty and Modality Decisions
 
-### Example 2: Network Latency Recovery
-
-**Setup:** User in poor connectivity environment, voice stream unstable.
-
-**Session Flow:**
-```
-00:00 Session starts normally
-02:15 Voice stream cuts out mid-question
-02:20 Orchestrator detects stream_interruption, activates fallback
-02:25 Text overlay: "Voice connection unstable. Switching to text mode."
-      Question continues in text, user types responses
-15:30 Voice reconnects, quality test passed
-15:35 Orchestrator: "Voice is back. Continuing with audio."
-30:00 Session completes
-```
-
-**Quality Gate Check:**
-- Transcript coverage: 75% (below 80% threshold)
-- Flag: "network_degraded_session"
-- Action: Offer session retry at no cost, debrief marked as "practice only"
-
-### Example 3: Proctor False Positive Correction
-
-**Setup:** User wears glasses, has second monitor for work (turned off during session).
-
-**Session Flow:**
-```
-05:00 MediaPipe detects gaze deviation (actually lens reflection)
-05:01 Proctor flags "off-screen gaze"
-05:02 User continues normally
-08:00 Another false flag (glasses adjustment)
-08:01 System detects: flag_rate=2 in 8 minutes = high
-08:05 Auto-calibration triggered: "We're detecting gaze issues. 
-      Let's recalibrate for your setup. Look at the center of 
-      your screen for 10 seconds."
-08:15 New baseline established for this user
-      Subsequent flags drop to normal levels
-```
+| Situation | Move |
+| --- | --- |
+| Candidate requests a harder or easier prompt | Change difficulty and record the request. |
+| Candidate completes a stated constraint and asks for a follow-up | Offer one harder follow-up; do not force it. |
+| Artifact is missing or transcript quality is poor | Keep the practice, label feedback limits, and offer a retry. |
+| Voice connection degrades | Offer text mode, a local candidate recording, or a reschedule; do not score missing portions. |
+| Whiteboard is inaccessible or unwieldy | Use verbal structure, typed outlines, or a shared text canvas chosen by the candidate. |
+| Candidate asks for a realism check | Compare the configured format to publicly available process information, clearly separating known facts from assumptions. |
 
 ## Quality Gates
 
-Session completion requires all checks to pass:
+Mark a session complete only when:
 
-- [ ] Voice stream integrity >80% (no major dropouts)
-- [ ] Transcript coverage >80% (enough content for evaluation)  
-- [ ] Session duration within 10% of target (not cut short)
-- [ ] At least 3 meaningful question-response exchanges
-- [ ] Emotion data captured for >70% of user responses
-- [ ] Whiteboard snapshots captured every 30s during active drawing (design rounds)
-- [ ] Proctor calibration successful if first-time user
-- [ ] No critical API failures (can fallback gracefully)
-- [ ] User completed session normally (didn't force-quit)
-- [ ] Debrief generation successful with specific feedback
+- [ ] The candidate chose or confirmed the session contract.
+- [ ] Each retained artifact has an explicit purpose and consent basis.
+- [ ] Feedback findings cite observable session evidence or are labeled unavailable.
+- [ ] Technical or transcript gaps are visible in `session_quality`.
+- [ ] No feedback claims emotion, attention, integrity, personality, ranking, or a hiring outcome.
+- [ ] The candidate has a clear option to revise or decline the next practice step.
 
-## Not-For Boundaries
+## Anti-Patterns
 
-**This skill should NOT be used for:**
-- **Individual round coaching:** For practicing specific round types, use the round-specific skills (senior-coding-interview, ml-system-design-interview, etc.)
-- **Interview strategy/timeline:** For prep planning and round sequencing, use interview-loop-strategist instead
-- **Resume/portfolio work:** For CV optimization, use cv-creator instead
-- **Salary negotiation:** Different skill set, not interview simulation
-- **Conference presentations:** Different audience and evaluation criteria than interviews
-- **Academic exam proctoring:** This is for self-practice, not adversarial examination
-- **Production hiring platform:** This is for candidate practice, not company interview infrastructure
+### Proctoring Disguised as Practice
 
-**Delegate to other skills when:**
-- User asks about specific technical topics → Use the relevant round-specific skill
-- User wants to plan their overall prep strategy → Use interview-loop-strategist
-- User needs help with career positioning → Use career-biographer or cv-creator
+**Novice**: "A realistic mock should monitor eyes, tabs, cameras, and second screens."
+
+**Expert**: Practice is valuable when the candidate controls materials and boundaries. Gaze and device monitoring create privacy risk and do not establish interview quality or integrity.
+
+**Detection**: Any feature or feedback mentioning gaze, focus, distraction, camera monitoring, second monitors, or integrity flags.
+
+### Affect as a Score
+
+**Novice**: "Hesitation, vocal tone, or facial expression reveal confidence and should adjust difficulty."
+
+**Expert**: Those signals are ambiguous and can reflect accessibility, culture, connection quality, or ordinary thinking. Adjust only at the candidate's request or from explicit task evidence.
+
+**Detection**: Feedback that attributes confidence, fatigue, engagement, or emotion without a candidate-authored statement.
+
+### Debrief as a Hiring Forecast
+
+**Novice**: "A mock score predicts whether the candidate will pass."
+
+**Expert**: A session is a bounded practice sample. Rubric feedback should expose what was observed, what was missing, and a next experiment—not an employability estimate.
+
+**Detection**: Percentile, pass/fail, ranking, or hiring-probability claims.
+
+### Provider Lock-In
+
+**Novice**: "Voice, transcription, and whiteboard features should be designed around one vendor."
+
+**Expert**: Keep capture, transcription, whiteboard, and feedback behind replaceable adapters. A provider outage or accessibility constraint should degrade to candidate-selected text or exportable artifacts.
+
+**Detection**: A session contract that assumes a named provider, requires a camera, or cannot fall back to text.
+
+## Worked Example
+
+**Setup:** A staff backend engineer chooses a 45-minute system-design rehearsal, typed outline plus voice, difficulty 3, and transcript retention. Their goal is to practice stating tradeoffs before implementation detail.
+
+**During the session:** At 16:10, the candidate writes two scale constraints and asks for a harder follow-up. The simulator offers one constraint about regional failures. At 29:00, the voice connection drops; the candidate switches to text and keeps the session going.
+
+**Debrief:**
+
+- Strength: The candidate named latency and consistency constraints before proposing components, with transcript references at 04:22 and 16:10.
+- Improvement experiment: In the next rehearsal, reserve two minutes to state an explicit failure-mode plan before drawing the data flow.
+- Limitation: No speech-quality feedback is provided for the portion completed in text; the transcript does not support it.

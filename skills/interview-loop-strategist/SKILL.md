@@ -1,35 +1,37 @@
 ---
 name: interview-loop-strategist
 license: Apache-2.0
-description: Orchestrates end-to-end interview preparation for senior ML/AI engineers targeting Anthropic and peer companies. Use for prep timeline generation, story coherence across rounds, mock scheduling, and debrief analysis. Activate on "interview prep", "interview loop", "Anthropic interview", "prep timeline". NOT for resume writing, career narratives, or individual round-type practice.
+description: Builds a candidate-controlled preparation plan for a software-engineering interview target, timeline, and practice evidence. Use for planning round coverage, story coherence, mock cadence, and debrief-driven adjustments. NOT for hiring predictions, candidate ranking, surveillance, or replacing round-specific coaching.
 allowed-tools: Read,Write,Edit
 metadata:
   gated: true
   category: Career & Interview
   pairs-with:
     - skill: senior-coding-interview
-      reason: Handles coding round preparation and practice
+      reason: Handles coding-round preparation and practice.
     - skill: ml-system-design-interview
-      reason: Handles ML system design round deep practice
+      reason: Handles system-design preparation and practice.
     - skill: anthropic-technical-deep-dive
-      reason: Handles Anthropic-specific technical deep dive rounds
+      reason: Handles company-specific technical research only when it is relevant to the target.
     - skill: tech-presentation-interview
-      reason: Handles technical presentation round preparation
+      reason: Handles presentation structure and Q&A practice.
     - skill: values-behavioral-interview
-      reason: Handles behavioral and values-fit round preparation
+      reason: Handles behavioral story practice.
     - skill: hiring-manager-deep-dive
-      reason: Handles hiring manager screen preparation
+      reason: Handles hiring-manager conversation practice.
     - skill: interview-simulator
-      reason: Runs mock interviews with realistic evaluation
-    - skill: career-biographer
-      reason: Upstream -- extracts career narrative raw material
-    - skill: cv-creator
-      reason: Upstream -- resume must be finalized before loop begins
+      reason: Runs a selected mock session and returns candidate-visible evidence for plan adjustment.
   tags:
     - interview
     - preparation
     - strategy
-    - anthropic
+    - software-engineering
+  recognition-cues: []
+  expectancies: []
+  decision-cues: []
+  adaptive-workarounds: []
+  execution-pattern: sequential
+  needs-cdm: true
 category: Career & Interview
 tags:
   - interview-loops
@@ -37,261 +39,183 @@ tags:
   - evaluation
   - strategy
   - assessment
+io-contract:
+  kind: tool
+  inputs:
+    - name: candidate_profile
+      type: object
+      required: true
+      description: "Role family, experience context, strengths, constraints, and the candidate's own priorities."
+    - name: target_profile
+      type: object
+      required: true
+      description: "Target role, organization or organization type, interview stage if known, and timeline."
+    - name: availability
+      type: object
+      required: true
+      description: "Candidate-controlled time budget, blackout dates, energy constraints, and desired pacing."
+    - name: career_evidence
+      type: array
+      required: false
+      description: "Candidate-supplied projects, outcomes, and stories they want to practice."
+    - name: practice_history
+      type: array
+      required: false
+      description: "Candidate-approved practice records and debrief evidence; missing history remains unknown."
+  outputs:
+    - name: prep_plan
+      type: object
+      description: "A time-bounded plan with candidate-controlled priorities, assumptions, and review points."
+    - name: story_evidence_map
+      type: object
+      description: "Candidate-provided project evidence mapped to relevant round types without inventing claims."
+    - name: mock_cadence
+      type: array
+      description: "Candidate-selected rehearsal sequence with recovery time and alternatives for changed schedules."
+    - name: routing
+      type: object
+      description: "Which round-specific skill should handle each selected practice item."
+    - name: adjustment_log
+      type: array
+      description: "Plan changes tied to candidate requests or observable practice evidence, including uncertainty."
 ---
 
 # Interview Loop Strategist
 
-End-to-end orchestrator for senior-level AI/ML interview preparation. Coordinates timelines, story coherence across rounds, mock interview cadence, energy management, and post-interview debrief -- routing each round type to its specialist skill.
+Build an adaptable preparation plan for any software-engineering interview target. The plan helps a candidate choose what to practice, maintain truthful stories across rounds, and learn from rehearsal evidence. It does not determine whether they are qualified, predict hiring outcomes, or replace the candidate's judgment.
 
 ## When to Use
 
-**Use for:**
-- Building a complete interview prep plan for a specific company
-- Generating 2-week, 1-month, or 2-month preparation timelines
-- Ensuring story coherence -- the same project told correctly across behavioral, technical, and HM rounds
-- Scheduling and tracking mock interview cadence
-- Energy management strategy for all-day virtual or onsite loops
-- Post-interview debrief analysis and improvement planning
-- Coordinating across all 7 round-specific interview skills
+Use for an end-to-end prep plan, a time-boxed reset after an interview schedule changes, mapping candidate-provided projects to round types, mock scheduling, and debrief-driven reprioritization.
 
-**NOT for:**
-- Resume or CV creation (use `cv-creator`)
-- Career narrative extraction (use `career-biographer`)
-- Practicing a single round type in isolation (use the round-specific skill directly)
-- Salary negotiation or offer evaluation
-- General career counseling
+Do not use for resume fabrication, employer screening, candidate comparisons, automated hiring recommendations, monitoring behavior, or a substitute for the specialist skill that teaches one round.
 
----
-
-## Full Interview Pipeline
+## Core Process
 
 ```mermaid
 flowchart TD
-    A[Career Biographer] -->|Extracts narrative| B[CV Creator]
-    B -->|Resume finalized| C[Interview Loop Strategist]
-    C --> D{Company Target Selected}
-    D --> E[Generate Prep Timeline]
-    E --> F[Story Coherence Matrix]
-    F --> G[Round-Specific Prep]
-
-    G --> G1[Recruiter Screen<br/>Self-prep]
-    G --> G2[CodeSignal / Coding<br/>senior-coding-interview]
-    G --> G3[Hiring Manager Screen<br/>hiring-manager-deep-dive]
-    G --> G4[ML System Design<br/>ml-system-design-interview]
-    G --> G5[Technical Deep Dive<br/>anthropic-technical-deep-dive]
-    G --> G6[Tech Presentation<br/>tech-presentation-interview]
-    G --> G7[Values & Behavioral<br/>values-behavioral-interview]
-
-    G1 --> H[Mock Interviews<br/>interview-simulator]
-    G2 --> H
-    G3 --> H
-    G4 --> H
-    G5 --> H
-    G6 --> H
-    G7 --> H
-
-    H --> I[Debrief & Adjust]
-    I -->|Iterate| G
-    I --> J[Interview Day<br/>Energy Protocol]
-    J --> K[Post-Loop Debrief]
-    K --> L{Offer?}
-    L -->|Yes| M[Negotiation Phase]
-    L -->|No| N[Gap Analysis & Retry]
-    N -->|Update plan| E
+  A[Candidate profile, target, and availability] --> B{Enough information to plan?}
+  B -->|No| C[State assumptions and ask only high-value questions]
+  B -->|Yes| D[Select candidate priorities and round coverage]
+  C --> D
+  D --> E[Map candidate-provided stories to specialist practice]
+  E --> F[Schedule practice and recovery]
+  F --> G[Run selected practice session]
+  G --> H{Evidence sufficient and candidate wants change?}
+  H -->|Yes| I[Adjust one next cycle with rationale]
+  H -->|No or uncertain| J[Preserve plan and label uncertainty]
+  I --> K[Candidate reviews plan]
+  J --> K
 ```
 
----
+## Planning Rules
 
-## Skill Routing Table
+### 1. Start with candidate-owned constraints
 
-Each round type maps to a specialist skill. The strategist coordinates -- it does not execute round-specific practice.
+Record the target role, organization or organization type, known interview stage, date range, available hours, preferred pace, accessibility needs, and the candidate's stated goals. Distinguish facts from assumptions. A company name is optional: use a role-family plan if the target is still exploratory.
 
-| Round Type | Specialist Skill | Key Focus |
-|------------|-----------------|-----------|
-| Recruiter Screen | Self-prep (no skill needed) | Pitch, motivation, logistics, salary range |
-| Online Assessment / Coding | `senior-coding-interview` | LC hard, system design lite, time management |
-| Hiring Manager Screen | `hiring-manager-deep-dive` | Leadership, team fit, technical judgment |
-| ML System Design | `ml-system-design-interview` | End-to-end ML pipelines, tradeoffs, scale |
-| Technical Deep Dive | `anthropic-technical-deep-dive` | Past work forensics, technical depth, AI safety |
-| Tech Presentation | `tech-presentation-interview` | 45-min talk, audience calibration, Q&A |
-| Values / Behavioral | `values-behavioral-interview` | STAR stories, Anthropic values alignment |
-| Mock Execution | `interview-simulator` | Realistic timed practice with scoring |
+Never convert a sparse profile into invented achievements, interview stages, or employer preferences. If a detail materially changes the plan, ask for it; otherwise make a reversible assumption and mark it for review.
 
----
+### 2. Choose coverage before intensity
 
-## Prep Timeline Selection
+Cover the round types likely to matter for the target role, then weight time according to the candidate's goals and available evidence. Preserve recovery time and schedule fewer, higher-quality rehearsals when time is constrained.
 
-Choose based on time until first round:
+| Time available | Default cadence | Plan shape |
+| --- | --- | --- |
+| Less than 2 weeks | 4–6 focused hours/day only if the candidate opts in | Protect essentials, one mock per high-priority round, daily short debrief. |
+| 2–5 weeks | 2–3 focused hours/day | Rotate round types, build evidence map, weekly mock and review. |
+| More than 6 weeks | 1–2 focused hours/day | Deliberate practice, spaced review, periodic full-loop rehearsal. |
 
-```mermaid
-flowchart LR
-    T{Time Available?}
-    T -->|< 2 weeks| P1[Intensive Plan<br/&gt;4-6 hrs/day]
-    T -->|2-5 weeks| P2[Balanced Plan<br/&gt;2-3 hrs/day]
-    T -->|6+ weeks| P3[Thorough Plan<br/&gt;1-2 hrs/day]
-    P1 --> R[See references/<br/>preparation-timeline-templates.md]
-    P2 --> R
-    P3 --> R
-```
+These are starting points, not prescriptions. Reduce load when the candidate has competing commitments, fatigue, or another stated constraint.
 
-For detailed daily schedules, consult `references/preparation-timeline-templates.md`.
+### 3. Maintain an evidence map for stories
 
----
+Map only candidate-provided projects and facts. Every story entry should identify the round, the evidence source, the audience emphasis, and open questions.
 
-## Story Coherence Matrix
+| Story facet | Appropriate rounds | Evidence to retain |
+| --- | --- | --- |
+| Technical decisions and tradeoffs | Coding, system design, deep dive | Architecture, constraints, alternatives, measured result or stated uncertainty. |
+| Leadership and collaboration | Behavioral, hiring manager | Candidate's role, collaborators, conflict, and outcome. |
+| Motivation and narrative | Recruiter, presentation, behavioral | Why the project mattered, learning, and values the candidate genuinely endorses. |
 
-A senior candidate has 5-8 strong projects. Each project will surface in multiple rounds but must be tailored to the audience and evaluation criteria of that round.
+Do not invent metrics, team size, impact, safety claims, or an employer's values alignment. Flag gaps as prompts for the candidate to verify.
 
-### How to Build the Matrix
+### 4. Use practice evidence carefully
 
-1. **List top 5 projects** from career-biographer output (or direct input)
-2. **For each project, write 3 versions:**
+Adjust a plan only from a candidate request or a session record that supports a specific finding. A practice score is not a trait or forecast. If a transcript is incomplete, a round differs from the target format, or there is no comparable history, say that the adjustment is tentative or leave the allocation unchanged.
 
-| Version | Round Type | Emphasis | Length |
-|---------|-----------|----------|--------|
-| **Technical** | ML Design, Deep Dive | Architecture decisions, tradeoffs, metrics, what you would change | 8-12 min |
-| **Impact** | Behavioral, HM | Leadership, influence, collaboration, business outcome | 3-5 min (STAR) |
-| **Narrative** | Presentation, Recruiter | Story arc, why it matters to the world, lessons learned | Variable |
+The candidate can override any prioritization. Record the override as a valid preference, not a plan failure.
 
-3. **Cross-check for contradictions** -- dates, team sizes, your role, metrics must be identical across versions
-4. **Map projects to Anthropic values** -- which project demonstrates which value (safety, honesty, broad benefit)?
+## Specialist Routing
 
-### Example Coherence Entry
+| Practice need | Route to | Strategist responsibility |
+| --- | --- | --- |
+| Coding or online assessment | `senior-coding-interview` | Set cadence and connect debrief evidence to the next cycle. |
+| System design | `ml-system-design-interview` or a general design specialist | Choose target-relevant constraints; do not assume an ML role. |
+| Technical deep dive | Relevant domain specialist | Preserve factual project evidence and open questions. |
+| Presentation | `tech-presentation-interview` | Reserve rehearsal and recovery time. |
+| Behavioral or values | `values-behavioral-interview` | Maintain candidate-authored story coherence. |
+| Hiring-manager conversation | `hiring-manager-deep-dive` | Frame scope, collaboration, and candidate questions. |
+| Timed rehearsal | `interview-simulator` | Use candidate-controlled artifacts and evidence-linked debriefs. |
 
-**Project: Real-Time Object Detection Pipeline (2019-2022)**
+## Adjustment Decisions
 
-| Round | Version | Key Points |
-|-------|---------|------------|
-| ML Design | Technical | YOLOv5 -> custom architecture, 40ms latency constraint, edge deployment, model distillation tradeoffs |
-| Deep Dive | Technical | Why ResNet backbone over EfficientNet, quantization strategy, failure mode analysis, production monitoring |
-| Behavioral | Impact | Led 4-person team through 3 pivots, managed stakeholder expectations when accuracy targets slipped, mentored junior engineer who became tech lead |
-| HM Screen | Impact | Drove 35% revenue increase through automation, navigated org politics to get GPU budget, built cross-functional relationships |
-| Presentation | Narrative | "From research prototype to production system serving 10M requests/day -- lessons in making ML real" |
+| Signal | Action |
+| --- | --- |
+| Candidate asks to prioritize a round | Reallocate time, showing what is deprioritized. |
+| Evidence-linked mock debrief identifies one repeatable gap | Add one targeted practice experiment in the next cycle. |
+| One weak or incomplete session | Label it as limited evidence; do not overhaul the plan. |
+| Interview date, format, or availability changes | Rebuild the remaining schedule from current constraints and retain completed evidence. |
+| Candidate has no project stories ready | Schedule evidence gathering and short story drafts before advanced rehearsal. |
+| Target details are unknown | Use a general SWE coverage plan and list the assumption for review. |
 
----
+## Quality Gates
 
-## Energy Management Protocol
-
-All-day interview loops (4-6 hours) are endurance events. Cognitive fatigue causes more failures than knowledge gaps.
-
-### Before Interview Day
-
-- Sleep 7-8 hours for 3 consecutive nights prior (not just the night before)
-- Prepare environment: quiet room, backup internet, charged devices, water, snacks
-- Do NOT cram the morning of -- review only your story coherence matrix and 1-page cheat sheet
-- Light exercise the morning of (walk, stretch -- not a hard workout)
-
-### During the Loop
-
-| Break Length | Activity | Avoid |
-|-------------|----------|-------|
-| 5 min | Stand, stretch, water, deep breaths | Phone, social media, reviewing notes |
-| 15 min | Walk, snack (protein > sugar), bathroom | Replaying the previous round |
-| 30+ min (lunch) | Eat a real meal, step outside, reset | Studying for next round |
-
-### Cognitive Sequencing
-
-If you can influence round order (sometimes companies ask preference):
-
-1. **Start with your strongest round** -- builds confidence momentum
-2. **Put coding early** -- requires peak cognitive freshness
-3. **Behavioral/values in the middle** -- these are conversational and let you recover
-4. **Presentation whenever you rehearsed it** -- muscle memory carries you
-5. **Avoid technical deep dive as last round** -- fatigue makes it easy to ramble
-
----
-
-## Debrief Framework
-
-Run after every mock AND every real interview round.
-
-### Immediate (within 30 minutes)
-
-1. **Dump raw notes** -- what questions were asked, what you said, what you wish you said
-2. **Emotional check** -- how did you feel? Confident, uncertain, surprised?
-3. **Time check** -- did you run over? Under? Where did you lose time?
-
-### Structured Analysis (within 24 hours)
-
-| Dimension | Score (1-5) | Evidence | Action Item |
-|-----------|-------------|----------|-------------|
-| Technical accuracy | | | |
-| Communication clarity | | | |
-| Time management | | | |
-| Story coherence | | | |
-| Energy / confidence | | | |
-| Question handling | | | |
-
-### Pattern Detection (weekly)
-
-- What round types consistently score lowest?
-- Which stories land well? Which fall flat?
-- Are you improving on last week's action items?
-- Adjust prep timeline allocation based on weakness trends
-
-For scoring rubrics per round type, consult `references/mock-interview-rubrics.md`.
-
----
+- [ ] Candidate priorities, constraints, and consent choices are visible in the plan.
+- [ ] Known facts, assumptions, and unknowns are distinct.
+- [ ] Every story claim originates in candidate-provided evidence or is marked as a question.
+- [ ] Every plan adjustment names a candidate request or session artifact.
+- [ ] No item claims to measure confidence, culture fit, integrity, personality, or hiring likelihood.
+- [ ] The candidate can revise scope, cadence, and routing at each review point.
 
 ## Anti-Patterns
 
-### Anti-Pattern: Uniform Preparation
-**Novice**: Spends equal time on every round type -- 2 hours coding, 2 hours design, 2 hours behavioral, repeat.
-**Expert**: Analyzes personal weaknesses and round weighting. A candidate who aces design but freezes in coding allocates 60% of prep to coding. A candidate whose stories are inconsistent spends dedicated time on the coherence matrix.
-**Detection**: Prep log shows identical hours across all categories despite known weaknesses.
+### Company Template Masquerading as a Plan
 
-### Anti-Pattern: Isolation Prep
-**Novice**: Prepares each round independently. Tells a behavioral story about leading a team of 6 in one round, then says "I was the sole contributor" for the same project in a technical round.
-**Expert**: Uses the story coherence matrix to thread a consistent narrative across all rounds. Reviews the matrix before every mock. Has a peer check for contradictions.
-**Detection**: Same project described with conflicting details (team size, timeline, your role, metrics) across different round types.
+**Novice**: "Every senior candidate needs the same company-specific loop and values mapping."
 
-### Anti-Pattern: Mock Avoidance
-**Novice**: Reads interview guides, watches YouTube videos, reviews flashcards -- but never actually practices speaking answers aloud under time pressure.
-**Expert**: Runs at minimum 2 full mock interviews per week in the final month. Records mocks. Reviews recordings. Uses `interview-simulator` for structured scoring. Treats mocks as the primary prep activity, not supplementary.
-**Detection**: Zero mock session recordings in history. Unable to answer questions within time limits despite "knowing the material."
+**Expert**: Target role, organization, stage, and timeline may differ or be unknown. Start from role-family coverage, then add verified target information the candidate chooses to use.
 
----
+**Detection**: A plan assumes one employer, one interview sequence, or one values framework without candidate input.
 
-## Anthropic-Specific Notes
+### Coherence by Invention
 
-Anthropic's interview process (as of early 2026) emphasizes:
+**Novice**: "Fill missing metrics and leadership details so stories sound consistent."
 
-1. **AI Safety understanding** -- not just technical competence, but genuine engagement with alignment, interpretability, and responsible deployment
-2. **Technical depth over breadth** -- they want to see how deep you can go on your own work, not surface-level familiarity with everything
-3. **Collaborative problem-solving** -- interviews are designed to feel like working sessions, not interrogations
-4. **Intellectual honesty** -- saying "I don't know" or "I was wrong about that" is valued over bluffing
-5. **Mission alignment** -- why Anthropic specifically, not just "any AI company"
+**Expert**: Coherence comes from a truthful evidence map. Missing information is a prompt to verify, not a license to manufacture a stronger narrative.
 
-For detailed company-specific loop structures (Anthropic, Google DeepMind, OpenAI, Meta FAIR), consult `references/company-specific-loops.md`.
+**Detection**: Unattributed outcomes, team sizes, dates, or metrics in a story matrix.
 
----
+### Score-Driven Overcorrection
 
-## Process: First Session with a Candidate
+**Novice**: "One low mock score means that round should dominate the remaining plan."
 
-1. **Assess current state**: Which company? When is the interview? What's your background?
-2. **Review upstream artifacts**: career-biographer output, cv-creator resume, any existing prep
-3. **Select timeline template**: 2-week / 1-month / 2-month based on available time
-4. **Build story coherence matrix**: Top 5 projects x 3 versions each
-5. **Identify weakness areas**: Self-assessment + any prior interview feedback
-6. **Generate personalized prep plan**: Daily schedule with skill routing
-7. **Schedule first mock**: Within 48 hours of starting prep
-8. **Set debrief cadence**: After every mock, weekly pattern review
+**Expert**: Practice evidence is bounded by prompt, format, quality, and the candidate's own assessment. Change one cycle at a time and make the rationale visible.
 
----
+**Detection**: Large allocation changes without a candidate request, repeated evidence, or confidence label.
 
-## Reference Files
+### Surveillance as Readiness
 
-| File | Consult When |
-|------|-------------|
-| `references/preparation-timeline-templates.md` | Generating a daily prep schedule for 2-week, 1-month, or 2-month timeline |
-| `references/mock-interview-rubrics.md` | Scoring mock interviews, self-evaluation, or identifying failure modes per round type |
-| `references/company-specific-loops.md` | Tailoring prep to a specific company's interview structure (Anthropic, DeepMind, OpenAI, Meta FAIR) |
+**Novice**: "Attention, gaze, tone, or emotion metrics show whether someone is prepared."
 
+**Expert**: Those signals are ambiguous and inappropriate for this use. Readiness work should be based on candidate-chosen practice artifacts and explicit self-reflection.
 
-## Output Contract
+**Detection**: Any readiness recommendation based on camera, biometric, behavioral, or inferred affect data.
 
-This skill produces:
-- **Interview loop design** with rounds, focus areas, and interviewer assignments
-- **Question bank** organized by competency with scoring rubrics
-- **Candidate evaluation template** with structured feedback format
-- **Debrief protocol** with consensus-building and decision framework
+## Worked Example
+
+**Setup:** A mid-level platform engineer targets a staff-leaning backend role in five weeks. They can commit eight hours each week, have two projects they are comfortable discussing, and do not yet know the loop format.
+
+**Plan:** The strategist records the unknown format, allocates one coding and one design practice block per week, schedules a behavioral story-evidence session before the first mock, and leaves an explicit review point after the recruiter screen.
+
+**Adjustment:** A design mock transcript shows that the candidate jumped into components before naming constraints. The next cycle adds one 20-minute constraint-framing drill. It does not infer confidence or recalculate the entire plan from one session.
