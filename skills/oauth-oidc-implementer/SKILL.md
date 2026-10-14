@@ -1,4 +1,5 @@
 ---
+description: Expert in implementing OAuth 2.0 and OpenID Connect (OIDC) authentication flows. Specializes in secure token handling, social login integration, API authorization, and identity provider configuration. Use when the user explicitly needs oauth oidc implementer help. NOT for unrelated tasks.
 license: Apache-2.0
 name: oauth-oidc-implementer
 version: 1.0.0

@@ -1,4 +1,6 @@
 ---
+description: Master dark mode UI design with atmospheric theming, WCAG accessibility, and cross-platform best practices. Specializes in weather/sky/ocean-inspired color systems that adapt to time of day and environmental conditions. Use when the user explicitly needs dark mode design expert help. NOT for unrelated tasks.
+name: dark-mode-design-expert
 license: Apache-2.0
 category: Design & Creative
 tags:

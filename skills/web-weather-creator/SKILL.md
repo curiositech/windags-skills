@@ -1,4 +1,6 @@
 ---
+description: Master of stylized atmospheric effects using SVG filters and CSS animations. Creates clouds, waves, lightning, rain, fog, aurora borealis, god rays, lens flares, twilight skies, and ocean spray—all with a premium aesthetic that's stylized but never cheap-looking. Use when the user explicitly needs web weather creator help. NOT for unrelated tasks.
+name: web-weather-creator
 license: Apache-2.0
 category: Design & Creative
 tags:

@@ -10,7 +10,7 @@ metadata:
     - skill: senior-coding-interview
       reason: Handles coding-round preparation and practice.
     - skill: ml-system-design-interview
-      reason: Handles system-design preparation and practice.
+      reason: Handles ML-system practice only when the target or candidate explicitly selects it.
     - skill: anthropic-technical-deep-dive
       reason: Handles company-specific technical research only when it is relevant to the target.
     - skill: tech-presentation-interview
@@ -146,6 +146,10 @@ Adjust a plan only from a candidate request or a session record that supports a 
 
 The candidate can override any prioritization. Record the override as a valid preference, not a plan failure.
 
+## Bundled References
+
+Load [references/INDEX.md](references/INDEX.md) for candidate-controlled timeline templates, evidence rubrics, or source-checked target-process research. Every reference follows the same consent and uncertainty boundaries as this skill.
+
 ## Specialist Routing
 
 | Practice need | Route to | Strategist responsibility |
@@ -153,7 +157,7 @@ The candidate can override any prioritization. Record the override as a valid pr
 | Coding or online assessment | `senior-coding-interview` | Set cadence and connect debrief evidence to the next cycle. |
 | General SWE system design | `interview-simulator` with a candidate-selected design prompt and observable rubric | Choose target-relevant constraints and state that no general-design specialist is installed; do not substitute ML material. |
 | ML system design | `ml-system-design-interview` | Use only when the target or candidate explicitly selects ML-system practice. |
-| Technical deep dive | Relevant domain specialist | Preserve factual project evidence and open questions. |
+| Technical deep dive | `interview-simulator` with a candidate-selected project prompt; `anthropic-technical-deep-dive` only for explicitly selected Anthropic research | Preserve factual project evidence and open questions; do not assume an employer or invent a domain specialist. |
 | Presentation | `tech-presentation-interview` | Reserve rehearsal and recovery time. |
 | Behavioral or values | `values-behavioral-interview` | Maintain candidate-authored story coherence. |
 | Hiring-manager conversation | `hiring-manager-deep-dive` | Frame scope, collaboration, and candidate questions. |

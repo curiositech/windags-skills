@@ -12,7 +12,9 @@ metadata:
     - skill: senior-coding-interview
       reason: Supplies coding-round prompts and evidence-based rubrics.
     - skill: ml-system-design-interview
-      reason: Supplies system-design prompts and evaluation criteria.
+      reason: Supplies ML-system prompts only when the target or candidate explicitly selects ML practice.
+    - skill: anthropic-technical-deep-dive
+      reason: Supplies target-specific technical research only when the candidate selects Anthropic practice.
     - skill: tech-presentation-interview
       reason: Supplies candidate-owned presentation prompts and Q&A practice.
     - skill: values-behavioral-interview
@@ -121,7 +123,7 @@ Do not turn on a camera, capture background activity, infer attention, or inspec
 
 ### 2. Run one bounded round
 
-Use a prompt and rubric from the round-specific skill. State the timebox and any materials allowed. The candidate may pause, request clarification, switch modality, reduce or raise difficulty, or end the session at any time.
+Use the round routing below to select a prompt and observable rubric. State the timebox and any materials allowed. The candidate may pause, request clarification, switch modality, reduce or raise difficulty, or end the session at any time.
 
 For a difficulty change, ask first. A valid rationale is observable practice evidence such as "you completed the stated constraint and asked for a harder follow-up" or the candidate's explicit request. Silence, speech rate, camera behavior, and facial expression are not difficulty signals.
 
@@ -143,6 +145,24 @@ Produce at most three strengths, three improvement experiments, and one next-ses
 | Experiment | A candidate-actionable change for the next rehearsal. |
 
 The candidate can correct the record, remove retained artifacts where the host product supports removal, and accept, change, or decline the proposed next step.
+
+## Round Routing
+
+| Selected round | Prompt and rubric source |
+| --- | --- |
+| Coding | `senior-coding-interview` |
+| General SWE system design | Candidate-selected design prompt and agreed observable criteria; no general-design specialist is installed and ML material is not a default. |
+| ML system design | `ml-system-design-interview`, only when explicitly selected. |
+| Presentation | `tech-presentation-interview` |
+| Behavioral or values | `values-behavioral-interview` |
+| Hiring-manager conversation | `hiring-manager-deep-dive` |
+| Technical deep dive | Candidate-selected project and factual project evidence; use `anthropic-technical-deep-dive` only for explicitly selected Anthropic research. |
+
+A paired specialist supplies practice material within this session contract. Do not adopt employer predictions, inferred traits, or unverified process claims from specialist material. The candidate approves any target-specific scope and prompt.
+
+## Bundled References
+
+Load [references/INDEX.md](references/INDEX.md) for optional mobile practice or whiteboard implementation guidance. Both guides inherit the session contract, including consent before external processing and candidate approval before plan changes.
 
 ## Difficulty and Modality Decisions
 

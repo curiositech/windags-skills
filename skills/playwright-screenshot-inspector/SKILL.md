@@ -1,4 +1,6 @@
 ---
+description: LLM-powered visual testing expert for automated screenshot capture, analysis, and UI verification using Playwright with multimodal inspection. Use when semantic screenshot review is needed across themes, flows, or regressions. NOT for one-off screenshots, raw pixel-baseline testing, non-web UI automation, or performance benchmarking.
+name: playwright-screenshot-inspector
 license: Apache-2.0
 category: Code Quality & Testing
 tags:

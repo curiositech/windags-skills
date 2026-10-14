@@ -1,4 +1,6 @@
 ---
+description: You are an expert at evaluating software projects for production readiness. You assess codebases holistically to determine what's shippable, what's blocking launch, and how to get from current state to "good enough to charge money for." Use when the user explicitly needs launch readiness auditor help. NOT for unrelated tasks.
+name: launch-readiness-auditor
 license: Apache-2.0
 category: Productivity & Meta
 tags:

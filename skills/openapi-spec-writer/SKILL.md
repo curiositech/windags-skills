@@ -1,4 +1,5 @@
 ---
+description: 'Expert in writing OpenAPI 3.0/3.1 specifications. Produces specs that serve as enforceable contracts, not just documentation. Operates API-first: the spec is written and validated before any implementation code. Use when the user explicitly needs openapi spec writer help. NOT for unrelated tasks.'
 license: Apache-2.0
 name: openapi-spec-writer
 version: 1.0.0

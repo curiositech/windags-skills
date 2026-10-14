@@ -50,3 +50,17 @@ jobs:
           done < <(find skills -name SKILL.md)
           if [ "$bad" -ne 0 ]; then exit 1; fi
           echo "✓ All SKILL.md files have name + description."
+      - name: Verify candidate-controlled interview bundles
+        run: |
+          python3 scripts/check-interview-bundles.py
+          python3 -m unittest discover -s tests -p 'test_interview_bundle_guard.py' -v
+      - name: Verify paths can be checked out on Windows
+        run: |
+          python3 - <<'PY'
+          import re, subprocess
+          paths = subprocess.check_output(['git', 'ls-files', '-z']).decode().split('\0')
+          invalid = [p for p in paths if re.search(r'[<>:"|?*]', p)]
+          if invalid:
+              raise SystemExit('Non-portable tracked paths:\n' + '\n'.join(invalid))
+          print('Tracked paths contain no Windows-invalid characters.')
+          PY
