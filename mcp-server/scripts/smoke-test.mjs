@@ -12,6 +12,7 @@ import { createRequire } from "module";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseSkillDocument } from "../skill-document.js";
 
 const require = createRequire(import.meta.url);
 const bm25 = require("wink-bm25-text-search");
@@ -28,10 +29,9 @@ for (const e of fs.readdirSync(SKILLS_DIR, { withFileTypes: true })) {
   const md = path.join(SKILLS_DIR, e.name, "SKILL.md");
   if (!fs.existsSync(md)) continue;
   const txt = fs.readFileSync(md, "utf-8");
-  const m = txt.match(/^---\n([\s\S]*?)\n---/);
-  if (!m) continue;
-  let fm; try { fm = yaml.load(m[1]); } catch { continue; }
-  if (!fm) continue;
+  const parsed = parseSkillDocument(txt);
+  if (!parsed) continue;
+  const fm = parsed.frontmatter;
   skills.push({
     id: e.name, name: fm.name || e.name,
     description: fm.description || "",

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { parseSkillDocument } from "./skill-document.js";
 
 /**
  * WinDAGs MCP Server (standalone)
@@ -94,11 +95,9 @@ function readSkillFile(id) {
   const md = path.join(skillsDir, id, "SKILL.md");
   if (!fs.existsSync(md)) return null;
   const raw = fs.readFileSync(md, "utf-8");
-  const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-  if (!m) return null;
-  let fm;
-  try { fm = yaml.load(m[1]) ?? {}; } catch { return null; }
-  return { id, frontmatter: fm, body: m[2] ?? "", raw };
+  const parsed = parseSkillDocument(raw);
+  if (!parsed) return null;
+  return { id, ...parsed, raw };
 }
 
 function loadSkillIndex() {

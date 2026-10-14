@@ -17,6 +17,7 @@ import { pipeline, env } from "@xenova/transformers";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseSkillDocument } from "../skill-document.js";
 import yaml from "js-yaml";
 
 env.allowLocalModels = false;
@@ -36,11 +37,9 @@ function loadSkills() {
     const md = path.join(SKILLS_DIR, entry.name, "SKILL.md");
     if (!fs.existsSync(md)) continue;
     const text = fs.readFileSync(md, "utf-8");
-    const m = text.match(/^---\n([\s\S]*?)\n---/);
-    if (!m) continue;
-    let fm;
-    try { fm = yaml.load(m[1]); } catch { continue; }
-    if (!fm) continue;
+    const parsed = parseSkillDocument(text);
+    if (!parsed) continue;
+    const fm = parsed.frontmatter;
     out.push({
       id: entry.name,
       name: fm.name || entry.name,
