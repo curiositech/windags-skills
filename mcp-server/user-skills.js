@@ -88,7 +88,8 @@ function readSkillMd(dir) {
   if (!fs.existsSync(md)) return null;
   let raw;
   try { raw = fs.readFileSync(md, "utf-8"); } catch { return null; }
-  const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  // Installed skill copies can inherit CRLF from a Windows Git checkout too.
+  const m = raw.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n)?([\s\S]*)$/);
   if (!m) return null;
   let fm;
   try { fm = yaml.load(m[1]) ?? {}; } catch (err) {
