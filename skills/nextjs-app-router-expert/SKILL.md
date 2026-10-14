@@ -1,4 +1,5 @@
 ---
+description: Expert in Next.js 14/15 App Router architecture, React Server Components (RSC), Server Actions, and modern full-stack React development. Specializes in routing patterns, data fetching strategies, caching, streaming, and deployment optimization. Use when the user explicitly needs nextjs app router expert help. NOT for unrelated tasks.
 license: Apache-2.0
 name: nextjs-app-router-expert
 version: 1.0.0

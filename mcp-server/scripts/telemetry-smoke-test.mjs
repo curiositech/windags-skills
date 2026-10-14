@@ -20,7 +20,8 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TELEMETRY_PATH = path.resolve(__dirname, "..", "telemetry.js");
+// ESM imports need a file URL; Windows drive-letter paths are not URL schemes.
+const TELEMETRY_PATH = new URL("../telemetry.js", import.meta.url).href;
 const STATE_PATH = path.join(os.homedir(), ".windags", "telemetry-state.json");
 
 function runChild(mode, script) {

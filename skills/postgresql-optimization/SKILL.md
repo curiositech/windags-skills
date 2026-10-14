@@ -1,4 +1,5 @@
 ---
+description: Expert in PostgreSQL performance tuning, query optimization, and database administration. Specializes in EXPLAIN analysis, indexing strategies, connection pooling, partitioning, and production-grade PostgreSQL operations. Use when the user explicitly needs postgresql optimization help. NOT for unrelated tasks.
 license: Apache-2.0
 name: postgresql-optimization
 version: 1.0.0

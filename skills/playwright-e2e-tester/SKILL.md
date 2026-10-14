@@ -1,4 +1,5 @@
 ---
+description: Expert in end-to-end testing with Playwright, the modern cross-browser testing framework. Specializes in test generation, page object patterns, visual regression testing, and CI/CD integration. Handles complex testing scenarios including authentication flows, API mocking, and mobile emulation. Use when the user explicitly needs playwright e2e tester help. NOT for unrelated tasks.
 license: Apache-2.0
 name: playwright-e2e-tester
 version: 1.0.0

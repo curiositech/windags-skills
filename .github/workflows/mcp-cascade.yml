@@ -74,6 +74,10 @@ jobs:
           # a single key per OS is enough.
           key: ${{ runner.os }}-tfjs-allmini-msmarco-v1
 
+      - name: Skill document line-ending regression tests
+        working-directory: mcp-server
+        run: node --test scripts/skill-document.test.mjs
+
       # The build-embeddings step downloads the bi-encoder if the cache missed.
       - name: Build embeddings corpus
         working-directory: mcp-server

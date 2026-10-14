@@ -70,7 +70,7 @@ await server.connect(new StdioServerTransport());
 
 The model picks tools based on the description. Two rules:
 
-1. **Lead with capability, not implementation.** "Search the catalog with a 5-stage cascade" is fine, but lead with "find the right skill for a task" because that's what the model is searching for.
+1. **Lead with capability, not implementation.** "Search the catalog with a 6-stage cascade including global priors" is fine, but lead with "find the right skill for a task" because that's what the model is searching for.
 2. **Tell the model when NOT to use the tool.** "Returns descriptions only — pair with mything_load for full bodies."
 
 A discoverable description includes:
