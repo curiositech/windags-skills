@@ -1,0 +1,51 @@
+{
+  "skill": "apple-liquid-glass-design",
+  "status": "created",
+  "provenance": {
+    "kind": "first-party",
+    "source": "manual"
+  },
+  "authorship": {
+    "maintainers": [
+      "windags-skills"
+    ],
+    "authors": [
+      "erichowens"
+    ]
+  },
+  "structure": {
+    "decision_points": true,
+    "failure_modes": true,
+    "worked_examples": true,
+    "quality_gates": true,
+    "not_for": true,
+    "mermaid": true
+  },
+  "affordances": {
+    "scripts": true,
+    "templates": true,
+    "examples": true,
+    "references": true,
+    "schemas": true,
+    "subagent_prompts": true,
+    "assets": false,
+    "browser_open_review": false,
+    "fork_runtime": false,
+    "hooks_runtime": false,
+    "channel_notes": false,
+    "scheduled_task_notes": false
+  },
+  "knowledge_depth": {
+    "l1": true,
+    "l2": true,
+    "l3": true
+  },
+  "validation": {
+    "repo_validator_passed": false,
+    "notes": [
+      "Both scripts pass --self-test; contrast checker exercised on a real capture (clay-birdseye.png).",
+      "API names verified against developer.apple.com docs JSON on 2026-10-01.",
+      "skill-architect validate_skill.py reports 'metadata must be a mapping' because its hand-rolled YAML parser mis-reads multi-item `pairs-with` lists of maps; PyYAML parses the frontmatter correctly and existing skills (e.g. backend-authoritative-runtime-refactor) hit the same false positive. check_self_contained, validate_mermaid and audit_skill_operating_system pass."
+    ]
+  }
+}

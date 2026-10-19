@@ -1,0 +1,11 @@
+{
+  "_comment": "Regions in screenshot pixels (use --scale 2 if you measured in CSS px on a 2x capture). kind: text (4.5:1), large (3:1), glyph (3:1). Omit text_color to let the checker report whether black or white labels would pass. Coordinates below match tough.trade spikes/clay-map/docs/clay-birdseye.png (780x1688).",
+  "regions": [
+    {"id": "pill-time-1pm", "x": 395, "y": 48, "w": 125, "h": 34, "text_color": "#5b6f76", "kind": "text"},
+    {"id": "pill-title-mount-tabor", "x": 150, "y": 48, "w": 222, "h": 34, "text_color": "#1c3238", "kind": "large"},
+    {"id": "look-switcher-brass", "x": 180, "y": 1475, "w": 92, "h": 36, "text_color": "#5b6f76", "kind": "text"},
+    {"id": "time-label", "x": 64, "y": 1588, "w": 76, "h": 32, "text_color": "#5b6f76", "kind": "text"},
+    {"id": "attribution", "x": 30, "y": 1394, "w": 640, "h": 22, "kind": "text"},
+    {"id": "compass-glyph", "x": 682, "y": 146, "w": 46, "h": 52, "kind": "glyph"}
+  ]
+}

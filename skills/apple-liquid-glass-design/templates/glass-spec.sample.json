@@ -1,0 +1,35 @@
+{
+  "screen": "Map HUD (before migration)",
+  "platform": "web",
+  "route": "css",
+  "backdrop_animated": true,
+  "backdrop_hz": 144,
+  "app_webgl_contexts": 1,
+  "accessibility": {
+    "handles_reduce_transparency": false,
+    "handles_increase_contrast": false,
+    "handles_reduce_motion": true,
+    "in_app_transparency_toggle": false
+  },
+  "elements": [
+    {"id": "place-pill", "role": "status", "layer": "control", "material": "regular", "shape": "capsule",
+     "over": "canvas", "blur_px": 18, "label_kind": "text",
+     "text": {"size_px": 15, "weight": 500, "contrast_p5": 1.82}},
+    {"id": "compass", "role": "control", "layer": "control", "material": "regular", "shape": "circle",
+     "over": "canvas", "label_kind": "symbol", "group": "map-controls", "container": "c-compass"},
+    {"id": "look-switcher", "role": "control", "layer": "control", "material": "regular", "shape": "capsule",
+     "over": "canvas", "label_kind": "text", "group": "bottom", "container": "c-bottom"},
+    {"id": "look-switcher-selected", "role": "control", "layer": "control", "material": "regular",
+     "parent": "look-switcher", "tint": true, "shape": "capsule", "label_kind": "text"},
+    {"id": "tune-button", "role": "control", "layer": "control", "material": "regular", "shape": "circle",
+     "over": "canvas", "label_kind": "symbol", "group": "bottom", "container": "c-tune"},
+    {"id": "time-bar", "role": "control", "layer": "control", "material": "regular", "shape": "rounded",
+     "corner_radius": 28, "over": "canvas", "label_kind": "text", "text": {"size_px": 14, "weight": 500, "contrast_p5": 1.75}},
+    {"id": "now-button", "role": "primary-action", "layer": "control", "material": "regular", "parent": "time-bar",
+     "shape": "rounded", "corner_radius": 22, "parent_corner_radius": 28, "inset": 10},
+    {"id": "photo-badge", "role": "content", "layer": "content", "material": "regular", "repeated": true,
+     "over": "canvas", "shape": "circle"},
+    {"id": "name-label", "role": "overlay-label", "layer": "content", "material": "regular", "repeated": true,
+     "over": "canvas", "shape": "capsule", "text": {"size_px": 12, "weight": 500}}
+  ]
+}
