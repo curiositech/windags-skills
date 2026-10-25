@@ -1,7 +1,7 @@
 ---
 license: Apache-2.0
 name: color-theory-palette-harmony-expert
-description: Expert in color theory, palette harmony, and perceptual color science for computational photo composition. Specializes in earth-mover distance optimization, warm/cool alternation, diversity-aware palette selection, and hue-based photo sequencing. Activate on "color palette", "color harmony", "warm cool", "earth mover distance", "Wasserstein", "LAB space", "hue sorted", "palette matching". NOT for basic RGB manipulation (use standard image processing), single-photo color grading (use native-app-designer), UI color schemes (use vaporwave-glassomorphic-ui-designer), or color blindness simulation (accessibility specialists).
+description: Expert in color theory, palette harmony, and perceptual color science for computational photo composition. Specializes in earth-mover distance optimization, warm/cool alternation, diversity-aware palette selection, and hue-based photo sequencing. Activate on "color palette", "color harmony", "warm cool", "earth mover distance", "Wasserstein", "LAB space", "hue sorted", "palette matching". NOT for basic RGB manipulation (use standard image processing), single-photo color grading (use native-app-designer), product/UI color systems (use product-palette-designer), or color blindness simulation (accessibility specialists).
 allowed-tools: Read,Write,Edit,Bash,mcp__stability-ai__stability-ai-generate-image,mcp__firecrawl__firecrawl_search,WebFetch
 category: Design & Creative
 tags:
@@ -167,7 +167,7 @@ outdoor_transform = np.array([[1, 0, 0], [0, 1, 0], [0, 0, -0.3]]) # Increase b-
 **Do NOT use this skill for:**
 - **Basic RGB manipulation** → Use standard image processing libraries
 - **Single-photo color grading/enhancement** → Use **native-app-designer** skill  
-- **UI/web color scheme generation** → Use **vaporwave-glassomorphic-ui-designer**
+- **Product/UI palette and semantic color systems** → Use **product-palette-designer**
 - **Color blindness accessibility** → Delegate to accessibility specialists
 - **Print color management (CMYK)** → Use **print-design-expert**
 - **Video color grading workflows** → Use **video-editing-expert**

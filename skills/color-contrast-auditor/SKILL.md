@@ -1,7 +1,7 @@
 ---
 license: Apache-2.0
 name: color-contrast-auditor
-description: Detects and fixes color contrast violations using WCAG 2.1 guidelines and perceptual analysis. Expert in contrast ratio calculation, color blindness simulation, and providing accessible alternatives. Activate on "check contrast", "color accessibility", "WCAG audit", "readability check", "contrast ratio", "hard to read", "can't see text". NOT for general color theory (use color-theory-palette-harmony-expert), brand color selection (use web-design-expert), or non-visual accessibility (use ux-friction-analyzer).
+description: Detects and fixes color contrast violations using WCAG 2.1 guidelines and perceptual analysis. Expert in contrast ratio calculation, color blindness simulation, and providing accessible alternatives. Activate on "check contrast", "color accessibility", "WCAG audit", "readability check", "contrast ratio", "hard to read", "can't see text". NOT for general color theory (use color-theory-palette-harmony-expert), product palette selection (use product-palette-designer), or non-visual accessibility (use ux-friction-analyzer).
 allowed-tools: Read,Write,Edit,WebFetch,Glob,Grep
 category: Design & Creative
 tags:
@@ -33,7 +33,7 @@ Detects color contrast violations that make text unreadable and provides WCAG-co
 - Design system color validation
 
 **NOT for:**
-- Choosing brand colors (use `web-design-expert`)
+- Choosing product palettes (use `product-palette-designer`)
 - Color harmony/aesthetics (use `color-theory-palette-harmony-expert`)
 - Non-visual accessibility (screen readers, keyboard nav)
 

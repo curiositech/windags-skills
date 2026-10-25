@@ -1,0 +1,4 @@
+interface:
+  display_name: "Product Palette Designer"
+  short_description: "Bespoke OKLCH palettes for product UI and brand assets"
+  default_prompt: "Use $product-palette-designer to create a bespoke OKLCH palette for this product, with semantic light/dark tokens, Tailwind/shadcn and native mappings, marketing and logo/favicon/OG uses, and measured color pairs."

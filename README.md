@@ -123,6 +123,7 @@ cp -r windags-skills/skills/api-architect ~/.claude/commands/
 
 - [APA formatting](skills/apa-formatting/SKILL.md): APA 7 student and professional papers, author–date citations, and References.
 - [MLA formatting](skills/mla-formatting/SKILL.md): MLA 9 papers, author–page citations, and Works Cited.
+- [Product palette designer](skills/product-palette-designer/SKILL.md): bespoke OKLCH ramps, light/dark semantic tokens, Tailwind/shadcn/native exports, and coordinated brand assets.
 
 Both skills include source guidance, worked examples, and document scaffolds. They flag missing bibliographic details and distinguish text checks from rendered document checks.
 
