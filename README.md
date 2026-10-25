@@ -119,6 +119,13 @@ cp -r windags-skills/skills/api-architect ~/.claude/commands/
 
 ---
 
+## Academic Formatting
+
+- [APA formatting](skills/apa-formatting/SKILL.md): APA 7 student and professional papers, author–date citations, and References.
+- [MLA formatting](skills/mla-formatting/SKILL.md): MLA 9 papers, author–page citations, and Works Cited.
+
+Both skills include source guidance, worked examples, and document scaffolds. They flag missing bibliographic details and distinguish text checks from rendered document checks.
+
 ## How Skills Work
 
 Each skill is a markdown file (`SKILL.md`) with YAML frontmatter:

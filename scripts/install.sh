@@ -32,6 +32,8 @@ SKILLS=(
   windags-skill-selector
   windags-premortem
   windags-synthesizer
+  apa-formatting
+  mla-formatting
 )
 AGENTS=(
   sensemaker
