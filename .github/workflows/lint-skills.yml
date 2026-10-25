@@ -64,3 +64,23 @@ jobs:
               raise SystemExit('Non-portable tracked paths:\n' + '\n'.join(invalid))
           print('Tracked paths contain no Windows-invalid characters.')
           PY
+
+  palette-toolkit:
+    name: Product palette toolkit (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify palette math and export boundaries
+        run: python3 -B -m unittest discover -s skills/product-palette-designer/scripts -p 'test_palette.py' -v
+      - name: Audit complete light and dark example
+        run: python3 -B skills/product-palette-designer/scripts/palette.py skills/product-palette-designer/examples/fieldnotes.palette.json --check
+      - name: Validate skill structure and bundled references
+        run: |
+          python3 -B skills/skill-architect/scripts/validate_skill.py skills/product-palette-designer --strict
+          python3 -B skills/skill-architect/scripts/check_self_contained.py skills/product-palette-designer --include-orphans

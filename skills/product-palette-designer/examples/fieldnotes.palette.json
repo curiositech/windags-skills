@@ -1,0 +1,285 @@
+{
+  "name": "Fieldnotes — fictional urban nature notebook",
+  "families": {
+    "tide": {
+      "h": 205,
+      "c": 0.15,
+      "uses": [
+        "Core brand and primary action",
+        "Links and focus"
+      ]
+    },
+    "copper": {
+      "h": 25,
+      "c": 0.16,
+      "uses": [
+        "Destructive feedback with labels",
+        "Warm editorial accents"
+      ]
+    },
+    "sun": {
+      "h": 85,
+      "c": 0.15,
+      "uses": [
+        "Warning feedback with icons",
+        "Campaign light and highlights"
+      ]
+    },
+    "leaf": {
+      "h": 145,
+      "c": 0.15,
+      "uses": [
+        "Success feedback with labels",
+        "Nature illustration"
+      ]
+    },
+    "iris": {
+      "h": 265,
+      "c": 0.15,
+      "uses": [
+        "Information feedback",
+        "Data and spatial illustration"
+      ]
+    },
+    "orchid": {
+      "h": 325,
+      "c": 0.15,
+      "uses": [
+        "Secondary editorial moments",
+        "Categorical charts"
+      ]
+    },
+    "slate": {
+      "h": 265,
+      "c": 0.012,
+      "uses": [
+        "Reading surfaces and neutral structure"
+      ]
+    }
+  },
+  "themes": {
+    "light": {
+      "background": "slate.50",
+      "foreground": "slate.950",
+      "card": "slate.100",
+      "card-foreground": "slate.950",
+      "popover": "slate.50",
+      "popover-foreground": "slate.950",
+      "primary": "tide.700",
+      "primary-foreground": "slate.50",
+      "secondary": "orchid.100",
+      "secondary-foreground": "orchid.800",
+      "muted": "slate.100",
+      "muted-foreground": "slate.700",
+      "accent": "sun.100",
+      "accent-foreground": "sun.800",
+      "destructive": "copper.700",
+      "destructive-foreground": "slate.50",
+      "border": "slate.300",
+      "input": "slate.600",
+      "ring": "tide.600",
+      "chart-1": "tide.600",
+      "chart-2": "sun.600",
+      "chart-3": "iris.600",
+      "chart-4": "orchid.600",
+      "chart-5": "leaf.600",
+      "sidebar": "slate.100",
+      "sidebar-foreground": "slate.950",
+      "sidebar-primary": "tide.700",
+      "sidebar-primary-foreground": "slate.50",
+      "sidebar-accent": "tide.100",
+      "sidebar-accent-foreground": "tide.800",
+      "sidebar-border": "slate.400",
+      "sidebar-ring": "tide.600",
+      "success": "leaf.100",
+      "success-foreground": "leaf.800",
+      "warning": "sun.100",
+      "warning-foreground": "sun.800",
+      "info": "iris.100",
+      "info-foreground": "iris.800",
+      "link": "tide.700",
+      "selection": "tide.200",
+      "selection-foreground": "tide.900",
+      "primary-hover": "tide.800",
+      "primary-active": "tide.900",
+      "focus": "$ring"
+    },
+    "dark": {
+      "background": "slate.950",
+      "foreground": "slate.50",
+      "card": "slate.900",
+      "card-foreground": "slate.50",
+      "popover": "slate.900",
+      "popover-foreground": "slate.50",
+      "primary": "tide.300",
+      "primary-foreground": "slate.950",
+      "secondary": "orchid.800",
+      "secondary-foreground": "orchid.100",
+      "muted": "slate.900",
+      "muted-foreground": "slate.300",
+      "accent": "sun.800",
+      "accent-foreground": "sun.100",
+      "destructive": "copper.300",
+      "destructive-foreground": "slate.950",
+      "border": "slate.700",
+      "input": "slate.400",
+      "ring": "tide.400",
+      "chart-1": "tide.400",
+      "chart-2": "sun.400",
+      "chart-3": "iris.400",
+      "chart-4": "orchid.400",
+      "chart-5": "leaf.400",
+      "sidebar": "slate.900",
+      "sidebar-foreground": "slate.50",
+      "sidebar-primary": "tide.300",
+      "sidebar-primary-foreground": "slate.950",
+      "sidebar-accent": "tide.800",
+      "sidebar-accent-foreground": "tide.100",
+      "sidebar-border": "slate.600",
+      "sidebar-ring": "tide.400",
+      "success": "leaf.800",
+      "success-foreground": "leaf.100",
+      "warning": "sun.800",
+      "warning-foreground": "sun.100",
+      "info": "iris.800",
+      "info-foreground": "iris.100",
+      "link": "tide.300",
+      "selection": "tide.700",
+      "selection-foreground": "tide.50",
+      "primary-hover": "tide.200",
+      "primary-active": "tide.100",
+      "focus": "$ring"
+    }
+  },
+  "pairs": [
+    {
+      "theme": "light",
+      "fg": "primary-foreground",
+      "bg": "primary-hover",
+      "min": 4.5,
+      "purpose": "Primary action state text"
+    },
+    {
+      "theme": "light",
+      "fg": "primary-foreground",
+      "bg": "primary-active",
+      "min": 4.5,
+      "purpose": "Primary action state text"
+    },
+    {
+      "theme": "light",
+      "fg": "input",
+      "bg": "background",
+      "min": 3,
+      "purpose": "Essential boundary or focus indicator against adjacent surface"
+    },
+    {
+      "theme": "light",
+      "fg": "sidebar-ring",
+      "bg": "sidebar",
+      "min": 3,
+      "purpose": "Essential boundary or focus indicator against adjacent surface"
+    },
+    {
+      "theme": "light",
+      "fg": "chart-1",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    },
+    {
+      "theme": "light",
+      "fg": "chart-2",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    },
+    {
+      "theme": "light",
+      "fg": "chart-3",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    },
+    {
+      "theme": "light",
+      "fg": "chart-4",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    },
+    {
+      "theme": "light",
+      "fg": "chart-5",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    },
+    {
+      "theme": "dark",
+      "fg": "primary-foreground",
+      "bg": "primary-hover",
+      "min": 4.5,
+      "purpose": "Primary action state text"
+    },
+    {
+      "theme": "dark",
+      "fg": "primary-foreground",
+      "bg": "primary-active",
+      "min": 4.5,
+      "purpose": "Primary action state text"
+    },
+    {
+      "theme": "dark",
+      "fg": "input",
+      "bg": "background",
+      "min": 3,
+      "purpose": "Essential boundary or focus indicator against adjacent surface"
+    },
+    {
+      "theme": "dark",
+      "fg": "sidebar-ring",
+      "bg": "sidebar",
+      "min": 3,
+      "purpose": "Essential boundary or focus indicator against adjacent surface"
+    },
+    {
+      "theme": "dark",
+      "fg": "chart-1",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    },
+    {
+      "theme": "dark",
+      "fg": "chart-2",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    },
+    {
+      "theme": "dark",
+      "fg": "chart-3",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    },
+    {
+      "theme": "dark",
+      "fg": "chart-4",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    },
+    {
+      "theme": "dark",
+      "fg": "chart-5",
+      "bg": "card",
+      "min": 3,
+      "purpose": "Chart mark against panel; distinct categories also require labels or shapes"
+    }
+  ],
+  "coverage": {
+    "maxGap": 75
+  }
+}
