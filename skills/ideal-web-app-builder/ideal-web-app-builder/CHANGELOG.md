@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 - 2026-10-25
+
+- Added a navigation and wayfinding contract for compact headers, useful grouped
+  footers, mobile disclosures/dialogs, and real product showcases.
+- Added a platform crosswalk for websites, web apps, and Apple/Material native
+  navigation without prescribing web footers inside native applications.
+- Added a dated gallery of ten verified 21st.dev component pages and five
+  first-party product references, with source-access and accessibility limits.
+- Added measurable composition, theme, keyboard, text/zoom, safe-area, media,
+  privacy, payload, and release-evidence gates through conditional references.
+
 ## 0.3.0 - 2026-04-24
 
 - Added security, privacy, reliability, release, product-governance,
