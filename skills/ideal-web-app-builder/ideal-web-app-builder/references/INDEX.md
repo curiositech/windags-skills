@@ -5,6 +5,8 @@ Load only the reference that matches the current decision.
 | File | Load when |
 |---|---|
 | `references/design-system-contract.md` | Creating or auditing tokens, Tailwind layers, typography, color, primitives, Storybook, or component hierarchy. |
+| `references/navigation-and-wayfinding.md` | Designing or repairing headers, footers, route hierarchy, mobile menus, app chrome, or product showcases. |
+| `references/navigation-pattern-gallery.md` | Selecting current header/footer inspiration or comparing a 21st.dev component against real product and platform conventions. |
 | `references/research-and-positioning.md` | Choosing brand direction, design-system family, TypeUI inspiration, competitive map, or visual research method. |
 | `references/existing-repo-rehabilitation.md` | Fixing a dirty existing website repo, preserving user work, preparing visual decision review, or sequencing normalization. |
 | `references/quality-gates.md` | Defining tests, accessibility gates, Core Web Vitals, SEO, Sentry, PWA, CI, or release evidence. |

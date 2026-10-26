@@ -1,6 +1,6 @@
 ---
 name: ideal-web-app-builder
-description: Builds, rehabilitates, audits, and hardens premium production web apps from a durable design-system contract. Use for React, Next.js, or Vite apps, including dirty existing website repos, where token discipline, Radix or Headless UI primitives, visual user review, accessibility, Storybook, performance, SEO, observability, security, privacy, reliability, release engineering, sustainability, i18n, content depth, and adversarial verification matter. NOT for small static snippets, one-off CSS tweaks, native mobile apps, backend-only APIs, or quick mockups where production rigor is out of scope.
+description: Builds, rehabilitates, audits, and hardens premium production web apps from a durable design-system contract. Use for React, Next.js, or Vite apps, including dirty existing website repos and shared header/footer or navigation-system rehabilitation, where token discipline, Radix or Headless UI primitives, visual user review, accessibility, Storybook, performance, SEO, observability, security, privacy, reliability, release engineering, sustainability, i18n, content depth, and adversarial verification matter. NOT for small static snippets, one-off CSS tweaks, native mobile apps, backend-only APIs, or quick mockups where production rigor is out of scope.
 license: Apache-2.0
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob,WebFetch,WebSearch
 metadata:
@@ -19,6 +19,10 @@ metadata:
 Build real web apps as product systems, not screenshots. Treat design, content,
 frontend architecture, accessibility, performance, operations, and verification
 as one contract.
+
+Use this skill for shared header/footer and navigation-system rehabilitation,
+even when the main page already exists. Load the navigation references for
+route hierarchy, mobile menus, product previews, or app-shell decisions.
 
 ## NOT for
 
@@ -126,6 +130,12 @@ Before large implementation, produce these artifacts in the repo:
   plan records a measured exception.
 - Use Radix UI or Headless UI for custom interactive primitives. Hand-roll only
   base semantic HTML primitives.
+- Design headers and footers from real destinations and user jobs. Keep the
+  branded home link atomic; collapse navigation before labels collide. Give
+  useful footer routes, help, and legal information priority over giant CTAs.
+- Product showcases pair identity, availability, a direct next action, and real
+  themed product evidence. A headline or generated illustration alone is not
+  proof; set a viewport composition and media-performance budget.
 - Every component has Storybook coverage for default, hover/focus-visible,
   active, disabled, loading, error, empty, selected, dark mode, and responsive
   states where applicable.
@@ -194,6 +204,14 @@ Novice: Optimize the first viewport until it looks impressive.
 Expert: Verify navigation, states, content fit, mobile, keyboard, loading,
 empty, error, and data-dense cases before judging quality.
 
+### Decorative Navigation
+
+Novice: Import a fashionable navbar and finish with a full-screen slogan.
+
+Expert: Choose the shell from the route inventory, platform conventions and
+measured content fit. Verify orientation, reachability, useful footer groups,
+large text, keyboard focus, and real product evidence before adding effects.
+
 ### Accessibility Theater
 
 Novice: Add ARIA labels after custom controls are already written.
@@ -220,6 +238,11 @@ the plan updated until the final gate closes.
 - `references/INDEX.md`: Load first when choosing which deep reference to open.
 - `references/design-system-contract.md`: Load before token, typography, color,
   primitive, Storybook, or component architecture work.
+- `references/navigation-and-wayfinding.md`: Load before headers, footers,
+  route hierarchy, mobile menus, product showcases, or app-shell decisions.
+- `references/navigation-pattern-gallery.md`: Load when choosing navigation or
+  footer references; includes dated first-party and 21st.dev examples with
+  adoption limits.
 - `references/research-and-positioning.md`: Load before brand, design-family,
   competitive, TypeUI, or content-positioning decisions.
 - `references/existing-repo-rehabilitation.md`: Load before touching a dirty
@@ -254,6 +277,9 @@ the plan updated until the final gate closes.
 - Radix or Headless UI backs complex interactive components.
 - Storybook exists and covers component states.
 - Automated and manual a11y checks are recorded.
+- Shared navigation and footer pass the route, mobile-menu, theme, keyboard,
+  text/zoom, safe-area, composition, and payload matrix in the navigation
+  reference. Product previews show real themed workflows and working actions.
 - Core Web Vitals targets are credible for mobile and desktop.
 - Sentry or equivalent is configured with release, environment, source maps,
   privacy-aware replay/tracing policy, and a verified test event.
