@@ -120,7 +120,7 @@ These reach users directly. Must be kept in strict sync with Tier 1/2.
   - `observability-and-testing.md` — compare against Constitution Ch.14 + Appendix B
 
 ### windags-librarian Skill (This System)
-- **Path**: `.claude/skills/windags-librarian/skill.md`
+- **Path**: `.claude/skills/windags-librarian/SKILL.md`
 - **Type**: Claude Code skill
 - **Last Verified**: 2026-02-15
 - **Status**: ✅ Current (created from synthesis corpus)
