@@ -7,7 +7,7 @@
 <h1 align="center">windags-skills</h1>
 
 <p align="center">
-  <strong>463+ agent skills</strong> for Claude Code, Codex, Gemini CLI, Cursor, and 40+ other coding agents.<br/>
+  <strong>594 agent skills</strong> for Claude Code, Codex, Gemini CLI, Cursor, and 40+ other coding agents.<br/>
   Built by <a href="https://windags.ai">WinDAGs</a> — DAG orchestration for multi-agent workflows.
 </p>
 
@@ -31,7 +31,7 @@ The flagship skill. Tell it what you're working on (or don't — it reads your g
 **What you get:**
 - Problem classification — well-structured, ill-structured, or wicked
 - 3-8 subtasks decomposed into parallel waves
-- Each subtask matched to the best skill from 463+ via BM25 retrieval
+- Each subtask matched to the best skill from 594 via BM25 retrieval
 - Risk analysis with mitigations (PreMortem agent)
 - Time and cost estimates per node
 - Accept / Modify / Reject feedback loop
@@ -93,29 +93,30 @@ cp -r windags-skills/skills/api-architect ~/.claude/commands/
 
 ---
 
-<h2 id="all-categories">All Skills (463)</h2>
+<h2 id="all-categories">All Skills (594)</h2>
 
 | Category | Count | Highlights |
 |----------|------:|-----------|
-| **Agent & Orchestration** | 78 | dag-orchestrator, next-move, skill-architect, task-decomposer |
-| **Research & Academic** | 61 | raft-consensus, bdi-agents, chain-of-thought, tree-of-thoughts |
-| **Design & Creative** | 46 | design-system-creator, pixel-art, typography, vibe-matcher |
-| **Backend & Infrastructure** | 35 | api-architect, microservices, caching, websocket |
-| **Cognitive Science** | 29 | naturalistic-decision-making, sensemaking, expertise-elicitation |
-| **AI & Machine Learning** | 27 | ai-engineer, RAG, computer-vision, embeddings |
-| **DevOps & Infrastructure** | 26 | github-actions, kubernetes, terraform, docker |
-| **Frontend & UI** | 24 | nextjs, react-performance, animation, framer-motion |
-| **Data & Analytics** | 17 | data-pipeline, dbt, data-viz, dimensional-modeling |
+| **Agent & Orchestration** | 87 | dag-orchestrator, next-move, skill-architect, task-decomposer |
+| **Research & Academic** | 76 | raft-consensus, bdi-agents, chain-of-thought, tree-of-thoughts |
+| **Backend & Infrastructure** | 62 | api-architect, microservices, caching, websocket |
+| **Design & Creative** | 50 | design-system-creator, pixel-art, typography, vibe-matcher |
+| **DevOps & Infrastructure** | 41 | github-actions, kubernetes, terraform, docker |
+| **Cognitive Science & Decision Making** | 37 | naturalistic-decision-making, sensemaking, expertise-elicitation |
+| **Frontend & UI** | 37 | nextjs, react-performance, animation, framer-motion |
+| **AI & Machine Learning** | 34 | ai-engineer, RAG, computer-vision, embeddings |
+| **Code Quality & Testing** | 23 | vitest, playwright, code-review, refactoring |
+| **Productivity & Meta** | 20 | prompt-engineer, documentation, skill-creator |
+| **Data & Analytics** | 18 | data-pipeline, dbt, data-viz, dimensional-modeling |
 | **Mobile Development** | 17 | ios, react-native, flutter, swiftui |
-| **Code Quality & Testing** | 16 | vitest, playwright, code-review, refactoring |
-| **Productivity & Meta** | 16 | prompt-engineer, documentation, skill-creator |
-| **Recovery & Wellness** | 16 | sobriety, crisis-intervention, speech-pathology |
 | **Lifestyle & Personal** | 14 | ADHD, grief, finance, interior-design |
-| **Content & Marketing** | 14 | SEO, copywriting, product-launches |
+| **Content & Marketing** | 10 | SEO, copywriting, product-launches |
 | **Career & Interview** | 9 | interview-prep, resume, hiring-manager |
-| **Legal & Compliance** | 7 | expungement, HIPAA, legal-tech |
+| **Recovery & Wellness** | 8 | sobriety, crisis-intervention, speech-pathology |
+| **Security** | 6 | auth, vulnerability-scanning, zero-trust |
 | **Video & Audio** | 6 | video-production, TTS, sound-design |
-| **Security** | 5 | auth, vulnerability-scanning, zero-trust |
+| **Legal & Compliance** | 4 | expungement, HIPAA, legal-tech |
+| *Uncategorized* | *35* | *35 skills without a category tag* |
 
 ---
 
@@ -123,9 +124,12 @@ cp -r windags-skills/skills/api-architect ~/.claude/commands/
 
 - [APA formatting](skills/apa-formatting/SKILL.md): APA 7 student and professional papers, author–date citations, and References.
 - [MLA formatting](skills/mla-formatting/SKILL.md): MLA 9 papers, author–page citations, and Works Cited.
-- [Product palette designer](skills/product-palette-designer/SKILL.md): bespoke OKLCH ramps, light/dark semantic tokens, Tailwind/shadcn/native exports, and coordinated brand assets.
 
 Both skills include source guidance, worked examples, and document scaffolds. They flag missing bibliographic details and distinguish text checks from rendered document checks.
+
+## Design Tools
+
+- [Product palette designer](skills/product-palette-designer/SKILL.md): bespoke OKLCH ramps, light/dark semantic tokens, Tailwind/shadcn/native exports, and coordinated brand assets.
 
 ## How Skills Work
 
@@ -155,7 +159,7 @@ claude plugin marketplace add curiositech/windags-skills
 claude plugin install windags-skills
 ```
 
-This installs all 463+ skills + the 5 `/next-move` subagents (sensemaker, decomposer, skill-selector, premortem, synthesizer).
+This installs all 594 skills + the 5 `/next-move` subagents (sensemaker, decomposer, skill-selector, premortem, synthesizer).
 
 ### Cross-tool install (Codex, Gemini CLI, Cursor, Aider, …)
 
@@ -181,7 +185,7 @@ The MCP server lives at `<plugin>/mcp-server/index.js` — wire it into any MCP-
 
 | Tool | Purpose |
 |---|---|
-| `windags_skill_search` | Cascade-ranked skill search (BM25 + MiniLM + RRF + cross-encoder + per-user attribution k-NN) |
+| `windags_skill_search` | Cascade-ranked skill search (BM25 + MiniLM + RRF + cross-encoder reranking) |
 | `windags_skill_graft` | Full SKILL.md bodies for top primaries + adjacencies + asset manifest |
 | `windags_skill_reference` | Load one reference file from a skill's `references/` |
 | `windags_history` | Recent `/next-move` predictions for a project |

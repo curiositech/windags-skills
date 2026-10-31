@@ -5,13 +5,13 @@
     "email": "info@curiositech.ai"
   },
   "metadata": {
-    "description": "463+ agent skills + /next-move prediction pipeline + 5 meta-DAG subagents for Claude Code",
-    "version": "2.4.0"
+    "description": "594 agent skills + /next-move prediction pipeline + 5 meta-DAG subagents for Claude Code",
+    "version": "2.10.0"
   },
   "plugins": [
     {
       "name": "windags-skills",
-      "description": "463+ skills + /next-move (5-agent meta-DAG predicting your highest-impact next action) + sensemaker/decomposer/skill-selector/premortem/synthesizer subagents (invokable directly via the Task tool).",
+      "description": "594 skills + /next-move (5-agent meta-DAG predicting your highest-impact next action) + sensemaker/decomposer/skill-selector/premortem/synthesizer subagents (invokable directly via the Task tool).",
       "source": "./",
       "strict": false,
       "skills": [
