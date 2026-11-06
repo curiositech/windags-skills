@@ -34,6 +34,11 @@ SKILLS=(
   windags-synthesizer
   apa-formatting
   mla-formatting
+  multi-agent-conversation-ux
+  project-scoped-agent-relationships
+  embodied-agent-presence-ux
+  expert-agent-delivery-ux
+  longitudinal-agent-personalization
 )
 AGENTS=(
   sensemaker

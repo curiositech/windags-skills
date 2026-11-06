@@ -131,6 +131,16 @@ Both skills include source guidance, worked examples, and document scaffolds. Th
 
 - [Product palette designer](skills/product-palette-designer/SKILL.md): bespoke OKLCH ramps, light/dark semantic tokens, Tailwind/shadcn/native exports, and coordinated brand assets.
 
+## Designing AI agent experiences
+
+[Market and interaction research](docs/agent-experience-research.md) compares products and prototypes across desktop, mobile, and asynchronous work. Five skills turn the findings into workflows and acceptance checks:
+
+- [Multi-agent conversation](skills/multi-agent-conversation-ux/SKILL.md) for speakers, recipients, handoffs, and the activity inbox.
+- [Project-scoped relationships](skills/project-scoped-agent-relationships/SKILL.md) for identity, context boundaries, and sharing.
+- [Embodied presence](skills/embodied-agent-presence-ux/SKILL.md) for agent cursors, voice, and user-controlled follow.
+- [Expert delivery](skills/expert-agent-delivery-ux/SKILL.md) for bounded mandates, review, and verified releases.
+- [Longitudinal personalization](skills/longitudinal-agent-personalization/SKILL.md) for learning, updating, and forgetting.
+
 ## How Skills Work
 
 Each skill is a markdown file (`SKILL.md`) with YAML frontmatter:
