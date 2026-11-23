@@ -362,8 +362,10 @@ global.document = {
   createElement: () => ({getContext: () => ({})}),
 };
 let rootBackground = "rgb(0, 0, 0)";
+let bodyImage = "none";
 global.getComputedStyle = (el) => ({
   backgroundColor: el === root ? rootBackground : "rgba(0, 0, 0, 0)",
+  backgroundImage: el === body ? bodyImage : "none",
   color: "rgb(255, 255, 255)", fontSize: "16px", fontWeight: "400",
 });
 """
@@ -372,12 +374,15 @@ global.getComputedStyle = (el) => ({
 const probe = ({render_check.PROBE});
 const blackBackground = probe().contrast;
 rootBackground = "rgb(255, 255, 255)";
-console.log(JSON.stringify([blackBackground, probe().contrast]));
+const whiteBackground = probe().contrast;
+bodyImage = "linear-gradient(rgb(0, 0, 0), rgb(0, 0, 0))";
+console.log(JSON.stringify([blackBackground, whiteBackground, probe().contrast]));
 """], text=True,
         )
-        black_background, white_background = json.loads(reports)
+        black_background, white_background, gradient = json.loads(reports)
         self.assertEqual(black_background, [])
         self.assertEqual([item["ratio"] for item in white_background], [1])
+        self.assertEqual(gradient, [], "A gradient cannot be inferred from its flat background color")
 
 
 if __name__ == "__main__":

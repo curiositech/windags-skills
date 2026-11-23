@@ -96,7 +96,9 @@ PROBE = r"""() => {
   const bgOf = (el) => {
     let n = el;
     while (n) {
-      const c = getComputedStyle(n).backgroundColor;
+      const style = getComputedStyle(n);
+      if (style.backgroundImage !== 'none') return null;
+      const c = style.backgroundColor;
       const m = c.match(/[\d.]+/g);
       if (m && (m.length < 4 || Number(m[3]) > 0.9)) return c;
       n = n.parentElement;
@@ -134,7 +136,8 @@ PROBE = r"""() => {
                         text: txt.slice(0, 30)}); }
     }
 
-    const lf = lum(cs.color), lb = lum(bgOf(el));
+    const bg = bgOf(el);
+    const lf = lum(cs.color), lb = bg === null ? null : lum(bg);
     if (lf !== null && lb !== null) {
       const ratio = (Math.max(lf, lb) + 0.05) / (Math.min(lf, lb) + 0.05);
       const bold = parseInt(cs.fontWeight, 10) >= 700;
@@ -143,7 +146,7 @@ PROBE = r"""() => {
       if (ratio < need) {
         const k = sel(el); if (!seenContrast.has(k)) { seenContrast.add(k);
           out.contrast.push({sel: k, ratio: Math.round(ratio * 100) / 100,
-                             need, color: cs.color, bg: bgOf(el),
+                             need, color: cs.color, bg,
                              text: txt.slice(0, 30)}); }
       }
     }
