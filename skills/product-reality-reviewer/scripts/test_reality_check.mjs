@@ -1,14 +1,22 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { isAbsolute, join, relative, sep } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const moduleUrl = new URL('./reality_check.mjs', import.meta.url);
 
 test('the CLI emits JSON when invoked through a discovery symlink', () => {
-  const fixture = mkdtempSync(join(process.cwd(), '.product-reality-test-'));
+  const root = join(homedir(), 'coding', 'tmp');
+  mkdirSync(root, { recursive: true });
+  assert.equal(realpathSync(root), root, 'The test scratch root must be a real directory');
+  const scratch = realpathSync(process.env.COPY_REVIEW_SCRATCH_ROOT || root);
+  const suffix = relative(root, scratch);
+  assert.ok(suffix !== '..' && !suffix.startsWith(`..${sep}`) && !isAbsolute(suffix),
+    'COPY_REVIEW_SCRATCH_ROOT must resolve inside ~/coding/tmp');
+  const fixture = mkdtempSync(join(scratch, '.product-reality-test-'));
   try {
     const discovery = join(fixture, 'discovery');
     const script = join(discovery, 'reality_check.mjs');
