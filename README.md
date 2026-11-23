@@ -7,7 +7,7 @@
 <h1 align="center">windags-skills</h1>
 
 <p align="center">
-  <strong>594 agent skills</strong> for Claude Code, Codex, Gemini CLI, Cursor, and 40+ other coding agents.<br/>
+  <strong>601 agent skills</strong> for Claude Code, Codex, Gemini CLI, Cursor, and 40+ other coding agents.<br/>
   Built by <a href="https://windags.ai">WinDAGs</a> — DAG orchestration for multi-agent workflows.
 </p>
 
@@ -31,7 +31,7 @@ The flagship skill. Tell it what you're working on (or don't — it reads your g
 **What you get:**
 - Problem classification — well-structured, ill-structured, or wicked
 - 3-8 subtasks decomposed into parallel waves
-- Each subtask matched to the best skill from 594 via BM25 retrieval
+- Each subtask matched to the best skill from 601 via BM25 retrieval
 - Risk analysis with mitigations (PreMortem agent)
 - Time and cost estimates per node
 - Accept / Modify / Reject feedback loop
@@ -93,7 +93,7 @@ cp -r windags-skills/skills/api-architect ~/.claude/commands/
 
 ---
 
-<h2 id="all-categories">All Skills (594)</h2>
+<h2 id="all-categories">All Skills (601)</h2>
 
 | Category | Count | Highlights |
 |----------|------:|-----------|
@@ -130,6 +130,11 @@ Both skills include source guidance, worked examples, and document scaffolds. Th
 ## Design Tools
 
 - [Product palette designer](skills/product-palette-designer/SKILL.md): bespoke OKLCH ramps, light/dark semantic tokens, Tailwind/shadcn/native exports, and coordinated brand assets.
+
+## Reviewing product and copy
+
+- [Product Reality Reviewer](skills/product-reality-reviewer/SKILL.md) traces customer tasks and checks what buyers need to understand before they can act.
+- [Make Copy and Media Human](skills/make-copy-and-media-human/SKILL.md) reviews the reasoning and cadence in copy and applies a 615-cue editing catalog across prose, interfaces and media.
 
 ## Designing AI agent experiences
 
@@ -169,7 +174,7 @@ claude plugin marketplace add curiositech/windags-skills
 claude plugin install windags-skills
 ```
 
-This installs all 594 skills + the 5 `/next-move` subagents (sensemaker, decomposer, skill-selector, premortem, synthesizer).
+This installs all 601 skills + the 5 `/next-move` subagents (sensemaker, decomposer, skill-selector, premortem, synthesizer).
 
 ### Cross-tool install (Codex, Gemini CLI, Cursor, Aider, …)
 

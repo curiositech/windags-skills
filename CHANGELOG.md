@@ -2,6 +2,11 @@
 
 All notable changes to windags-skills are documented here.
 
+## Unreleased
+
+- Add Product Reality Reviewer for customer journeys and buyer decisions.
+- Add Make Copy and Media Human with a 615-cue catalog and examples for connected prose and reader context.
+
 ## [2.10.0] — 2026-05-01
 
 ### Added
