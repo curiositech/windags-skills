@@ -87,6 +87,18 @@ class EditorialBoundaries(unittest.TestCase):
             (14, "The daemon writes. The daemon checks. The daemon confirms."),
         ])
 
+    def test_latex_book_class_commands_do_not_trigger_undefined_macro(self):
+        source = r"""\documentclass{book}
+\begin{document}
+\chapter{Introduction}
+\listoffigures
+\end{document}"""
+        findings = review.analyze_latex(Path("book.tex"), source)
+        self.assertNotIn("macro-used-but-never-defined", {item["ism"] for item in findings})
+        rule = next(item for item in review.CATALOG["items"]
+                    if item["name"] == "macro-used-but-never-defined")
+        self.assertEqual(rule["detection_type"], "rendered")
+
     def test_low_burstiness_still_uses_the_author_baseline(self):
         body = "The auditor reviews each recorded event. " * 12
         for baseline, strengths in [(None, ["low"]), ({"sentence_cv": 0.5}, ["high"]),
@@ -291,6 +303,41 @@ class ModalProbe(unittest.TestCase):
         self.assertEqual(render_check.probe_modals(page, "fixture.html", ("#open", "#second")), [])
         page.query_selector_all.assert_called_once_with("#open")
         page.evaluate.assert_not_called()
+
+
+    @unittest.skipUnless(shutil.which("node"), "Node is needed to exercise the dialog probes")
+    def test_hidden_first_dialog_does_not_mask_the_visible_dialog(self):
+        fixture = """
+const focus = {tagName: "BUTTON"};
+const dialog = (width, visibility, contains) => ({
+  tagName: "DIV", visibility,
+  getBoundingClientRect: () => ({width, height: width}),
+  querySelectorAll: () => [focus],
+  contains: (element) => contains && element === focus,
+  matches: () => false,
+});
+const hidden = dialog(0, "visible", false);
+const invisible = dialog(100, "hidden", false);
+const visible = dialog(100, "visible", true);
+let candidates = [hidden, invisible, visible];
+global.document = {activeElement: focus, querySelectorAll: () => candidates};
+global.getComputedStyle = (element) => ({visibility: element.visibility});
+"""
+        reports = subprocess.check_output(
+            ["node", "-e", fixture + f"""
+const modal = ({render_check.MODAL_PROBE});
+const containsFocus = ({render_check.CONTAINED_JS});
+const opened = modal();
+const contained = containsFocus();
+candidates = [hidden, invisible];
+console.log(JSON.stringify([opened, contained, modal(), containsFocus()]));
+"""], text=True,
+        )
+        opened, contained, closed, contained_after_close = json.loads(reports)
+        self.assertTrue(opened["focusInside"])
+        self.assertTrue(contained)
+        self.assertIsNone(closed)
+        self.assertFalse(contained_after_close)
 
 
 @unittest.skipUnless(shutil.which("node"), "Node is needed to exercise the browser probe logic")
