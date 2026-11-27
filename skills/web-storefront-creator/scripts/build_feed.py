@@ -45,8 +45,9 @@ def item_xml(unit: dict, store: dict, group_id: str | None) -> str:
         f"    <g:brand>{escape(store.get('brand') or store['name'])}</g:brand>",
     ]
     price = money(unit["price_cents"], store["currency"])
-    if unit.get("compare_at_cents"):
-        lines.append(f"    <g:price>{money(unit['compare_at_cents'], store['currency'])}</g:price>")
+    compare_at = unit.get("compare_at_cents")
+    if type(compare_at) is int and compare_at > unit["price_cents"]:
+        lines.append(f"    <g:price>{money(compare_at, store['currency'])}</g:price>")
         lines.append(f"    <g:sale_price>{price}</g:sale_price>")
     else:
         lines.append(f"    <g:price>{price}</g:price>")
@@ -92,6 +93,7 @@ def main() -> int:
                 **p,
                 "sku": v["sku"],
                 "price_cents": v.get("price_cents", p["price_cents"]),
+                "compare_at_cents": v.get("compare_at_cents", p.get("compare_at_cents")),
                 "images": v.get("images") or p.get("images"),
                 "inventory": v.get("inventory") or p.get("inventory"),
                 "options": v.get("options"),
