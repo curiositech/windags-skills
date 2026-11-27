@@ -269,9 +269,12 @@ def main() -> int:
                 field_updates["name"] = unit["name"]
             if (remote.get("description") or "") != unit["description"][:5000]:
                 field_updates["description"] = unit["description"][:5000]
-            if images and remote.get("images") != images:
-                for i, img in enumerate(images):
-                    field_updates[f"images[{i}]"] = img
+            if (remote.get("images") or []) != images:
+                if images:
+                    for i, img in enumerate(images):
+                        field_updates[f"images[{i}]"] = img
+                else:
+                    field_updates["images"] = ""
             if not remote.get("active"):
                 field_updates["active"] = "true"
             if field_updates:

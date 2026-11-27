@@ -4,8 +4,10 @@
 Requires Python 3.10+. CSS and JavaScript are embedded in the output. Copy
 real product images to their referenced paths before sharing the preview.
 The local demo bag takes no payments and sends no order or personal data.
+Rebuilds remove obsolete, unmodified detail pages marked by this renderer.
 """
 import argparse
+import hashlib
 import html
 import json
 import re
@@ -28,6 +30,7 @@ CSS_NAMES = {
 DEFAULT_FONTS = {"heading": "Georgia", "body": "system-ui"}
 SLUG_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 CSS_LITERAL = re.compile(r"[A-Za-z0-9\-_#(),.% /]+")
+DETAIL_MARKER = b"<!-- windags-storefront-preview detail sha256="
 
 
 def esc(value) -> str:
@@ -239,6 +242,22 @@ def detail_page(product: dict, currency: str) -> str:
   </article>"""
 
 
+def detail_marker(filename: str, markup: bytes) -> bytes:
+    """Mark an exact generated page without claiming copies or edited output."""
+    digest = hashlib.sha256(filename.encode("utf-8") + b"\0" + markup).hexdigest()
+    return DETAIL_MARKER + digest.encode("ascii") + b" -->"
+
+
+def remove_retired_details(out: Path, written: set[str]) -> None:
+    """Clean up only intact detail pages previously generated under the same name."""
+    for path in out.glob("product-*.html"):
+        if path.name in written or path.is_symlink() or not path.is_file():
+            continue
+        marker, _, markup = path.read_bytes().partition(b"\n")
+        if marker.startswith(DETAIL_MARKER) and marker == detail_marker(path.name, markup):
+            path.unlink(missing_ok=True)
+
+
 def render(catalog: dict, tokens: dict, out: Path) -> list[str]:
     """Write one collection and one detail page for every active web product."""
     products = [product for product in catalog["products"]
@@ -271,11 +290,10 @@ def render(catalog: dict, tokens: dict, out: Path) -> list[str]:
     written = ["index.html"]
     for product in products:
         filename = f"product-{product['slug']}.html"
-        (out / filename).write_text(
-            page(f"{product['name']} – {store['name']}", detail_page(product, currency), skin, script, store, items, "index.html#collection"),
-            encoding="utf-8",
-        )
+        markup = page(f"{product['name']} – {store['name']}", detail_page(product, currency), skin, script, store, items, "index.html#collection").encode("utf-8")
+        (out / filename).write_bytes(detail_marker(filename, markup) + b"\n" + markup)
         written.append(filename)
+    remove_retired_details(out, set(written))
     return written
 
 
