@@ -85,16 +85,6 @@ def audit(skill_dir: Path) -> list[Finding]:
                 )
             )
 
-    if "Port Daddy" in text and "pd " not in text:
-        findings.append(
-            Finding(
-                "warning",
-                "coordination",
-                "SKILL.md",
-                "Mentions Port Daddy without concrete `pd` primitives.",
-            )
-        )
-
     for referenced in sorted(referenced_paths(skill_dir)):
         if not (skill_dir / referenced).exists():
             findings.append(Finding("error", "phantom", referenced, "Referenced support file does not exist."))

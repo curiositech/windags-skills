@@ -17,15 +17,13 @@ The root cause is **`git add -A` (and `git add .`) in agents that share a workin
 
 Background agents that create or modify files in a shared repository MUST follow these rules. The rules are listed in priority order — earlier rules supersede later ones.
 
-### Rule 1 — Long-running background work runs in a git worktree
+### Rule 1 — Repository work runs in a linked Git worktree
 
-Any agent that takes longer than ~10 seconds between "start work" and "commit" MUST do its work in a separate git worktree (`git worktree add ../$repo-$agent-$task`). This makes the work physically incapable of colliding with concurrent foreground edits because the working trees are disjoint. The agent commits inside its worktree, optionally pushes a feature branch, and a human (or a coordinator) merges back to main.
-
-**This is the strong form of the discipline. Prefer it whenever feasible.**
+Give each repository task a dedicated linked worktree under `~/coding/tmp/` and a feature branch. Verify the worktree root, branch and Git metadata before the first write or after resuming. Git gives each worktree its own checkout and staging index. The agent commits inside its worktree, pushes when authorized, and hands off the branch and validation results to the integration owner.
 
 ### Rule 2 — `git add -A` and `git add .` are forbidden in agents
 
-Agents that edit files in a shared working tree (CI runners, fleet bots, skill-creators, audit jobs) MUST stage by explicit path: `git add path/to/file1 path/to/file2`. Pattern-based staging (`git add -A`, `git add .`, `git add -u`, `git add ':(glob)**'`) is forbidden because it cannot distinguish "files the agent wrote" from "files a different agent staged five seconds ago."
+Agents that edit files MUST stage by explicit path: `git add path/to/file1 path/to/file2`. Pattern-based staging (`git add -A`, `git add .`, `git add -u`, `git add ':(glob)**'`) is forbidden because it stages edits beyond the paths the agent owns.
 
 If an agent does not know what paths to stage, that is a symptom — the agent should have tracked its own writes and is missing instrumentation, not entitled to sweep the working tree.
 
@@ -35,9 +33,9 @@ Before committing, an agent MUST run `git status --porcelain` and verify that ev
 
 A default-on `pre-commit` hook that runs this check belongs in any repo with multiple agents writing to it.
 
-### Rule 4 — Coordination lock for shared trees
+### Rule 4 — Explicit ownership and handoff
 
-When two agents share a working tree by design (rare; almost always Rule 1 is the better answer), they MUST serialize through a lock keyed on `<repo>:git:write`. Port Daddy's `acquire_lock` is the reference implementation. The lock holder owns the staging area + commit + push for the duration of the lock; everyone else queues. Locks expire after 5 minutes by default — long-running work belongs in a worktree, not under a long-held lock.
+Use the host's collaboration channel or the pull request to confirm each agent's branch, expected edit paths, and handoff. Give one owner responsibility for staging, committing, and pushing from each worktree. Resolve overlapping edits during integration after workers report their validation results.
 
 ### Rule 5 — Push only what you tagged
 
@@ -47,15 +45,14 @@ If a release tag points to a specific tree, the push command MUST be `git push o
 
 **Positive.** Multi-agent collisions become structurally impossible (Rule 1) or loudly self-reporting (Rules 2 + 3). Commit messages match diffs again. `git log --oneline` becomes a reliable record of intent.
 
-**Negative.** Worktrees cost disk space and add a "merge back to main" step. Agents that previously could "just commit" now need a small bookkeeping layer — a list of paths they touched. For one-off interactive sessions this overhead is unwelcome; the rules apply specifically to *background* and *long-running* agent work.
+**Negative.** Worktrees cost disk space and add an integration step. Agents need to track their changed paths.
 
-**Migration.** Existing agents in this repo that use `git add -A` are non-compliant: skill-creator (per the triggering incident), any fleet bot under `~/coding/port-daddy/fleet/`, and any wave-grounded research scripts. The skill-architect skill (this repo) ships these rules as part of its definition; agents derived from it inherit the discipline. Agents not derived from it need an audit pass.
+**Migration.** Review any agent prompts and scripts that stage files. Replace bulk staging with explicit owned paths. Apply the same worktree and handoff rules to generated agents.
 
 ## Implementation hooks
 
 - **skill-architect SKILL.md** (this repo) carries a "Coordination Discipline" section that points here and a "Background Agent Hygiene" failure-mode entry. Generated subagents inherit the rule as a quality gate.
 - **skill-creator subagent** (`skills/skill-architect/agents/skill-creator.md`) carries the rule explicitly in its operating instructions so freshly-spawned skill-drafting agents do not need to discover it.
-- **port-daddy** (separate repo) is the runtime that exposes `acquire_lock` and `coordination_preflight`. Rule 4 depends on it being available; Rule 1 does not.
 
 ## Alternatives considered
 

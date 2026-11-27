@@ -548,5 +548,11 @@
     "yao-2023-tree-of-thoughts",
     "zhou-et-al-2026-formaljudge"
   ],
-  "builtAt": "2026-04-30T22:43:57.514Z"
+  "builtAt": "2026-04-30T22:43:57.514Z",
+  "authoredInputs": {
+    "skill-architect": {
+      "count": 15,
+      "sha256": "68930e6f1fac07a9203f698fc39bca5d619f198cec7af7c68dab99d42961db9e"
+    }
+  }
 }

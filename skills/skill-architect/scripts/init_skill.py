@@ -124,7 +124,7 @@ Use it for safe read-only inspection of git state, top-level files, and obvious 
     return f"""---
 name: {name}
 description: >-
-  [What it does] [When to use — be slightly pushy].
+  [Task it supports and the outcome it produces].
   NOT for [explicit exclusions].
 allowed-tools: Read,Write,Edit,Bash,Grep,Glob
 {fork_block}{metadata_block}---
@@ -144,6 +144,16 @@ allowed-tools: Read,Write,Edit,Bash,Grep,Glob
 - [Exclusion D]
 - [Exclusion E]
 - [Exclusion F]
+
+## Start when
+
+[State the condition that calls for the workflow, its prerequisites, and its first check.]
+
+## Stop when
+
+- **Complete** — [Name the current artifact and evidence that satisfies the acceptance check.]
+- **Handoff** — [If applicable, identify the recipient, artifact, and first downstream check.]
+- **Blocked** — [Record the missing condition, verified progress, and how to resume.]
 
 ---
 

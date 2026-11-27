@@ -57,7 +57,20 @@
         }
       }
     },
+    "coordination": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "owner": { "type": "string" },
+        "worktree": { "type": "string" },
+        "branch": { "type": "string" },
+        "editPaths": { "type": "array", "items": { "type": "string" } },
+        "handoff": { "type": "string" }
+      }
+    },
     "portDaddy": {
+      "deprecated": true,
+      "description": "Legacy data from an older recorded sync plan.",
       "type": "object",
       "additionalProperties": false,
       "properties": {

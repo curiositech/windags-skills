@@ -274,7 +274,7 @@ git worktree remove ../project-agent-tests
 
 | Problem | Solution |
 |---------|----------|
-| **Port conflicts** | Each worktree needs unique dev server ports (use env vars or port-daddy) |
+| **Port conflicts** | Set distinct per-worktree environment variables or use service-supported dynamic ports |
 | **Shared node_modules** | Run `npm install` in each worktree (separate node_modules per worktree) |
 | **Database conflicts** | Use per-worktree database names or Docker containers |
 | **Same branch twice** | Git prevents this — you cannot check out a branch that's checked out elsewhere |

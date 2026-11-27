@@ -980,10 +980,9 @@ Use your shell-execution tool. Treat each output as ground truth, not a guess.
 - \`git diff --name-only HEAD~3\`
 - \`head -60 CLAUDE.md\` (or AGENTS.md, README.md if no CLAUDE.md)
 - \`cat package.json | head -40\` (or pyproject.toml / Cargo.toml / go.mod — whichever exists)
-- \`command -v pd && pd find && pd notes && pd salvage && pd whoami\` (Port Daddy state, if installed)
 - \`ls -1t .windags/triples/ | head -5\` (prior /next-move predictions)
 
-If a command fails (not a git repo, no package.json, no Port Daddy), record that as a signal — don't fabricate.
+If a project signal is unavailable, report which source is missing or which command failed.
 
 ## Step 2 — Sensemaker (problem classification + halt gate)
 

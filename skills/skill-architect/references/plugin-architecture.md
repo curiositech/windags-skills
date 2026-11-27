@@ -136,7 +136,7 @@ Review the current pull request...
 
 ### Hooks in Plugins
 
-Configure in `hooks/hooks.json`:
+For a plugin that ships hooks, its manifest uses `hooks/hooks.json`. <!-- phantom-ok -->
 
 ```json
 {

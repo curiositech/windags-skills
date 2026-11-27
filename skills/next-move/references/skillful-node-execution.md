@@ -28,7 +28,7 @@ Each execution node should be specified with:
     "format": "string",
     "fields": ["string"]
   },
-  "side_effects": ["read-only | file-write | git | api | pd"],
+  "side_effects": ["read-only | file-write | git | api"],
   "escalation": {
     "when_to_escalate": ["string"],
     "fallback": "string"
@@ -123,7 +123,6 @@ Every node should state its side effects up front:
 - file writes
 - git operations
 - API calls
-- Port Daddy operations
 
 This matters for both user trust and execution previews.
 
