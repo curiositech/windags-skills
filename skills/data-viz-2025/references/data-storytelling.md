@@ -85,7 +85,7 @@ Don't make users hunt for insights. Point them out.
 ```typescript
 <div className="comparison-card">
   <div className="metric">
-    <span className="value"&gt;52K</span>
+    <span className="value">52K</span>
     <span className="change positive">+14% ↑</span>
   </div>
   <div className="vs">vs. 45K last month</div>
@@ -200,7 +200,7 @@ Show the impact of changes by comparing states.
     <h3>After Optimization</h3>
     <BarChart data={afterData} color="#059669" />
     <p className="metric">Avg Load Time: 0.8s</p>
-    <p className="improvement"&gt;75% faster ✓</p>
+    <p className="improvement">75% faster ✓</p>
   </div>
 </div>
 ```

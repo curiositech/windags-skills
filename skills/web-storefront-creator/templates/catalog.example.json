@@ -1,0 +1,121 @@
+{
+  "store": {
+    "name": "Cinder & Pine",
+    "url": "https://cinderandpine.example",
+    "currency": "usd",
+    "brand": "Cinder & Pine",
+    "contact_email": "hello@cinderandpine.example",
+    "ships_from_country": "US"
+  },
+  "products": [
+    {
+      "sku": "CNDL-LAV",
+      "name": "Lavender Field Candle",
+      "slug": "lavender-field-candle",
+      "description": "French lavender and dry cedar in a hand-poured soy candle. The 8 oz size burns for approximately 45 hours.",
+      "price_cents": 2400,
+      "kind": "physical",
+      "category": "Candles",
+      "images": [
+        "images/products/lavender-field.webp"
+      ],
+      "weight_grams": 340,
+      "gtin": "",
+      "inventory": {
+        "track": true,
+        "quantity": 18,
+        "low_stock_threshold": 4
+      },
+      "variants": [
+        {
+          "sku": "CNDL-LAV-8OZ",
+          "options": {
+            "size": "8 oz"
+          },
+          "price_cents": 2400,
+          "inventory": {
+            "track": true,
+            "quantity": 12
+          }
+        },
+        {
+          "sku": "CNDL-LAV-14OZ",
+          "options": {
+            "size": "14 oz"
+          },
+          "price_cents": 3800,
+          "inventory": {
+            "track": true,
+            "quantity": 6
+          }
+        }
+      ],
+      "channels": {
+        "web": true,
+        "stripe": {
+          "enabled": true
+        },
+        "google_feed": true,
+        "etsy": {
+          "enabled": true
+        }
+      },
+      "seo": {
+        "title": "Lavender Field Soy Candle — Hand-Poured, 45hr Burn",
+        "description": "Small-batch soy candle with French lavender and cedar. Poured by hand in Oregon."
+      },
+      "active": true,
+      "image_alt": "Amber glass candle beside dried lavender"
+    },
+    {
+      "sku": "PRNT-COAST-A3",
+      "name": "Oregon Coast Print (A3)",
+      "slug": "oregon-coast-print-a3",
+      "description": "A giclée reproduction of a gouache study of Cannon Beach at low tide. Printed on A3 240 gsm archival matte paper and shipped flat. Frame shown for scale.",
+      "price_cents": 4500,
+      "kind": "physical",
+      "category": "Prints",
+      "images": [
+        "images/products/coast-print.webp"
+      ],
+      "weight_grams": 120,
+      "inventory": {
+        "track": true,
+        "quantity": 30
+      },
+      "channels": {
+        "web": true,
+        "stripe": {
+          "enabled": true
+        },
+        "google_feed": true
+      },
+      "active": true,
+      "image_alt": "A framed print of Oregon's coast, with a rocky sea stack and low tide"
+    },
+    {
+      "sku": "DL-GUIDE-CANDLE",
+      "name": "Candle-Making Starter Guide (PDF)",
+      "slug": "candle-making-starter-guide",
+      "description": "A 38-page PDF with materials, wick sizing, fragrance measurements, and troubleshooting for your first batches.",
+      "price_cents": 1200,
+      "kind": "digital",
+      "category": "Guides",
+      "images": [
+        "images/products/guide-cover.webp"
+      ],
+      "inventory": {
+        "track": false
+      },
+      "channels": {
+        "web": true,
+        "stripe": {
+          "enabled": true
+        },
+        "google_feed": false
+      },
+      "active": true,
+      "image_alt": "A candle-making guide mock cover beside a spool of wick"
+    }
+  ]
+}

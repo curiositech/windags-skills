@@ -1,0 +1,46 @@
+.signup-report {
+  --report-paper: #fcfaf5;
+  --report-ink: #172431;
+  --report-secondary: #465563;
+  --report-rule: #a7b1b7;
+  --report-series: #215879;
+  margin: 0;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: var(--report-paper);
+  color: var(--report-ink);
+  font: 1rem/1.48 system-ui, sans-serif;
+}
+.signup-report__caption { max-width: 42rem; }
+.signup-report__date { font-variant-numeric: tabular-nums; color: var(--report-secondary); }
+.signup-report h2 {
+  margin: .36em 0 .25em;
+  font: 600 clamp(1.65rem, 4vw, 3rem)/1.06 Georgia, serif;
+  letter-spacing: -.035em;
+}
+.signup-report p { margin: .45em 0; }
+.signup-report__facets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+  margin-block: 1.4rem;
+}
+.signup-report__panel { border-top: 1px solid var(--report-rule); min-width: 0; }
+.signup-report__panel h3 { margin: .5rem 0 0; font-size: 1rem; }
+.signup-report__panel svg { display: block; width: 100%; overflow: visible; }
+.signup-report svg text { fill: var(--report-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.signup-report__rule { stroke: var(--report-rule); stroke-width: .7; }
+.signup-report__line { fill: none; stroke: var(--report-series); stroke-width: 2; }
+.signup-report__point { fill: var(--report-series); }
+.signup-report__note, .signup-report__source { font-size: .88rem; color: var(--report-secondary); }
+.signup-report__data { margin-top: .9rem; overflow: auto; }
+.signup-report__data summary { padding-block: .4rem; cursor: pointer; text-decoration: underline; text-underline-offset: .16em; }
+.signup-report__data table { border-collapse: collapse; width: 100%; margin-top: .6rem; font-variant-numeric: tabular-nums; }
+.signup-report__data caption { text-align: left; font-weight: 600; }
+.signup-report__data th, .signup-report__data td { border-bottom: 1px solid var(--report-rule); padding: .35rem; text-align: right; }
+.signup-report__data th:first-child { text-align: left; }
+@media (prefers-color-scheme: dark) {
+  .signup-report { --report-paper: #172431; --report-ink: #f8f6ef; --report-secondary: #c4cdd1; --report-rule: #738391; --report-series: #9ed6fc; }
+}
+@media (forced-colors: active) {
+  .signup-report { --report-paper: Canvas; --report-ink: CanvasText; --report-secondary: CanvasText; --report-rule: CanvasText; --report-series: Highlight; }
+}

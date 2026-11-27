@@ -15,7 +15,7 @@ Motion communicates. In data visualizations, animations guide attention, reveal 
 
 - ❌ **Print visualizations** - Static medium
 - ❌ **Accessibility concern** - When `prefers-reduced-motion: reduce`
-- ❌ **Performance critical** - Large datasets (&gt;10K points)
+- ❌ **Performance critical** - Large datasets (>10K points)
 - ❌ **Just decoration** - Motion without purpose
 
 ## Spring Physics vs. Easing Curves
