@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web-storefront-creator/catalog.schema.json",
+  "title": "Storefront Catalog",
+  "description": "Single source of truth for a small-business storefront. This file drives the website product pages, Stripe sync, marketplace feeds, and inventory. Edit this file, run the sync scripts, done.",
+  "type": "object",
+  "required": ["store", "products"],
+  "properties": {
+    "store": {
+      "type": "object",
+      "required": ["name", "currency", "url"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "url": { "type": "string", "format": "uri", "description": "Canonical site URL — used for feed links and SEO" },
+        "currency": { "type": "string", "pattern": "^[a-z]{3}$", "description": "ISO 4217 lowercase, e.g. 'usd'" },
+        "brand": { "type": "string", "description": "Brand name for marketplace feeds (defaults to store name)" },
+        "contact_email": { "type": "string" },
+        "ships_from_country": { "type": "string", "description": "ISO 3166-1 alpha-2, e.g. 'US'" }
+      }
+    },
+    "products": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["sku", "name", "slug", "price_cents", "description"],
+        "properties": {
+          "sku": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]+(-[A-Z0-9]+)*$",
+            "description": "Internal SKU, permanent once assigned. Scheme: CATEGORY-PRODUCT-VARIANT, e.g. CNDL-LAV-8OZ. Never reuse a retired SKU."
+          },
+          "name": { "type": "string", "minLength": 1, "maxLength": 150 },
+          "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "URL slug, permanent once published (SEO)" },
+          "description": { "type": "string", "minLength": 1, "description": "Human-written. Run make_copy_and_media_human before publishing." },
+          "price_cents": { "type": "integer", "minimum": 1, "description": "Integer cents. NEVER floats. $24.00 = 2400." },
+          "compare_at_cents": { "type": "integer", "minimum": 1, "description": "Optional strike-through original price for sales" },
+          "kind": { "type": "string", "enum": ["physical", "digital", "service"], "default": "physical" },
+          "category": { "type": "string" },
+          "images": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Repo-relative paths or absolute URLs. First image is the primary. Marketplace feeds require absolute URLs (store.url + path is derived)."
+          },
+          "image_alt": { "type": "string", "description": "Alternative text for the primary image on the detail page." },
+          "weight_grams": { "type": "integer", "minimum": 0, "description": "Required for physical goods if you calculate shipping" },
+          "gtin": { "type": "string", "description": "UPC/EAN if you have one. Required by Google Shopping and Amazon unless brand-exempt; leave empty and set identifier_exists=false in feeds." },
+          "inventory": {
+            "type": "object",
+            "properties": {
+              "track": { "type": "boolean", "default": false },
+              "quantity": { "type": "integer", "minimum": 0 },
+              "low_stock_threshold": { "type": "integer", "minimum": 0, "default": 3 }
+            }
+          },
+          "variants": {
+            "type": "array",
+            "description": "Optional. Each variant gets its own full SKU and optional price override. Variants share the parent's images unless overridden.",
+            "items": {
+              "type": "object",
+              "required": ["sku", "options"],
+              "properties": {
+                "sku": { "type": "string", "pattern": "^[A-Z0-9]+(-[A-Z0-9]+)*$" },
+                "options": {
+                  "type": "object",
+                  "description": "e.g. {\"size\": \"8oz\", \"scent\": \"Lavender\"}",
+                  "additionalProperties": { "type": "string" }
+                },
+                "price_cents": { "type": "integer", "minimum": 1 },
+                "images": { "type": "array", "items": { "type": "string" } },
+                "inventory": {
+                  "type": "object",
+                  "properties": {
+                    "track": { "type": "boolean" },
+                    "quantity": { "type": "integer", "minimum": 0 }
+                  }
+                }
+              }
+            }
+          },
+          "channels": {
+            "type": "object",
+            "description": "Where this product is listed. Sync scripts read these flags; remote IDs are written back by sync scripts — do not hand-edit id fields.",
+            "properties": {
+              "web": { "type": "boolean", "default": true },
+              "stripe": {
+                "type": "object",
+                "properties": {
+                  "enabled": { "type": "boolean", "default": true },
+                  "product_id": { "type": "string", "description": "Written back by sync_stripe.py" },
+                  "payment_link": { "type": "string", "description": "Written back by sync_stripe.py if --payment-links" }
+                }
+              },
+              "google_feed": { "type": "boolean", "default": true },
+              "etsy": { "type": "object", "properties": { "enabled": { "type": "boolean" }, "listing_id": { "type": "integer" } } },
+              "ebay": { "type": "object", "properties": { "enabled": { "type": "boolean" }, "offer_id": { "type": "string" } } }
+            }
+          },
+          "seo": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string", "maxLength": 70 },
+              "description": { "type": "string", "maxLength": 160 }
+            }
+          },
+          "active": { "type": "boolean", "default": true, "description": "false = retired. Never delete product entries; history matters for orders and analytics." }
+        }
+      }
+    }
+  }
+}

@@ -143,10 +143,16 @@ async function refreshSkill(skill, cacheDir) {
   }
   const { meta, vectors } = corpus;
   const row = meta.ids.indexOf(skill.id);
-  if (row < 0) throw new Error(`${skill.id} has no packed row. Run a full build to add it.`);
-
   const authoredInputs = { ...meta.authoredInputs };
   recordAuthoredInputs(authoredInputs, skill);
+  if (row < 0) {
+    const appended = new Float32Array(vectors.length + DIM);
+    appended.set(vectors);
+    appended.set(vector, vectors.length);
+    writeCorpus(appended, { ...meta, count: meta.count + 1, ids: [...meta.ids, skill.id], authoredInputs });
+    console.error(`Added packed row for ${skill.id}.`);
+    return;
+  }
   const start = row * DIM;
   if (vector.every((value, index) => value === vectors[start + index]) &&
       JSON.stringify(authoredInputs) === JSON.stringify(meta.authoredInputs ?? {})) {

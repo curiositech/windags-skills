@@ -1,0 +1,12 @@
+[
+  "Build a chart of weekly signups so leaders can compare the four totals without a misleading scale.",
+  "Turn our conversion data into a clear editorial visualization with a source note and accessible data table.",
+  "Show three teams on small multiple charts with the same scale, aligned dates, and readable labels on phones.",
+  "Use Observable Plot to make a layered time series with a benchmark line and a directly labeled launch date.",
+  "Audit this React chart for truncated bars, missing intervals, keyboard access, and poor mobile labeling.",
+  "Design a D3 graphic that explains a change over time without hiding the individual measurements.",
+  "Show the distribution of delivery times and explain which observations were excluded.",
+  "Make this dashboard chart work in dark mode and at 200 percent text zoom without dropping any series.",
+  "Review the chart, tooltip, and underlying table to see whether they report the same numbers.",
+  "Replace a crowded multi-line chart and color legend with a clear comparison of the original series."
+]

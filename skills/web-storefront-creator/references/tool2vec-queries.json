@@ -1,0 +1,17 @@
+[
+  "Add a small online shop to our existing site. Let people browse candles, pick a size and review their bag before checkout.",
+  "Turn this handmade product spreadsheet into a versioned storefront catalog with stable SKUs and a repeatable inventory update workflow.",
+  "Build a polished home goods collection page and product details that use our existing typography and still work on a 320 pixel phone.",
+  "Create a working storefront design preview from our product photos and catalog so we can approve the shopping flow without taking payments.",
+  "We sell prints and downloadable guides. Design the product pages and show clear fulfillment information for each type before a buyer adds it.",
+  "Our customers cannot tell which size is in the cart. Make the chosen variant and price match the product page, bag and checkout.",
+  "Add an accessible shopping bag with keyboard focus return, quantity editing and an empty state to our independent shop.",
+  "Help us choose between hosted and embedded checkout for an existing React store and document the tradeoffs for a small operator.",
+  "Use our storefront's real colors and fonts to render an interactive review sample from catalog JSON before we wire up payments.",
+  "Wire sandbox checkout for a shop and prove that a retried payment webhook cannot create a duplicate order or decrement stock twice.",
+  "Generate a product feed from the same catalog used by the site and check each variant's URL, price and stock against the store.",
+  "Give the shop owner a handoff so they can reprice a product, validate the catalog change and review the provider diff without touching storefront code.",
+  "Design a clean product catalog with useful category filters, honest materials and price details, and a quick path from browsing to a variant choice.",
+  "Our existing storefront works on desktop but its cart drawer and product controls fail on a narrow phone. Repair the design and exercise the full buying path.",
+  "Build product detail pages that make print dimensions, framing and shipping material clear while preserving the site's editorial design."
+]

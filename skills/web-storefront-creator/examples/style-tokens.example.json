@@ -1,0 +1,37 @@
+{
+  "source": "Cinder & Pine example art direction",
+  "fonts": {
+    "heading": "Georgia",
+    "body": "system-ui"
+  },
+  "colors": {
+    "background": "#f4f0e5",
+    "text": "#202920",
+    "accent": "#2c493b",
+    "muted": "#505b50",
+    "rule": "#adae9d",
+    "mat": "#e8dfd0",
+    "hero": "#23372c",
+    "on_hero": "#faf4e5",
+    "on_accent": "#fff9ed",
+    "on_dark": "#fff9ed"
+  },
+  "dark_colors": {
+    "background": "#18221c",
+    "text": "#f1ebdf",
+    "accent": "#a8cbab",
+    "muted": "#c6c8b8",
+    "rule": "#768579",
+    "mat": "#2c3c31",
+    "hero": "#23372c",
+    "on_hero": "#faf4e5",
+    "on_accent": "#132218",
+    "on_dark": "#17241b"
+  },
+  "preview": {
+    "headline": "A coastal shelf.",
+    "intro": "Soy candles, Oregon Coast prints, and a guide for your first pour.",
+    "hero_image": "images/collection.webp",
+    "hero_alt": "A lit amber candle and a coastal painting on a sunlit wooden shelf"
+  }
+}

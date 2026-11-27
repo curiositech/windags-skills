@@ -99,7 +99,7 @@ export function SalesChart({ data }) {
 
 ### Weaknesses
 
-- **SVG only** - No Canvas option for large datasets (&gt;1000 points)
+- **SVG only** - No Canvas option for large datasets (>1000 points)
 - **Limited mobile gestures** - No built-in swipe/pinch support
 - **Styling can be verbose** - Many props to customize appearance
 - **Bundle size** - Larger than Plot, though still reasonable
@@ -437,7 +437,7 @@ export function SalesChart({ data }) {
 
 ### Performance
 
-| Library | Small Dataset (&lt;100) | Medium (100-1K) | Large (1K-10K) | Huge (&gt;10K) |
+| Library | Small Dataset (<100) | Medium (100-1K) | Large (1K-10K) | Huge (>10K) |
 |---------|---------------------|-----------------|----------------|-------------|
 | Observable Plot | ⚡⚡⚡ | ⚡⚡⚡ | ⚡⚡ | ⚡ |
 | Recharts | ⚡⚡⚡ | ⚡⚡ | ⚡ | ❌ (SVG only) |

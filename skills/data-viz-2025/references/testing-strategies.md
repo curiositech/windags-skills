@@ -604,7 +604,7 @@ Before shipping a chart component:
 - [ ] Provides data table alternative
 
 ### Performance
-- [ ] Renders large datasets in &lt;500ms
+- [ ] Renders large datasets in <500ms
 - [ ] No unnecessary re-renders
 - [ ] No memory leaks
 - [ ] Bundle size reasonable

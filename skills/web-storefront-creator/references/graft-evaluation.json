@@ -1,0 +1,10 @@
+[
+  {"id":"store-mixed-fixture","expected":"primary","query":"Make a shop for our workshop's pottery and a paid PDF of glaze recipes. Give customers the right delivery cues and make the draft bag work without a processor."},
+  {"id":"store-product-media","expected":"primary","query":"Our makers' site has new product photography and price data. Build an editorial shop collection, verify the 320-pixel flow, and hand over a repeatable preview command."},
+  {"id":"store-price-operation","expected":"primary","query":"We changed print sizes and prices. Keep the webshop, provider items and merchant feed in sync, and show the owner exactly what changes before applying it."},
+  {"id":"store-keyboard-inventory","expected":"primary","query":"Our new bookstore needs a usable cart and variant selection. Show whether buyers can complete the buying path on a keyboard and handle books that go out of stock."},
+  {"id":"gallery-only","expected":"not-primary","query":"Build a website gallery for paintings we show at open studios. No prices, selling, purchases or product catalog are needed."},
+  {"id":"mobile-billing","expected":"not-primary","query":"Implement and test in-app purchase entitlements for an iPhone app using StoreKit."},
+  {"id":"catalog-audit-only","expected":"not-primary","query":"Review the accessibility violations on an existing checkout and give me a WCAG test report. Leave commerce infrastructure and product flows alone."},
+  {"id":"data-plot","expected":"not-primary","query":"Chart weekly returns by product category for our operations meeting. We only need a data visualization, not a web store."}
+]
