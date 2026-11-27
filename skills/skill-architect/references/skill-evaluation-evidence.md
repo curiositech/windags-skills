@@ -1,0 +1,36 @@
+# Evaluate and improve a skill
+
+Use this guide when a skill misses requests, routes neighboring work incorrectly, or produces inconsistent results. For frontmatter and nearby skills, see [activation debugging](activation-debugging.md). For inputs, outputs, and handoffs, see [composition patterns](skill-composition.md). For extracting non-obvious procedures from experts or prior work, see [knowledge engineering](knowledge-engineering.md).
+
+## Choose cases before revising
+
+Write the user request, initial state, expected skill or acceptable set of skills, and expected observable result for each case. Use real wording with sensitive details replaced. Include an explicit invocation, implicit requests that omit the skill name, a close neighbor that needs a different workflow, and a request that needs no skill. Cover distinct deliverables and stages. For each start or stop condition with meaningful consequences, include both a case that meets it and a case that tests the boundary, such as missing authority, failed validation, or a handoff with incomplete evidence.
+
+Keep a held-out set before editing. Split cases by scenario or source task so that paraphrases of the same example cannot leak between sets. Examples supplied to the index, description, or skill are development inputs. Keep their near-duplicates out of the held-out set. Repeatedly tuning against a held-out failure converts it into a regression case. Use a new case to check generalization. [Agent Skills description optimization](https://agentskills.io/skill-creation/optimizing-descriptions)
+
+## Run paired comparisons
+
+Use the same prompt, fixtures, model, harness, catalog, access, and budget in fresh contexts. Record the skill revision, index version, and configuration. For existing skills compare the baseline and candidate. Add a no-skill run to measure whether either gives value over the harness alone. For a new skill, use no-skill as the initial baseline. Keep other skills available consistently in all arms. Run routing implicitly and use explicit invocation in a separate pair to isolate execution. Repeating representative cases shows variation. A single trial per case can expose concrete failures.
+
+Track each stage independently.
+
+| Stage | Record |
+| --- | --- |
+| Retrieval and activation | Rank of the eligible skill, expected alternatives, false matches, abstentions, and the trace event showing which skill was loaded. For multi-skill requests, check that the returned set covers the required operations without conflicting handoffs. |
+| Use | The operations the agent performed, prerequisites it checked, references or scripts it used, and intermediate artifacts it produced. Distinguish a critical instruction it followed, skipped, or had no reason to encounter. |
+| Outcome | The final artifact and its acceptance checks, observable side effects, and the evidence for completion, handoff, or a blocked stop. Record elapsed time and token cost when available. |
+
+For discovery changes, compare the same catalog and queries before and after adding examples. Keep examples and their input digest with the index evidence. For behavior changes, force both versions to load, then compare their decisions and outputs. When several changes land together, hold them fixed and remove one at a time on the affected cases. Distinguish index changes, start and stop criteria, procedure, and validation. A healthy rank can coexist with a broken workflow. A passing output can also occur when the skill was never consulted. [OpenAI skill evals](https://developers.openai.com/blog/eval-skills) · [Agent Skills output evaluation](https://agentskills.io/skill-creation/evaluating-skills)
+
+## Grade evidence from the run
+
+Use deterministic checks for things the harness can observe, such as valid schema, exact row counts, absence of prohibited mutations, or receipt of a required handoff artifact. Inspect the final deliverable for judgment-dependent qualities. For an independent review or blind comparison, give the reviewer the task, artifacts, and rubric while hiding which version produced the output. A shape check, successful tool exit, or agent's declaration of success only establishes that observation. For example, a trace showing the validator ran establishes use. Passing assertions against the delivered file establishes the checked outcome. Record unavailable stages as unmeasured. A local fixture, trace, and script can establish useful evidence without a paid harness.
+
+When a run fails, identify the first observable failure. Check whether the skill was retrieved, loaded, and followed. If guidance was followed and still failed, check actual tool contracts and find the faulty assumption or missing operation. If correct guidance was skipped, improve its placement, make the decision easier to observe, or enforce it in the tool where appropriate. Distill changes from several representative successes and failures, validate the edit against the underlying tool or domain source, and rerun the held-out and regression cases. [SkillPlumber](https://arxiv.org/abs/2611.25429) · [VISE](https://arxiv.org/abs/2611.32480) · [Trace2Skill](https://arxiv.org/abs/2603.25158)
+
+## What the studies support
+
+- SkillsBench reported a 16.2 percentage-point mean gain from curated skills and a small average loss from its self-generated skills. Focused modules fared better than comprehensive documentation. SWE-Skills-Bench reported a mean gain of just 1.2 percentage points and zero gain for 39 of 49 skills. Measure a skill's contribution in its intended environment and preserve narrow, verified guidance. [SkillsBench](https://arxiv.org/abs/2602.12670) · [SWE-Skills-Bench](https://arxiv.org/abs/2603.15401)
+- An October preprint found that matching the operations needed by the request improved first-choice task pass rates by 4.35–5.80 percentage points across its configurations. The study also found that explicit stage objectives and artifact dependencies improved pass rates over skill ordering alone. Test handoffs with real intermediate artifacts and rerun downstream checks when those artifacts change. [Downstream utility study](https://arxiv.org/abs/2610.08875)
+- In one retrieval preprint, indexing positive triggers and discriminative descriptions improved Recall@10 by 2.94 points on average. Supplying adjacent negative boundaries at routing time improved task success by 3.62 points on average. Field-aware retrieval offers another way to preserve the distinction. Keep positive request examples separate from near-miss checks, and measure the effect in the actual retriever. [Capability Pages](https://arxiv.org/abs/2608.04482) · [Field-aware retrieval](https://arxiv.org/abs/2608.02880)
+- Trace distillation and co-evolving verifiers show how to generate and refine candidates from execution evidence. Other experiments found that revisions from the agent's own experience rarely beat short human-authored guidance, with transfer failures between models. Keep acceptance criteria and held-out evaluation independent from the revision loop. Treat reported gains as results of those experiments. [CoEvoSkills](https://arxiv.org/abs/2604.01687v3) · [Matched intervention study](https://arxiv.org/abs/2611.29290)

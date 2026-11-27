@@ -9,7 +9,7 @@ Use this when a human must review direction before execution.
 - Authoritative source:
 - Repo mirrors:
 - User-level mirrors:
-- Port Daddy session:
+- Review or handoff:
 - Decision owner:
 - Date:
 
@@ -32,7 +32,7 @@ Use this when a human must review direction before execution.
 - Templates:
 - Examples/fixtures:
 - Subagent prompts:
-- Port Daddy coordination:
+- Worktree and edit ownership:
 - Sync plan:
 
 ## Options

@@ -1,5 +1,11 @@
 # Changelog: skill-architect
 
+## 2026-11-26
+
+- Added observable start, stop, and handoff conditions, plus paired evaluation guidance.
+- Added authored Tool2Vec requests and separate held-out cases for graft evaluation.
+- Kept the distribution-specific sync, audit, schema, and runtime export resources accessible from the revised entrypoint.
+
 ## v2.3.0 (2026-03-10)
 
 ### Cross-Evaluation Fixes (sc-on-sa iter-3)

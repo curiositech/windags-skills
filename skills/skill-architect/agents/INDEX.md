@@ -4,11 +4,13 @@ Five focused subagents implementing the skill-architect's decision branches. Eac
 
 | Agent | Path it implements | Output |
 |---|---|---|
-| `skill-creator.md` | CREATE | New SKILL.md drafted from raw expert inputs (refuses without examples) |
-| `skill-auditor.md` | AUDIT | Structured 7-dimension scoring report with prioritized fixes |
-| `activation-debugger.md` | DEBUG | Corrected description + activation regression tests |
-| `shibboleth-extractor.md` | EXTRACT | Novice/Expert/Timeline anti-pattern entries from raw expert content |
+| [skill-creator.md](./skill-creator.md) | CREATE | New SKILL.md drafted from raw expert inputs (refuses without examples) |
+| [skill-auditor.md](./skill-auditor.md) | AUDIT | Structured 7-dimension scoring report with prioritized fixes |
+| [activation-debugger.md](./activation-debugger.md) | DEBUG | Corrected description + activation regression tests |
+| [shibboleth-extractor.md](./shibboleth-extractor.md) | EXTRACT | Novice/Expert/Timeline anti-pattern entries from raw expert content |
 | `cross-evaluator.md` | (legacy template) | Generic "embody source skill, evaluate target" template |
+
+Additional profiles help with [affordance planning](./affordance-planner.md) and [sync coordination](./sync-coordinator.md).
 
 ## When to dispatch which
 

@@ -30,7 +30,7 @@ jobs:
           if grep -rEn '^!\`command -v [^ ]+ ' skills/ 2>/dev/null; then
             echo ""
             echo "::error::SKILL.md injection uses compound bash starting with 'command -v'."
-            echo "::error::Replace with a direct call (e.g. 'pd find 2>/dev/null || echo \"...\"')."
+            echo "::error::Replace with a direct call (e.g. 'git status --short 2>/dev/null || echo \"Not a git repo\"')."
             exit 1
           fi
           echo "✓ No compound 'command -v X && ...' injections found."

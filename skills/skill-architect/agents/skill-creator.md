@@ -52,7 +52,7 @@ A single complete SKILL.md file at `<target_path>/SKILL.md` with all of:
 | NOT-FOR boundaries with delegation to ≥2 named skills | parent SKILL.md §"NOT-FOR Boundaries" |
 | Sources section with primary-source URLs | (always — unsourced skills are worse than missing skills) |
 
-Plus, if the expert provided supporting material >300 words for any concept, factor it out to `references/<topic>.md` and link from SKILL.md (progressive disclosure).
+Plus, if the expert provided supporting material >300 words for any concept, factor it out to a topic-specific reference file and link from SKILL.md (progressive disclosure).
 
 ## Coordination discipline (MANDATORY — see ADR 0001)
 

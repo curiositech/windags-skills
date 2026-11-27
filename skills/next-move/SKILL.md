@@ -2,14 +2,13 @@
 license: Apache-2.0
 name: next-move
 description: |
-  Predicts the highest-impact next action for your project by running a 5-agent meta-DAG pipeline. Gathers project signals automatically (git, recent files, port-daddy, CLAUDE.md), then runs sensemaker → decomposer → skill-selector + premortem → synthesizer. When execution is approved, convert each predicted node into a skillful node prompt using skillful-node-prompt + skillful-subagent-creator, prefer live WinDAGs visualization backed by POST /api/execute and /ws/execution/:id, and fall back to ASCII only when live visualization is unavailable. Activate on: "what should I do", "what's next", "next move", "/next-move", "where should I focus", "what's the highest impact thing right now". NOT for: creating skills, debugging one specific bug, or promising topology-specific runtime behavior the current server cannot execute.
+  Predicts the highest-impact next action for your project by running a 5-agent meta-DAG pipeline. Gathers project signals automatically (Git state, recent files, CLAUDE.md, package metadata, and prior WinDAGs predictions), then runs sensemaker → decomposer → skill-selector + premortem → synthesizer. When execution is approved, convert each predicted node into a skillful node prompt using skillful-node-prompt + skillful-subagent-creator, prefer live WinDAGs visualization backed by POST /api/execute and /ws/execution/:id, and fall back to ASCII only when live visualization is unavailable. Activate on: "what should I do", "what's next", "next move", "/next-move", "where should I focus", "what's the highest impact thing right now". NOT for: creating skills, debugging one specific bug, or promising topology-specific runtime behavior the current server cannot execute.
 allowed-tools:
 - Read
 - Grep
 - Glob
 - Agent
 - Bash(git:*)
-- Bash(pd:*)
 - Bash(find:*)
 - Bash(ls:*)
 - Bash(head:*)
@@ -123,20 +122,6 @@ These are preprocessed at skill-load time via `!`...` ` shell calls. Treat them 
 ### Package / Project Info
 ```
 !`cat package.json 2>/dev/null | head -40 || echo "No package.json"`
-```
-
-### Port Daddy
-```
-!`pd find 2>/dev/null || echo "Port Daddy not installed. portdaddy.dev"`
-```
-```
-!`pd notes 2>/dev/null || echo ""`
-```
-```
-!`pd salvage 2>/dev/null || echo ""`
-```
-```
-!`pd whoami 2>/dev/null || echo ""`
 ```
 
 ### Prior WinDAGs Predictions

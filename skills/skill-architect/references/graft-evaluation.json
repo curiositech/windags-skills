@@ -1,0 +1,12 @@
+[
+  {"id":"positive-accessibility-review","expected":"primary","query":"We keep repeating the same accessibility review in chat. Can you codify how to run it, what to inspect, and the proof that closes the review in an agent skill?"},
+  {"id":"positive-translation-activation","expected":"primary","query":"The translation playbook loads when I name it, but never when an editor asks for a bilingual revision. Diagnose its SKILL.md and show me which requests reproduce the miss."},
+  {"id":"positive-bundle-variants","expected":"primary","query":"My Agents Skills catalog and the packaged copy of our triage skill disagree. Compare the actual bundles and retain the useful workflow steps from each."},
+  {"id":"positive-onboarding-verification","expected":"primary","query":"Our onboarding skill finishes after opening the dashboard even when the check failed. Add an explicit stop rule and cases for a false pass and a renamed passing check."},
+  {"id":"positive-cascade-paraphrase","expected":"primary","query":"Our reusable spreadsheet playbook fell out of WinDAGs graft results after a rewrite. Verify its routing with fresh user phrasing and refresh the examples in the search index."},
+  {"id":"positive-workflow-eval","expected":"primary","query":"Test whether this SKILL.md really makes the assistant catch missing test receipts. Compare runs without the playbook, with the old version, and with my revision."},
+  {"id":"near-miss-tool-server","expected":"not-primary","query":"Build an MCP server for our calendars. I need TypeScript tools for availability and event creation."},
+  {"id":"near-miss-execution","expected":"not-primary","query":"Use our existing accessibility audit checklist to inspect this checkout page and report the keyboard issues."},
+  {"id":"near-miss-resume","expected":"not-primary","query":"Audit the skills section of my resume and help me show that I can lead a software team."},
+  {"id":"near-miss-runtime","expected":"not-primary","query":"Debug why my deployment worker exits during application startup after the database connection succeeds."}
+]

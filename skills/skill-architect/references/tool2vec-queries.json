@@ -1,0 +1,17 @@
+[
+  "Turn our team's incident handoff checklist into a reusable Agent Skill with entry and exit checks.",
+  "Write a SKILL.md for the process our support lead uses to decide which tickets need escalation.",
+  "Review my agent skill bundle and find the instructions and references that can move out of the entrypoint.",
+  "Why does my skill work when I name it but stay dormant when I describe the task?",
+  "Tighten this skill description so requests for nearby work go to a more appropriate skill.",
+  "Convert these expert walkthroughs into a skill that records the cues people use to pick the next action.",
+  "Teach an agent when to stop its release review and what evidence proves the review is complete.",
+  "Compare the installed and repository versions of this Agent Skill and reconcile their useful differences.",
+  "Set up an evaluation to tell whether my skill was loaded, followed, and actually improved the delivered artifact.",
+  "Make this reusable SKILL.md work across Codex and Claude while preserving its supporting scripts.",
+  "Help me write realistic example requests and rebuild the matching vector for my WinDAGs skill.",
+  "Check whether the WinDAGs graft returned the right skill, its current instructions, and the resources needed to execute it.",
+  "Design an Agent Skill that produces a verifiable handoff artifact for the next subagent.",
+  "Package a recurring audit as a skill with a deterministic validator and examples of pass and fail findings.",
+  "Find which skill instructions are missing from the run that failed even though the correct skill was selected."
+]

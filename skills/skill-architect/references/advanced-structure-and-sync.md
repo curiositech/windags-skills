@@ -2,8 +2,8 @@
 
 Use this when a skill should become a durable operating surface instead of a
 single Markdown instruction file. This covers UI metadata, subagent prompts,
-schemas, visual review artifacts, eval fixtures, richer scripts, and
-Port Daddy-grounded synchronization.
+schemas, visual review artifacts, eval fixtures, scripts, and
+cross-repository synchronization.
 
 ## Source of Truth
 
@@ -25,27 +25,16 @@ If both source and mirror changed, do not blindly overwrite either side:
 3. Merge semantically, not by timestamp alone.
 4. Validate the authoritative copy.
 5. Mirror the validated result to repo and user-level locations.
-6. Record the decision in the changelog and, in Port Daddy repos, a session
-   note or tuple.
+6. Record source and mirror revisions, validation results, and outstanding drift.
 
-## Port Daddy Coordination
+## Coordinate a sync
 
-When editing skills inside a Port Daddy worktree:
-
-1. Run `pd status`, `pd briefing`, and `pd salvage`.
-2. Start a session with the skill path as the claimed file or directory.
-3. Add a note with the authoritative source, mirrors, and intended files.
-4. Use file claims/locks for `SKILL.md`, scripts, schemas, and generated
-   output copies when parallel work is active.
-5. Use tuples for machine-readable sync state when multiple agents will act:
-   source path, mirror paths, commit hash, validation commands, and owner.
-6. Use inbox/channel notifications for long-running validation or drift
-   watchers only when budget and singleton rules are explicit.
-7. End with a handoff: files changed, validation run, sync destinations, and
-   residual risks.
-
-Port Daddy primitives are not decorative. Use them when they reduce collision,
-make drift visible, or let cheaper agents execute bounded slices safely.
+1. Assign an owner and a bounded edit scope for each source or mirror.
+2. Verify the linked worktree and feature branch before repository writes.
+3. Record the source path, source revision, mirror revisions, and the expected validation.
+4. Reconcile useful differences, preserving unrelated working-copy changes.
+5. Hand off changed files, validation evidence, and remaining sync decisions
+   through the current collaboration channel or pull request.
 
 ## `agents/openai.yaml`
 
@@ -92,8 +81,7 @@ Each subagent prompt should define:
 - narrow role and NOT-for boundaries
 - input contract
 - allowed write/read scope
-- Port Daddy session, note, claim, lock, tuple, and handoff expectations when
-  used in this repo
+- worktree, branch, edit ownership, and handoff evidence for parallel work
 - cost/model ceiling if cheap execution is intended
 - no-revert rule for other agents' or users' work
 - output contract
@@ -143,11 +131,10 @@ Add deterministic scripts when common failures can be detected cheaply:
 
 - missing `agents/openai.yaml`
 - `context: fork` without a matching agent prompt
-- referenced templates/scripts/schemas not present
+- a referenced template, script, or schema is missing
 - output copy drift
 - non-authoritative mirror edits
 - missing changelog for first-party changes
-- missing Port Daddy session note in Port Daddy repos
 
 Prefer small stdlib scripts. Avoid downloads for validation unless the target
 domain genuinely requires external tooling.
@@ -177,15 +164,15 @@ sequenceDiagram
   participant W as Workgroup Source
   participant R as Repo Mirror
   participant U as User Registry
-  participant PD as Port Daddy
+  participant O as Sync Owner
 
-  PD->>PD: Start session and claim skill paths
+  O->>W: Record revision and editable paths
   R->>W: Compare diffs
   W->>W: Merge best local deltas
   W->>W: Validate source
   W->>R: Mirror portable repo copy
   W->>U: Symlink or mirror user-level copy
-  PD->>PD: Note validation, sync targets, risks
+  W->>O: Report validation, sync targets, and risks
 ```
 
 Do not commit absolute symlinks inside shared repos. Do not leave user-level
@@ -213,5 +200,5 @@ there, validate, then mirror outward.
 Novice: Let many low-cost agents "help" with broad taste, architecture, or
 cleanup.
 
-Expert: Give cheap agents small write sets, clear gates, Port Daddy
-coordination, and no authority over architecture or final acceptance.
+Expert: Give each worker a bounded edit scope and a required handoff.
+The integration owner reviews architecture and accepts the result.

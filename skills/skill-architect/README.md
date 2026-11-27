@@ -1,5 +1,7 @@
 # Skill Architect
 
+Open [SKILL.md](SKILL.md) for the current authoring and audit workflow. The new [start and stop guide](references/start-stop-conditions.md), [evaluation guide](references/skill-evaluation-evidence.md), and [WinDAGs grafting guide](references/windags-grafting.md) cover evidence gates, paired tests, and the skill pack's authored MiniLM vector.
+
 The authoritative meta-skill for creating, auditing, and improving Agent Skills.
 
 ## What It Does

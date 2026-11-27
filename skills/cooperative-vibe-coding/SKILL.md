@@ -98,7 +98,7 @@ If features are independent:
 ### "Merge Conflict Hell"
 **Symptoms:** Integration takes longer than development, constant git conflicts, agents overwriting each other
 **Diagnosis:** No file-level coordination, sync points too infrequent (>45min), overlapping worktree scopes
-**Fix:** Implement file claiming (Port Daddy/manual), reduce sync to 25min, use `git worktree` for true isolation
+**Fix:** Assign file ownership in the team's shared coordination channel, reduce sync to 25 minutes, and use `git worktree` for isolation
 
 ### "Spectator Sport Pairing"  
 **Symptoms:** Long silences, one person passive, AI generates everything while humans watch

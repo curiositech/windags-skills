@@ -2,7 +2,7 @@
 license: Apache-2.0
 name: multi-agent-coordination
 description: |
-  Coordinate multiple AI agents working on the same codebase or project simultaneously. Covers git worktree isolation, file locking strategies, message passing between agents, shared state management, conflict resolution, task decomposition for parallel agents, and patterns from Claude Code, Cursor, Devin, and similar multi-agent developer tools. Activate on: "multi-agent", "parallel agents", "agent coordination", "worktree isolation", "concurrent agents", "file locking agents", "agent conflict resolution", "swarming agents", "agent message passing", "parallel development", "agent orchestration", "ccswarm", "port daddy". NOT for: single-agent behavior patterns (use agentic-patterns), agent infrastructure selection (use agentic-infrastructure-2026), DAG topology design (use next-move).
+  Coordinate agents working in parallel on a shared repository. Use for Git worktree isolation, file ownership, handoffs, shared resource contention, task decomposition, and integration conflicts. NOT for single-agent behavior, infrastructure selection, or DAG topology design.
 allowed-tools: Read,Write,Edit,Bash,Glob,Grep,WebSearch,WebFetch
 metadata:
   category: AI & Agents
@@ -47,7 +47,7 @@ You are an expert in coordinating multiple AI agents working simultaneously on s
 - Implementing message passing between concurrent agents
 - Resolving merge conflicts from parallel agent work
 - Decomposing tasks for optimal parallel agent execution
-- Setting up Port Daddy or similar resource coordination
+- Assigning shared service ports, database instances, and provider quotas
 
 **Do NOT use for:**
 - Single-agent behavior and tool use (use agentic-patterns)
@@ -115,7 +115,7 @@ main repo (.git)
 
 TASK_ID=$1
 BRANCH_NAME="agent/${TASK_ID}"
-WORKTREE_DIR="/tmp/agent-worktrees/${TASK_ID}"
+WORKTREE_DIR="${HOME}/coding/tmp/${TASK_ID}"
 
 # Create branch and worktree from current main
 git branch "${BRANCH_NAME}" main
@@ -131,10 +131,10 @@ echo "Branch: ${BRANCH_NAME}"
 
 TASK_ID=$1
 BRANCH_NAME="agent/${TASK_ID}"
-WORKTREE_DIR="/tmp/agent-worktrees/${TASK_ID}"
+WORKTREE_DIR="${HOME}/coding/tmp/${TASK_ID}"
 
-# Remove worktree
-git worktree remove "${WORKTREE_DIR}" --force
+# Git refuses removal if the worktree contains uncommitted changes.
+git worktree remove "${WORKTREE_DIR}"
 
 # Optionally delete branch after merge
 # git branch -d "${BRANCH_NAME}"
@@ -171,45 +171,18 @@ Merge in dependency order, not completion order:
 
 ## File Locking and Resource Coordination
 
-### The Port Daddy Pattern
+### Worktree Ownership and Handoffs
 
-Port Daddy provides a coordination service for claiming shared resources (ports, files, locks) across agents:
+The coordinator gives each concurrent worker a task, linked worktree, feature branch, and expected file scope. Use the current host's collaboration channel or a shared record to publish the assignments, discoveries, and handoff evidence. A file assignment coordinates intent. Git worktrees isolate edits, and the integration owner checks that the resulting branches still compose.
 
-```bash
-# Agent registers itself
-pd agent register --agent session-123 \
-  --identity "project:auth-module" \
-  --purpose "implementing OAuth login flow"
-
-# Start a session
-pd session start --purpose "OAuth implementation" --agent session-123
-
-# Claim files (prevents other agents from editing them)
-pd session files claim session-123 \
-  src/auth/oauth.ts \
-  src/auth/middleware.ts \
-  src/routes/login.ts
-
-# Claim a port for dev server
-PORT=$(pd claim auth-service -q)
-
-# Add notes for other agents to see
-pd note "OAuth provider config needs GOOGLE_CLIENT_ID env var" \
-  --type discovery
-
-# Check for dead agent sessions and salvage their work
-pd salvage --project myproject
-
-# End session when done
-pd session end session-123
-```
+For example, give one worker ownership of the OAuth routes and another ownership of integration tests in a separate worktree. Agree on the middleware interface before either worker edits. At handoff each worker provides its branch, changed paths, validation evidence, and any unresolved dependencies.
 
 ### File-Level Locking Strategy
 
-When formal tooling like Port Daddy is unavailable, implement a `FileCoordinator` with a `Map<string, FileLock>` where each lock records: path, agentId, claimedAt, purpose. Key operations:
+Keep ownership advisory when assignments and isolated worktrees are sufficient. For a non-mergeable shared resource, use an existing lock mechanism with an explicit owner, resource, purpose, and bounded lease. An in-memory map only coordinates participants in the same process. A lock shared between processes requires a common transactional or atomic store.
 
 1. **claim(agentId, paths[])**: Check all paths for existing locks by other agents. If conflicts exist, return them with a suggested resolution. Otherwise, claim all paths atomically.
-2. **release(agentId)**: Release all locks held by the agent when its task completes or it crashes.
+2. **release(agentId)**: Release locks on completion. After an interruption, verify current ownership and preserve unfinished edits before recovering an expired lease.
 3. **Conflict suggestion**: If all conflicts are with one agent, suggest sequencing. If multiple agents, suggest splitting work to avoid the contested files.
 
 ---
@@ -351,16 +324,7 @@ Agent 2 output ──┘         |
 
 ### Port Management
 
-```bash
-# Using Port Daddy for port coordination
-PORT_AUTH=$(pd claim auth-service -q)      # Returns 3001
-PORT_API=$(pd claim api-service -q)        # Returns 3002
-PORT_DB=$(pd claim test-database -q)       # Returns 5433
-
-# Agents use claimed ports, no collisions
-AGENT_1_CMD="AUTH_PORT=${PORT_AUTH} npm run dev:auth"
-AGENT_2_CMD="API_PORT=${PORT_API} npm run dev:api"
-```
+Use the operating system's dynamic port allocation when the service supports it and pass the assigned port to its dependent tests. For a service that needs a fixed port, use a distinct setting for each worktree, record the owner and endpoint, and let the service bind that port before sharing it. Handle bind failures by selecting another permitted port. A port scan alone does not reserve anything.
 
 ### Database Isolation
 
@@ -401,7 +365,7 @@ Shared rate limiter across agents: maintain a global token budget, allocate fair
 ### Anti-Pattern: No Dead Agent Detection
 **What it looks like**: Agent crashes mid-task, its files stay locked, its worktree sits abandoned
 **Why wrong**: Other agents can't claim those files, work stalls
-**Instead**: Heartbeat mechanism. If no activity for N minutes, salvage the session (`pd salvage`).
+**Instead**: Use a bounded lease or a liveness heartbeat. Check the owner and preserve its worktree before reclaiming an expired resource.
 
 ### Anti-Pattern: Ignoring Semantic Conflicts
 **What it looks like**: All merges succeed (no git conflicts), but the code is broken
@@ -415,7 +379,7 @@ Shared rate limiter across agents: maintain a global token budget, allocate fair
 ```
 [ ] Task decomposition analyzed for file overlap (coupling matrix)
 [ ] Each agent has isolated worktree or sandbox
-[ ] File claims registered (Port Daddy or equivalent)
+[ ] File ownership recorded in the current coordination channel
 [ ] Resource coordination in place (ports, databases, API quotas)
 [ ] Message passing mechanism defined (events, shared doc, or notes)
 [ ] Merge order determined by dependency graph

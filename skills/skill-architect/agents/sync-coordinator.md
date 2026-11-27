@@ -19,8 +19,8 @@ Use when the same skill may exist in:
 - Prefer user-level symlinks to the workgroup source on one machine.
 - If both source and mirror changed, diff and merge useful deltas instead of
   overwriting by timestamp.
-- In Port Daddy repos, work inside a session, claim the skill paths, and write
-  notes for source, mirrors, validation, and handoff.
+- Give repository writes a dedicated linked worktree and feature branch.
+  Record ownership, source and mirror revisions, validation, and the handoff.
 - Never touch unrelated dirty files.
 
 ## Output

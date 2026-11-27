@@ -190,6 +190,9 @@ VALID_FRONTMATTER_KEYS = {
     "model", "effort", "context", "agent", "hooks", "paths", "shell",
 }
 
+# Catalog extensions supported by WinDAGs.
+WINDAGS_FRONTMATTER_KEYS = {"category", "tags", "pairs-with", "io-contract"}
+
 RESERVED_NAME_WORDS = {"anthropic", "claude"}
 NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
@@ -244,11 +247,11 @@ def validate_frontmatter(skill_dir: Path, text: str, report: ValidationReport):
 
     # Check for invalid frontmatter keys
     for key in fm:
-        if key not in VALID_FRONTMATTER_KEYS and key != "metadata":
+        if key not in VALID_FRONTMATTER_KEYS and key not in WINDAGS_FRONTMATTER_KEYS:
             # Keys inside metadata are custom and always valid
             if not isinstance(fm.get("metadata"), dict) or key not in fm.get("metadata", {}):
                 report.add(rel, 1, "warning", "frontmatter",
-                           f"Unknown frontmatter key '{key}' — will be ignored by runtime. "
+                           f"Unrecognized frontmatter key '{key}' for this validator. "
                            f"Move to metadata: block or SKILL.md body")
 
     context = fm.get("context")

@@ -27,13 +27,12 @@ Use when a skill has workgroup, repo-local, and user-level copies.
 - Drop:
 - Needs human review:
 
-## Port Daddy Coordination
+## Coordination
 
-- Session:
-- Claims/locks:
-- Notes:
-- Tuples:
-- Background checks:
+- Owner:
+- Worktree and branch:
+- Editable paths:
+- Handoff or pull request:
 
 ## Validation
 
